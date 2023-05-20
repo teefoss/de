@@ -12,13 +12,6 @@
 #include <stdio.h>
 #include <string.h>
 
-struct WadInfo
-{
-    u8 identifer[4] = { 0 }; // "IWAD" or "PWAD"
-    u32 lumpCount = 0;
-    u32 directoryOffset = 0;
-};
-
 WadFile::~WadFile()
 {
     fclose(stream);
@@ -33,8 +26,9 @@ bool WadFile::create(const char * path)
         return false;
     }
 
-    WadInfo wadInfo;
-    fwrite(&wadInfo, sizeof(wadInfo), 1, stream);
+    WadInfo info;
+    memset(&info, 0, sizeof(info));
+    fwrite(&info, sizeof(info), 1, stream);
 
     return true;
 }
@@ -44,15 +38,9 @@ bool WadFile::open(const char * path)
     stream = fopen(path, "r+");
 
     if ( stream == nullptr )
-    {
         return false;
-    }
 
-    // Read the header.
-    WadInfo wadInfo;
-    fread(&wadInfo, sizeof(wadInfo), 1, stream);
-    wadInfo.lumpCount = SWAP32(wadInfo.lumpCount);
-    wadInfo.directoryOffset = SWAP32(wadInfo.directoryOffset);
+    WadInfo wadInfo = getInfo();
 
     // Load the directory.
     fseek(stream, wadInfo.directoryOffset, SEEK_SET);
@@ -89,6 +77,16 @@ const char * WadFile::getType()
     }
 }
 
+WadInfo WadFile::getInfo()
+{
+    WadInfo info;
+    fread(&info, sizeof(info), 1, stream);
+    info.lumpCount = SWAP32(info.lumpCount);
+    info.directoryOffset = SWAP32(info.directoryOffset);
+
+    return info;
+}
+
 void WadFile::listDirectory()
 {
     printf("type: %s\n", getType());
@@ -100,4 +98,101 @@ void WadFile::listDirectory()
         strncpy(name9, directory[i].name, 8);
         printf("%3d: %s, %d bytes\n", i, name9, directory[i].size);
     }
+}
+
+void WadFile::addLump(const char * name, void * data, u32 size)
+{
+    LumpInfo lump = { 0 };
+
+    strncpy(lump.name, name, 8);
+    for ( int i = 0; i < 8; i++ ) {
+        lump.name[i] = toupper(lump.name[i]);
+    }
+
+    WadInfo info = getInfo();
+
+    if ( info.directoryOffset == 0 ) {
+        // There's no directory yet, add to end of file.
+        fseek(stream, 0, SEEK_END);
+    } else {
+        // There's already a directory. The directory starts right after the
+        // last lump, so add the new lump here, then rewrite the directory.
+        fseek(stream, info.directoryOffset, SEEK_SET);
+    }
+
+    lump.offset = (u32)ftell(stream);
+    lump.size = size;
+    directory.append(lump);
+    fwrite(data, 1, size, stream);
+
+    writeDirectory((u32)ftell(stream)); // Rewrite.
+}
+
+void WadFile::writeDirectory(u32 offset)
+{
+    for ( int i = 0; i < directory.count(); i++ ) {
+        directory[i].offset = SWAP32(directory[i].offset);
+        directory[i].size = SWAP32(directory[i].size);
+    }
+
+    // Write the directory.
+    LumpInfo * directoryStart = &directory[0];
+    fseek(stream, offset, SEEK_SET);
+    fwrite(directoryStart, sizeof(LumpInfo), directory.count(), stream);
+
+    for ( int i = 0; i < directory.count(); i++ )
+    {
+        directory[i].offset = SWAP32(directory[i].offset);
+        directory[i].size = SWAP32(directory[i].size);
+    }
+
+    // Write the header.
+    WadInfo info;
+    info.directoryOffset = SWAP32(offset);
+    info.lumpCount = SWAP32(directory.count());
+    rewind(stream);
+    fwrite(&info, sizeof(info), 1, stream);
+}
+
+int WadFile::getLumpIndex(const char * name)
+{
+    char capitalized[9] = { 0 };
+
+    for ( int i = 0; i < 8; i++ )
+        capitalized[i] = toupper(name[i]);
+
+    for ( int i = directory.count() - 1; i >= 0; i-- )
+        if ( STRNEQ(directory[i].name, capitalized, 8) )
+            return i;
+
+    return -1;
+}
+
+void * WadFile::getLump(int index)
+{
+    void * buffer = malloc(directory[index].size);
+    fseek(stream, directory[index].offset, SEEK_SET);
+    fread(buffer, directory[index].size, 1, stream);
+
+    return buffer;
+}
+
+void * WadFile::getLump(const char * name)
+{
+    return getLump(getLumpIndex(name));
+}
+
+u32 WadFile::getLumpSize(int index)
+{
+    return directory[index].size;
+}
+
+u32 WadFile::getLumpSize(const char * name)
+{
+    return getLumpSize(getLumpIndex(name));
+}
+
+const char * WadFile::getLumpName(int index)
+{
+    return directory[index].name;
 }
