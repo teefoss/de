@@ -196,3 +196,32 @@ const char * WadFile::getLumpName(int index)
 {
     return directory[index].name;
 }
+
+void WadFile::removeLump(const char * name)
+{
+    int removeIndex = getLumpIndex(name);
+
+    for ( int i = removeIndex; i < directory.count() - 1; i++ ) {
+        LumpInfo * currentEntry = &directory[i];
+        LumpInfo * nextEntry = &directory[i + 1];
+
+        // Set position to current lump and move the next lump to it.
+        fseek(stream, currentEntry->offset, SEEK_SET);
+        void * nextLump = getLump(i + 1);
+        fwrite(nextLump, nextEntry->size, 1, stream);
+        free(nextLump);
+
+        // Set the next entry's offset to current.
+        nextEntry->offset = currentEntry->offset;
+    }
+
+    // Update the directory.
+    directory.remove(removeIndex);
+    u32 directoryOffset = (u32)ftell(stream);
+    writeDirectory(directoryOffset);
+
+    // Update the header.
+    WadInfo info = getInfo();
+    info.lumpCount = directory.count();
+    info.directoryOffset = directoryOffset;
+}

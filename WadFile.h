@@ -38,6 +38,7 @@ struct WadFile {
     void listDirectory();
     void writeDirectory(u32 offset);
     void addLump(const char * name, void * data, u32 size);
+    void removeLump(const char * name);
 
     WadInfo         getInfo();
     const char *    getType();

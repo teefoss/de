@@ -15,12 +15,12 @@
 // de --help, -h
 // de <subprogram> (<command>) [arguments]
 
-//    0     1
+//    0     1       2                           3                   4
 // de wad   --help, -h
-// de wad   list [WAD file](:[lump name])
-// de wad   copy [source WAD]:[lump name] [destination WAD]
-// de wad   swap [WAD file] [lump name 1] [lump name 2]
-// de wad   remove [WAD file]:[lump name]
+// de wad   list    [WAD file](:[lump name])
+// de wad   copy    [source WAD]:[lump name]    [destination WAD]
+// de wad   swap    [WAD file]                  [lump name 1]       [lump name 2]
+// de wad   remove  [WAD file]:[lump name]
 
 // de edit [WAD file] --iwad [WAD file]
 
@@ -173,6 +173,19 @@ void DoSubprogramWad(int argc, char ** argv)
                destinationPath);
 
         exit(EXIT_SUCCESS);
+    } else if ( STRNEQ(command, "remove", 6) ) {
+        char * lumpName = GetLumpName(&argv[2]);
+
+        WadFile wad;
+        if ( !wad.open(argv[2]) ) {
+            fprintf(stderr, "Error: could not open '%s'\n", argv[2]);
+            exit(EXIT_FAILURE);
+        }
+
+        wad.removeLump(lumpName);
+        printf("Removed lump '%s' from '%s'.\n", lumpName, argv[2]);
+
+        return exit(EXIT_SUCCESS);
     }
 }
 
@@ -270,6 +283,7 @@ int main(int argc, char ** argv)
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
         SDL_RenderPresent(renderer);
+        
         SDL_Delay(15);
     }
 
