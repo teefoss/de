@@ -1,2 +1,2 @@
 all:
-	cc *.cc -lSDL2 -std=c++11 -lstdc++ -o de
+	cc *.c -lSDL2 -o de

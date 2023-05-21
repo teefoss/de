@@ -6,7 +6,8 @@
 #ifndef __DOOMDATA__
 #define __DOOMDATA__
 
-#include "defines.h"
+#include "common.h"
+#include <stdbool.h>
 
 #ifndef __BYTEBOOL__
 #define __BYTEBOOL__

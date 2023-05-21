@@ -5,12 +5,13 @@
 //  Created by Thomas Foster on 5/19/23.
 //
 
-#include "WadFile.h"
-#include "Map.h"
-#include "DoomData.h"
+#include "wad.h"
+#include "map.h"
+#include "doomdata.h"
 
 #include <SDL2/SDL.h>
 #include <string.h>
+#include <stdbool.h>
 
 // de --help, -h
 // de <subprogram> (<command>) [arguments]
@@ -22,26 +23,51 @@
 // de wad   swap    [WAD file]                  [lump name 1]       [lump name 2]
 // de wad   remove  [WAD file]:[lump name]
 
-// de edit [WAD file] --iwad [WAD file]
+// de edit  [WAD file] --iwad [WAD file]
+
+static int     _argc;
+static char ** _argv;
+
+int GetArg(const char * string)
+{
+    size_t len = strlen(string);
+
+    for ( int i = 0; i < _argc; i++ ) {
+        if ( strncmp(string, _argv[i], len) == 0 ) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+char * GetOptionArg(const char * option)
+{
+    int index = GetArg(option);
+    if ( index == -1 || index + 1 >= _argc ) {
+        return NULL;
+    }
+
+    return _argv[index + 1];
+}
 
 void ListWadFile(const char * path)
 {
-    WadFile wad;
+//    WadFile wad;
 }
 
-void PrintUsageAndExit()
+void PrintUsageAndExit(void)
 {
     fprintf(stderr,
             "usage:\n"
-            "  de edit [WAD path] -map [map name*] -iwad [resource WAD path]\n"
-            "  de list [WAD path]\n\n"
+            "  de edit [WAD path] --map [map name*] --iwad [resource WAD path]\n"
             "  *map name: e[1-4]m[1-9] or map[01-32]");
     exit(EXIT_FAILURE);
 }
 
 // Get the lump name from an arg of the format 'file.wad:LUMPNAME'
 // The lump name is returned and also stripped from `arg`.
-char * GetLumpName(char ** arg)
+char * GetLumpNameFromArg(char ** arg)
 {
     char * lumpName = strchr(*arg, ':');
     if ( lumpName )
@@ -69,33 +95,34 @@ void DoSubprogramWad(int argc, char ** argv)
         }
 
         char * wadPath = argv[2];
-        char * lumpName = GetLumpName(&wadPath);
+        char * lumpName = GetLumpNameFromArg(&wadPath);
 
-        WadFile wad;
-        if ( !wad.open(wadPath) )
+        Wad * wad = OpenWad(wadPath);
+        if ( wad == NULL )
         {
             fprintf(stderr, "Error: could not open `%s`\n", wadPath);
             exit(EXIT_FAILURE);
         }
 
         printf("%s\n", wadPath);
-        printf("type: %s\n", wad.getType());
-        printf("lump count: %d\n", wad.directory.count());
+        printf("type: %s\n", GetWadType(wad));
+        printf("lump count: %d\n", wad->directory->count);
 
         if ( lumpName )
             printf("lumps named '%s':\n", lumpName);
         else
             printf("lumps:\n");
 
-        for ( int i = 0; i < wad.directory.count(); i++ )
+        for ( int i = 0; i < wad->directory->count; i++ )
         {
+            LumpInfo * info = Get(wad->directory, i);
             char name[9] = { 0 };
-            strncpy(name, wad.directory[i].name, 8);
+            strncpy(name, info->name, 8);
 
             if ( lumpName && !STRNEQ(lumpName, name, 8) )
                 continue;
 
-            printf(" %d: %s (%d bytes)\n", i, name, wad.directory[i].size);
+            printf(" %d: %s (%d bytes)\n", i, name, info->size);
         }
 
         exit(EXIT_SUCCESS);
@@ -118,26 +145,27 @@ void DoSubprogramWad(int argc, char ** argv)
             destinationPath = argv[3];
         }
 
-        char * lumpName = GetLumpName(&sourcePath);
+        char * lumpName = GetLumpNameFromArg(&sourcePath);
         if ( lumpName == NULL ) {
             fprintf(stderr, "Error: expected lump name to copy\n"
                     "usage: de wad copy [source wad file]:[lump name] [destination wad file]\n");
             exit(EXIT_FAILURE);
         }
 
-        WadFile source;
-        if ( !source.open(sourcePath) )
+        Wad * source = OpenWad(sourcePath);
+        if ( source == NULL )
         {
             fprintf(stderr, "Error: could not open source WAD '%s'\n", sourcePath);
             exit(EXIT_FAILURE);
         }
 
-        WadFile destination;
-        if ( !destination.open(destinationPath) )
+        Wad * destination = OpenWad(destinationPath);
+        if ( destination == NULL )
         {
             printf("Creating copy destination '%s'\n", destinationPath);
 
-            if ( !destination.create(destinationPath) )
+            destination = CreateWad(destinationPath);
+            if ( destination == NULL )
             {
                 fprintf(stderr, "Error: could not create '%s'\n", destinationPath);
                 exit(EXIT_FAILURE);
@@ -146,22 +174,25 @@ void DoSubprogramWad(int argc, char ** argv)
 
         if ( copyMap )
         {
-            int lumpIndex = source.getLumpIndex(lumpName);
+//            int lumpIndex = source.getLumpIndex(lumpName);
+            int lumpIndex = GetLumpIndex(source, lumpName);
 
             for ( int i = lumpIndex; i < lumpIndex + ML_COUNT; i++ )
             {
-                void * lump = source.getLump(i);
-                u32 size = source.getLumpSize(i);
-                const char * name = source.getLumpName(i);
+                void * lump = GetLumpWithIndex(source, i);
+                u32 size = GetLumpSize(source, i);
+                const char * name = GetLumpName(source, i);
 
-                destination.addLump(name, lump, size);
+                AddLump(destination, name, lump, size);
+
                 free(lump);
             }
         }
         else
         {
-            void * lump = source.getLump(lumpName);
-            destination.addLump(lumpName, lump, source.getLumpSize(lumpName));
+            int i = GetLumpIndex(source, lumpName);
+            void * lump = GetLumpWithName(source, lumpName);
+            AddLump(destination, lumpName, lump, GetLumpSize(source, i));
             free(lump);
         }
 
@@ -174,16 +205,18 @@ void DoSubprogramWad(int argc, char ** argv)
 
         exit(EXIT_SUCCESS);
     } else if ( STRNEQ(command, "remove", 6) ) {
-        char * lumpName = GetLumpName(&argv[2]);
+        char * lumpName = GetLumpNameFromArg(&argv[2]);
 
-        WadFile wad;
-        if ( !wad.open(argv[2]) ) {
+        Wad * wad = OpenWad(argv[2]);
+        if ( wad == NULL ) {
             fprintf(stderr, "Error: could not open '%s'\n", argv[2]);
             exit(EXIT_FAILURE);
         }
 
-        wad.removeLump(lumpName);
+        RemoveLump(wad, lumpName);
         printf("Removed lump '%s' from '%s'.\n", lumpName, argv[2]);
+
+        FreeWad(wad);
 
         return exit(EXIT_SUCCESS);
     }
@@ -197,13 +230,15 @@ int main(int argc, char ** argv)
 
     argc--;
     argv++;
+    _argc = argc;
+    _argv = argv;
 
     if ( argc < 2 )
         PrintUsageAndExit();
 
-    WadFile editWad;
-    WadFile resourceWad;
-    Map map;
+    Wad * editWad;
+    Wad * resourceWad;
+    Map * map;
 
     char * subprogram = argv[0];
 
@@ -214,43 +249,46 @@ int main(int argc, char ** argv)
     }
     else if ( STRNEQ(subprogram, "edit", 4 ) )
     {
+        // de edit [WAD file] --map [map label] --iwad [WAD file]
+
         if ( argc != 6 )
             PrintUsageAndExit();
 
         char * fileToEdit = argv[1];
 
-        if ( !editWad.open(fileToEdit) )
+        editWad = OpenWad(fileToEdit);
+        if ( editWad == NULL )
         {
             printf("Creating %s...\n", fileToEdit);
-            if ( !editWad.create(fileToEdit) )
+            editWad = CreateWad(fileToEdit);
+            if ( editWad == NULL ) {
+                fprintf(stderr, "Error: could not create '%s'\n", fileToEdit);
                 return EXIT_FAILURE;
+            }
         }
 
-        for ( int i = 2; i < argc - 1; i++ )
-        {
-            char * arg = argv[i];
+        char * mapLabel = GetOptionArg("--map");
+        if ( mapLabel == NULL ) {
+            fprintf(stderr, "Error: missing --map option");
+            PrintUsageAndExit();
+        }
 
-            if ( STRNEQ(arg, "-map", 4) )
-            {
-                strncpy(map.label, argv[i + 1], MAP_LABEL_LENGTH);
-                // TODO: validate label format
-                i++;
-            }
-            else if ( STRNEQ(arg, "-iwad", 5) )
-            {
-                if ( !resourceWad.open(argv[i + 1]) )
-                {
-                    fprintf(stderr,
-                            "Error: could not open resource WAD %s\n",
-                            argv[i + 1]);
-                    return EXIT_FAILURE;
-                }
+        map = LoadMap(editWad, mapLabel);
+        if ( map == NULL ) {
+            fprintf(stderr, "Error: could not load map\n");
+            return EXIT_FAILURE;
+        }
 
-                printf("Editing '%s' using resource IWAD '%s'\n",
-                       fileToEdit,
-                       argv[i + 1]);
-                i++;
-            }
+        char * iwadName = GetOptionArg("--iwad");
+        if ( iwadName == NULL ) {
+            fprintf(stderr, "Error: missing --iwad option");
+            PrintUsageAndExit();
+        }
+
+        resourceWad = OpenWad(iwadName);
+        if ( resourceWad == NULL ) {
+            fprintf(stderr, "Error: could not load resource WAD '%s'\n", iwadName);
+            PrintUsageAndExit();
         }
     }
 
@@ -283,7 +321,7 @@ int main(int argc, char ** argv)
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
         SDL_RenderPresent(renderer);
-        
+
         SDL_Delay(15);
     }
 
