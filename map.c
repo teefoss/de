@@ -13,14 +13,13 @@
 
 Map map;
 
-static int NeXTToSDL(int y_coord, const SDL_Rect * bounds)
+/// Convert NeXTSTEP to SDL coordinate system or vice versa.
+int Translate(int y)
 {
-    return (bounds->y + bounds->h) - (y_coord - bounds->y);
-}
+    SDL_Rect bounds = GetMapBounds();
+    int maxY = bounds.h - bounds.y;
 
-static int SDLToNeXT(int y_coord, const SDL_Rect * bounds)
-{
-    return (bounds->y - bounds->h) + (y_coord + bounds->y);
+    return maxY - y;
 }
 
 SDL_Rect GetMapBounds(void)
@@ -51,8 +50,8 @@ SDL_Rect GetMapBounds(void)
     SDL_Rect bounds = {
         .x = left,
         .y = top,
-        .w = (right - left) + 1,
-        .h = (bottom - top) + 1
+        .w = right - left,
+        .h = bottom - top
     };
 
     return bounds;
@@ -81,14 +80,6 @@ void LoadMap(const Wad * wad, const char * lumpLabel)
         printf("loaded vertex %3d (%3d, %3d)\n", i, point.x, point.y);
     }
 
-    free(vertices);
-
-    // Translate all points from NeXT coords to SDL.
-    SDL_Rect bounds = GetMapBounds();
-    Point * point = map.points->data;
-    for ( int i = 0; i < numVertices; i++, point++ )
-        point->y = NeXTToSDL(point->y, &bounds);
-
     int linesIndex = labelIndex + ML_LINEDEFS;
     maplinedef_t * lines = GetLumpWithIndex(wad, linesIndex);
     int numLines = GetLumpSize(wad, linesIndex) / sizeof(maplinedef_t);
@@ -105,4 +96,33 @@ void LoadMap(const Wad * wad, const char * lumpLabel)
         Push(map.lines, &line);
         printf("loaded line %3d: %3d, %3d\n", i, line.v1, line.v2);
     }
+
+    int thingsIndex = labelIndex + ML_THINGS;
+    mapthing_t * things = GetLumpWithIndex(wad, thingsIndex);
+    int numThings = GetLumpSize(wad, thingsIndex) / sizeof(mapthing_t);
+
+    map.things = NewArray(numThings, sizeof(Thing), 16);
+    for ( int i = 0; i < numThings; i++ ) {
+        Thing thing;
+        thing.x = things[i].x;
+        thing.y = things[i].y;
+        thing.options = things[i].options;
+        thing.angle = things[i].angle;
+        thing.type = things[i].type;
+        Push(map.things, &thing);
+    }
+
+    // Translate all points from NeXT coords to SDL.
+
+    Point * point = map.points->data;
+    for ( int i = 0; i < numVertices; i++, point++ )
+        point->y = Translate(point->y);
+
+    Thing * thing = map.things->data;
+    for ( int i = 0; i < numThings; i++, thing++ )
+        thing->y = Translate(thing->y);
+
+    free(vertices);
+    free(lines);
+    free(things);
 }

@@ -38,4 +38,10 @@ typedef uint16_t u16;
 typedef uint32_t u32;
 typedef uint64_t u64;
 
+extern SDL_Window * window;
+extern SDL_Renderer * renderer;
+
+void InitWindow(void);
+int GetRefreshRate(void);
+
 #endif /* defines_h */

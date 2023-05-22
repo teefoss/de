@@ -8,7 +8,7 @@
 #include "wad.h"
 #include "map.h"
 #include "doomdata.h"
-#include "window.h"
+#include "common.h"
 #include "mapview.h"
 
 #include <SDL2/SDL.h>
@@ -322,8 +322,19 @@ int main(int argc, char ** argv)
                 case SDL_KEYDOWN:
                     switch ( event.key.keysym.sym )
                     {
-                        case SDLK_UP:
-//                            visibleRect.y -= 16;
+                        case SDLK_EQUALS:
+                            ZoomIn();
+                            break;
+                        case SDLK_MINUS:
+                            ZoomOut();
+                            break;
+                        case SDLK_RIGHTBRACKET:
+                            if ( gridSize * 2 <= 64 )
+                                gridSize *= 2;
+                            break;
+                        case SDLK_LEFTBRACKET:
+                            if ( gridSize / 2 >= 1 )
+                                gridSize /= 2;
                             break;
                         default:
                             break;
