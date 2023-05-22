@@ -45,6 +45,5 @@ extern Map map;
 
 void LoadMap(const Wad * wad, const char * lumpLabel);
 SDL_Rect GetMapBounds(void);
-int Translate(int y);
 
 #endif /* Map_h */

@@ -13,13 +13,19 @@
 
 Map map;
 
-/// Convert NeXTSTEP to SDL coordinate system or vice versa.
-int Translate(int y)
+/// Translate all points from NeXTSTEP to SDL coordinate system or vice versa.
+static void TranslateAllPoints(void)
 {
-    SDL_Rect bounds = GetMapBounds();
+    SDL_Rect bounds;
     int maxY = bounds.h - bounds.y;
 
-    return maxY - y;
+    Point * point = map.points->data;
+    for ( int i = 0; i < map.points->count; i++, point++ )
+        point->y = maxY - point->y;
+
+    Thing * thing = map.things->data;
+    for ( int i = 0; i < map.things->count; i++, thing++ )
+        thing->y = maxY - thing->y;
 }
 
 SDL_Rect GetMapBounds(void)
@@ -112,16 +118,8 @@ void LoadMap(const Wad * wad, const char * lumpLabel)
         Push(map.things, &thing);
     }
 
-    // Translate all points from NeXT coords to SDL.
-
-    Point * point = map.points->data;
-    for ( int i = 0; i < numVertices; i++, point++ )
-        point->y = Translate(point->y);
-
-    Thing * thing = map.things->data;
-    for ( int i = 0; i < numThings; i++, thing++ )
-        thing->y = Translate(thing->y);
-
+    TranslateAllPoints();
+    
     free(vertices);
     free(lines);
     free(things);
