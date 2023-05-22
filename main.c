@@ -8,6 +8,8 @@
 #include "wad.h"
 #include "map.h"
 #include "doomdata.h"
+#include "window.h"
+#include "mapview.h"
 
 #include <SDL2/SDL.h>
 #include <string.h>
@@ -236,9 +238,8 @@ int main(int argc, char ** argv)
     if ( argc < 2 )
         PrintUsageAndExit();
 
-    Wad * editWad;
-    Wad * resourceWad;
-    Map * map;
+    Wad * editWad = NULL;
+    Wad * resourceWad = NULL;
 
     char * subprogram = argv[0];
 
@@ -273,11 +274,7 @@ int main(int argc, char ** argv)
             PrintUsageAndExit();
         }
 
-        map = LoadMap(editWad, mapLabel);
-        if ( map == NULL ) {
-            fprintf(stderr, "Error: could not load map\n");
-            return EXIT_FAILURE;
-        }
+        LoadMap(editWad, mapLabel);
 
         char * iwadName = GetOptionArg("--iwad");
         if ( iwadName == NULL ) {
@@ -292,15 +289,12 @@ int main(int argc, char ** argv)
         }
     }
 
-    SDL_Init(SDL_INIT_VIDEO);
-    SDL_Window * window = SDL_CreateWindow("",
-                                           SDL_WINDOWPOS_CENTERED,
-                                           SDL_WINDOWPOS_CENTERED,
-                                           800,
-                                           800,
-                                           SDL_WINDOW_RESIZABLE);
+    InitWindow();
+    InitMapView();
 
-    SDL_Renderer * renderer = SDL_CreateRenderer(window, -1, 0);
+    const u8 * keys = SDL_GetKeyboardState(NULL);
+
+    const float dt = 1.0f / GetRefreshRate();
 
     bool run = true;
     while ( run )
@@ -313,16 +307,44 @@ int main(int argc, char ** argv)
                 case SDL_QUIT:
                     run = false;
                     break;
+                case SDL_WINDOWEVENT:
+                    switch ( event.window.event )
+                    {
+                        case SDL_WINDOWEVENT_RESIZED:
+                        case SDL_WINDOWEVENT_SIZE_CHANGED:
+                            visibleRect.w = event.window.data1;
+                            visibleRect.h = event.window.data2;
+                            break;
+                        default:
+                            break;
+                    }
+                    break;
+                case SDL_KEYDOWN:
+                    switch ( event.key.keysym.sym )
+                    {
+                        case SDLK_UP:
+//                            visibleRect.y -= 16;
+                            break;
+                        default:
+                            break;
+                    }
+                    break;
                 default:
                     break;
             }
         }
 
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-        SDL_RenderClear(renderer);
-        SDL_RenderPresent(renderer);
+        if ( keys[SDL_SCANCODE_UP]    ) visibleRect.y -= 256.0f * dt;
+        if ( keys[SDL_SCANCODE_DOWN]  ) visibleRect.y += 256.0f * dt;
+        if ( keys[SDL_SCANCODE_LEFT]  ) visibleRect.x -= 256.0f * dt;
+        if ( keys[SDL_SCANCODE_RIGHT] ) visibleRect.x += 256.0f * dt;
 
-        SDL_Delay(15);
+        SDL_SetRenderDrawColor(renderer, 248, 248, 248, 255);
+        SDL_RenderClear(renderer);
+
+        DrawMap();
+
+        SDL_RenderPresent(renderer);
     }
 
     SDL_DestroyRenderer(renderer);

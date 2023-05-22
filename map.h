@@ -41,6 +41,9 @@ typedef struct {
     Array * things;
 } Map;
 
-Map * LoadMap(const Wad * wad, const char * lumpLabel);
+extern Map map;
+
+void LoadMap(const Wad * wad, const char * lumpLabel);
+SDL_Rect GetMapBounds(void);
 
 #endif /* Map_h */
