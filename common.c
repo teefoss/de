@@ -5,9 +5,6 @@
 //  Created by Thomas Foster on 5/20/23.
 //
 
-#define WINDOW_WIDTH 800
-#define WINDOW_HEIGHT 800
-
 #include "common.h"
 
 void _assert(const char * message, const char * file, int line)
@@ -29,7 +26,7 @@ static void CleanUpWindowAndRenderer(void)
     SDL_Quit();
 }
 
-void InitWindow(void)
+void InitWindow(int width, int height)
 {
     atexit(CleanUpWindowAndRenderer);
 
@@ -43,8 +40,8 @@ void InitWindow(void)
     int y = SDL_WINDOWPOS_CENTERED;
     u32 flags = 0;
     flags |= SDL_WINDOW_RESIZABLE;
-    flags |= SDL_WINDOW_ALLOW_HIGHDPI;
-    window = SDL_CreateWindow("", x, y, WINDOW_WIDTH, WINDOW_HEIGHT, flags);
+//    flags |= SDL_WINDOW_ALLOW_HIGHDPI;
+    window = SDL_CreateWindow("", x, y, width, height, flags);
 
     if ( window == NULL )
     {
@@ -63,6 +60,8 @@ void InitWindow(void)
     }
 
     // Adjust for High DPI displays.
+    // TODO: nix this for now. Things get weird when the window resizes...
+#if 0
     SDL_Rect renderSize;
     SDL_GetRendererOutputSize(renderer, &renderSize.w, &renderSize.h);
     if ( renderSize.w != WINDOW_WIDTH && renderSize.h != WINDOW_HEIGHT ) {
@@ -70,6 +69,7 @@ void InitWindow(void)
                            renderSize.w / WINDOW_WIDTH,
                            renderSize.h / WINDOW_HEIGHT);
     }
+#endif
 }
 
 int GetRefreshRate(void)

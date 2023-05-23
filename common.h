@@ -41,7 +41,7 @@ typedef uint64_t u64;
 extern SDL_Window * window;
 extern SDL_Renderer * renderer;
 
-void InitWindow(void);
+void InitWindow(int width, int height);
 int GetRefreshRate(void);
 
 #endif /* defines_h */

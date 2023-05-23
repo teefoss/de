@@ -10,6 +10,8 @@
 #include "doomdata.h"
 #include "common.h"
 #include "mapview.h"
+#include "args.h"
+#include "edit.h"
 
 #include <SDL2/SDL.h>
 #include <string.h>
@@ -27,31 +29,6 @@
 
 // de edit  [WAD file] --iwad [WAD file]
 
-static int     _argc;
-static char ** _argv;
-
-int GetArg(const char * string)
-{
-    size_t len = strlen(string);
-
-    for ( int i = 0; i < _argc; i++ ) {
-        if ( strncmp(string, _argv[i], len) == 0 ) {
-            return i;
-        }
-    }
-
-    return -1;
-}
-
-char * GetOptionArg(const char * option)
-{
-    int index = GetArg(option);
-    if ( index == -1 || index + 1 >= _argc ) {
-        return NULL;
-    }
-
-    return _argv[index + 1];
-}
 
 void ListWadFile(const char * path)
 {
@@ -176,7 +153,6 @@ void DoSubprogramWad(int argc, char ** argv)
 
         if ( copyMap )
         {
-//            int lumpIndex = source.getLumpIndex(lumpName);
             int lumpIndex = GetLumpIndex(source, lumpName);
 
             for ( int i = lumpIndex; i < lumpIndex + ML_COUNT; i++ )
@@ -230,10 +206,7 @@ int main(int argc, char ** argv)
            "[d]oom [e]ditor\n"
            "v. 0.1 Copyright (C) 2023 Thomas Foster\n\n");
 
-    argc--;
-    argv++;
-    _argc = argc;
-    _argv = argv;
+    InitArgs(--argc, ++argv);
 
     if ( argc < 2 )
         PrintUsageAndExit();
@@ -274,8 +247,6 @@ int main(int argc, char ** argv)
             PrintUsageAndExit();
         }
 
-        LoadMap(editWad, mapLabel);
-
         char * iwadName = GetOptionArg("--iwad");
         if ( iwadName == NULL ) {
             fprintf(stderr, "Error: missing --iwad option");
@@ -287,80 +258,13 @@ int main(int argc, char ** argv)
             fprintf(stderr, "Error: could not load resource WAD '%s'\n", iwadName);
             PrintUsageAndExit();
         }
+
+        LoadMap(editWad, mapLabel);
+        InitWindow(800, 800);
+        InitMapView();
+        
+        EditorLoop();
     }
-
-    InitWindow();
-    InitMapView();
-
-    const u8 * keys = SDL_GetKeyboardState(NULL);
-
-    const float dt = 1.0f / GetRefreshRate();
-
-    bool run = true;
-    while ( run )
-    {
-        SDL_Event event;
-        while ( SDL_PollEvent(&event) )
-        {
-            switch ( event.type )
-            {
-                case SDL_QUIT:
-                    run = false;
-                    break;
-                case SDL_WINDOWEVENT:
-                    switch ( event.window.event )
-                    {
-                        case SDL_WINDOWEVENT_RESIZED:
-                        case SDL_WINDOWEVENT_SIZE_CHANGED:
-                            visibleRect.w = event.window.data1;
-                            visibleRect.h = event.window.data2;
-                            break;
-                        default:
-                            break;
-                    }
-                    break;
-                case SDL_KEYDOWN:
-                    switch ( event.key.keysym.sym )
-                    {
-                        case SDLK_EQUALS:
-                            ZoomIn();
-                            break;
-                        case SDLK_MINUS:
-                            ZoomOut();
-                            break;
-                        case SDLK_RIGHTBRACKET:
-                            if ( gridSize * 2 <= 64 )
-                                gridSize *= 2;
-                            break;
-                        case SDLK_LEFTBRACKET:
-                            if ( gridSize / 2 >= 1 )
-                                gridSize /= 2;
-                            break;
-                        default:
-                            break;
-                    }
-                    break;
-                default:
-                    break;
-            }
-        }
-
-        if ( keys[SDL_SCANCODE_UP]    ) visibleRect.y -= 256.0f * dt;
-        if ( keys[SDL_SCANCODE_DOWN]  ) visibleRect.y += 256.0f * dt;
-        if ( keys[SDL_SCANCODE_LEFT]  ) visibleRect.x -= 256.0f * dt;
-        if ( keys[SDL_SCANCODE_RIGHT] ) visibleRect.x += 256.0f * dt;
-
-        SDL_SetRenderDrawColor(renderer, 248, 248, 248, 255);
-        SDL_RenderClear(renderer);
-
-        DrawMap();
-
-        SDL_RenderPresent(renderer);
-    }
-
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
-    SDL_Quit();
 
     return 0;
 }

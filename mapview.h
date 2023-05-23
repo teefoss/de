@@ -12,6 +12,7 @@
 
 extern SDL_Rect visibleRect;
 extern int gridSize;
+extern float scale;
 
 void InitMapView(void);
 void UpdateVisibleRectSize(int width, int height);
