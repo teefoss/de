@@ -10,9 +10,9 @@
 
 #include <SDL2/SDL.h>
 
-#define POINT_SIZE 4
+#define VERTEX_DRAW_SIZE 4
 #define SELECTION_SIZE 7
-#define THING_SIZE 32
+#define THING_DRAW_SIZE 32
 
 extern SDL_Rect visibleRect;
 extern int gridSize;
@@ -21,6 +21,7 @@ extern float scale;
 void InitMapView(void);
 void UpdateVisibleRectSize(int width, int height);
 void DrawMap(void);
+void DrawSelectionBox(const SDL_Rect * box);
 
 SDL_Point WindowToWorld(const SDL_Point * point);
 

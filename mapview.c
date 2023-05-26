@@ -11,6 +11,8 @@
 #include "geometry.h"
 #include "edit.h"
 
+#define FILLED (-1)
+
 SDL_Rect visibleRect;
 float scale = 1.0f;
 int gridSize = 8;
@@ -91,7 +93,7 @@ static void DrawLine(const SDL_Point * p1, const SDL_Point * p2)
 }
 
 /// Draw a filled rect, accounting for view origin and scale.
-static void FillRect(const SDL_Rect * rect)
+static void DrawRect(const SDL_Rect * rect, int thinkness)
 {
     SDL_Point rectOrigin = { rect->x, rect->y };
     rectOrigin = WorldToWindow(&rectOrigin);
@@ -104,7 +106,20 @@ static void FillRect(const SDL_Rect * rect)
         .h = rect->h * scale,
     };
 
-    SDL_RenderFillRect(renderer, &translatedRect);
+    if ( thinkness == FILLED ) {
+        SDL_RenderFillRect(renderer, &translatedRect);
+    } else {
+        for ( int i = 0; i < thinkness; i++ ) {
+            SDL_RenderDrawRect(renderer, &translatedRect);
+            translatedRect.x++;
+            translatedRect.y++;
+            translatedRect.w -= 2;
+            translatedRect.h -= 2;
+            
+            if ( translatedRect.w <= 0 || translatedRect.h <= 0 )
+                return;
+        }
+    }
 }
 
 static void SetGridColor(int coordinate)
@@ -147,7 +162,7 @@ static void DrawGrid(void)
 
 static void DrawPoints(void)
 {
-    const int pointSize = POINT_SIZE;
+    const int pointSize = VERTEX_DRAW_SIZE;
 
     int left = visibleRect.x - pointSize;
     int right = visibleRect.x + visibleRect.w + pointSize;
@@ -170,15 +185,15 @@ static void DrawPoints(void)
             || v->origin.y > bottom )
             continue;
 
-        pointRect.x = v->origin.x - POINT_SIZE / 2;
-        pointRect.y = v->origin.y - POINT_SIZE / 2;
+        pointRect.x = v->origin.x - VERTEX_DRAW_SIZE / 2;
+        pointRect.y = v->origin.y - VERTEX_DRAW_SIZE / 2;
 
         if ( v->selected )
             SDL_SetRenderDrawColor(renderer, 248, 64, 64, 255);
         else
             SDL_SetRenderDrawColor(renderer, 8, 8, 8, 255);
 
-        FillRect(&pointRect);
+        DrawRect(&pointRect, FILLED);
     }
 }
 
@@ -212,7 +227,7 @@ static void DrawLines(void)
 
 static void DrawThings(void)
 {
-    const int thingSize = THING_SIZE;
+    const int thingSize = THING_DRAW_SIZE;
 
     int left = visibleRect.x - thingSize;
     int right = visibleRect.x + visibleRect.w + thingSize;
@@ -232,15 +247,15 @@ static void DrawThings(void)
             || thing->origin.y > bottom )
             continue;
 
-        thingRect.x = thing->origin.x - THING_SIZE / 2;
-        thingRect.y = thing->origin.y - THING_SIZE / 2;
+        thingRect.x = thing->origin.x - THING_DRAW_SIZE / 2;
+        thingRect.y = thing->origin.y - THING_DRAW_SIZE / 2;
 
         if ( thing->selected )
             SDL_SetRenderDrawColor(renderer, 248, 64, 64, 255);
         else
             SDL_SetRenderDrawColor(renderer, 8, 8, 8, 255);
 
-        FillRect(&thingRect);
+        DrawRect(&thingRect, FILLED);
     }
 }
 
@@ -266,4 +281,13 @@ void DrawMap(void)
     r.y = convert.y;
     SDL_RenderDrawRect(renderer, &r);
 #endif
+}
+
+void DrawSelectionBox(const SDL_Rect * box)
+{
+    if ( box->w <= 0 || box->h <= 0 )
+        return;
+
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 128);
+    DrawRect(box, 4);
 }

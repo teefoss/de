@@ -59,6 +59,8 @@ void InitWindow(int width, int height)
         exit(EXIT_FAILURE);
     }
 
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+
     // Adjust for High DPI displays.
     // TODO: nix this for now. Things get weird when the window resizes...
 #if 0

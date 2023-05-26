@@ -20,9 +20,12 @@ const u8 * keys;
 SDL_Keymod mods;
 SDL_Point mouse;
 
-bool dragging;
+// Vertex, Line, Thing, and selection box dragging.
+bool draggingObjects;
+bool draggingSelectionBox;
 SDL_Point previousDragPoint;
-bool dragged;
+SDL_Point dragStart;
+SDL_Rect selectionBox;
 
 SDL_Point GridPoint(const SDL_Point * worldPoint)
 {
@@ -36,7 +39,7 @@ SDL_Point GridPoint(const SDL_Point * worldPoint)
     return gridPoint;
 }
 
-void DeselectAll(void)
+void DeselectAllObjects(void)
 {
     Vertex * vertices = map.vertices->data;
     for ( int i = 0; i < map.vertices->count; i++ ) {
@@ -54,15 +57,17 @@ void DeselectAll(void)
     }
 }
 
-void StartDrag(void)
+void StartDraggingObjects(void)
 {
-    dragging = true;
-    previousDragPoint = GridPoint(&mouse);
+    draggingObjects = true;
+    dragStart = GridPoint(&mouse);
+    previousDragPoint = dragStart;
 }
 
-void DragSelected(void)
+void DragSelectedObjects(void)
 {
     SDL_Point current = GridPoint(&mouse);
+
     int dx = current.x - previousDragPoint.x;
     int dy = current.y - previousDragPoint.y;
 
@@ -90,81 +95,152 @@ void DragSelected(void)
     previousDragPoint = current;
 }
 
-void Select(void)
+static void UpdateSelectionBox(void)
+{
+    int left    = mouse.x < dragStart.x ? mouse.x : dragStart.x;
+    int top     = mouse.y < dragStart.y ? mouse.y : dragStart.y;
+    int right   = mouse.x < dragStart.x ? dragStart.x : mouse.x;
+    int bottom  = mouse.y < dragStart.y ? dragStart.y : mouse.y;
+
+    selectionBox.x = left;
+    selectionBox.y = top;
+    selectionBox.w = (right - left) + 1;
+    selectionBox.h = (bottom - top) + 1;
+    printf("update selbox\n");
+}
+
+void SelectObject(void)
 {
     SDL_Rect clickRect = MakeCenteredRect(&mouse, SELECTION_SIZE);
 
-    Vertex * vertices = map.vertices->data;
-    for ( int i = 0; i < map.vertices->count; i++ )
+    Vertex * vertex = map.vertices->data;
+    for ( int i = 0; i < map.vertices->count; i++, vertex++ )
     {
-        if ( vertices[i].removed ) continue;
+        if ( vertex->removed ) continue;
 
-        Vertex * p = &vertices[i];
-        if ( SDL_PointInRect(&p->origin, &clickRect) )
+        if ( SDL_PointInRect(&vertex->origin, &clickRect) )
         {
-            if ( !SHIFT_DOWN && !p->selected )
-                DeselectAll();
+            if ( !SHIFT_DOWN && !vertex->selected )
+                DeselectAllObjects();
 
-            if ( p->selected && SHIFT_DOWN ) {
-                p->selected = false;
-                return;
+            if ( vertex->selected && SHIFT_DOWN )
+            {
+                vertex->selected = false;
+            }
+            else
+            {
+                vertex->selected = true;
+                StartDraggingObjects();
             }
 
-            p->selected = true;
-            StartDrag();
             return;
         }
     }
 
-    Line * lines = map.lines->data;
-    for ( int i = 0; i < map.lines->count; i++ )
+    Vertex * vertices = map.vertices->data;
+    Line * line = map.lines->data;
+    for ( int i = 0; i < map.lines->count; i++, line++ )
     {
-        Line * l = &lines[i];
-
-        if ( LineInRect(&vertices[l->v1].origin,
-                        &vertices[l->v2].origin,
+        if ( LineInRect(&vertices[line->v1].origin,
+                        &vertices[line->v2].origin,
                         &clickRect) )
         {
-            if ( !SHIFT_DOWN && !l->selected )
-                DeselectAll();
+            if ( !SHIFT_DOWN && !line->selected )
+                DeselectAllObjects();
 
-            if ( SHIFT_DOWN && l->selected )
+            if ( SHIFT_DOWN && line->selected )
             {
-                l->selected = false;
-                return;
+                line->selected = false;
+            }
+            else
+            {
+                line->selected = true;
+                vertices[line->v1].selected = true;
+                vertices[line->v2]. selected = true;
+                StartDraggingObjects();
             }
 
-            l->selected = true;
-            vertices[l->v1].selected = true;
-            vertices[l->v2]. selected = true;
-            StartDrag();
             return;
         }
     }
 
-    clickRect = MakeCenteredRect(&mouse, THING_SIZE);
-
+    clickRect = MakeCenteredRect(&mouse, THING_DRAW_SIZE);
     Thing * thing = map.things->data;
     for ( int i = 0; i < map.things->count; i++, thing++ )
     {
         if ( SDL_PointInRect(&thing->origin, &clickRect) )
         {
             if ( !SHIFT_DOWN && !thing->selected )
-                DeselectAll();
+                DeselectAllObjects();
 
-            if ( SHIFT_DOWN && thing->selected ) {
+            if ( SHIFT_DOWN && thing->selected )
+            {
                 thing->selected = false;
-                return;
+            }
+            else
+            {
+                thing->selected = true;
+                StartDraggingObjects();
             }
 
-            thing->selected = true;
-            StartDrag();
             return;
         }
     }
 
-    // Nothing was clicked
-    DeselectAll();
+    if ( !SHIFT_DOWN )
+        DeselectAllObjects();
+
+    draggingSelectionBox = true;
+    dragStart = mouse;
+
+    // To avoid seeing a frame of the box's previous position.
+    UpdateSelectionBox();
+}
+
+void SelectObjectsInSelectionBox(void)
+{
+    SDL_Rect vertexCheckRect = {
+        .x = selectionBox.x - VERTEX_DRAW_SIZE / 2,
+        .y = selectionBox.y - VERTEX_DRAW_SIZE / 2,
+        .w = selectionBox.w + VERTEX_DRAW_SIZE,
+        .h = selectionBox.h + VERTEX_DRAW_SIZE
+    };
+
+    Vertex * vertex = map.vertices->data;
+    for ( int i = 0; i < map.vertices->count; i++, vertex++ )
+    {
+        if ( vertex->removed ) continue;
+        if ( SDL_PointInRect(&vertex->origin, &vertexCheckRect) )
+            vertex->selected = true;
+    }
+
+    Vertex * vertices = map.vertices->data;
+    Line * line = map.lines->data;
+    for ( int i = 0; i < map.lines->count; i++, line++ )
+    {
+        Vertex * v1 = &vertices[line->v1];
+        Vertex * v2 = &vertices[line->v2];
+        if ( LineInRect(&v1->origin, &v2->origin, &selectionBox) ) {
+            v1->selected = true;
+            v2->selected = true;
+            line->selected = true;
+        }
+    }
+
+    SDL_Rect thingCheckRect = {
+        .x = selectionBox.x - THING_DRAW_SIZE / 2,
+        .y = selectionBox.y - THING_DRAW_SIZE / 2,
+        .w = selectionBox.w + THING_DRAW_SIZE,
+        .h = selectionBox.h + THING_DRAW_SIZE
+    };
+
+    Thing * thing = map.things->data;
+    for ( int i = 0; i < map.things->count; i++, thing++ )
+    {
+        if ( SDL_PointInRect(&thing->origin, &thingCheckRect) ) {
+            thing->selected = true;
+        }
+    }
 }
 
 void EditorLoop(void)
@@ -224,7 +300,8 @@ void EditorLoop(void)
                 case SDL_MOUSEBUTTONDOWN:
                     switch ( event.button.button ) {
                         case SDL_BUTTON_LEFT:
-                            Select();
+                            SelectObject();
+                            printf("clicked\n");
                             break;
                         default:
                             break;
@@ -233,7 +310,12 @@ void EditorLoop(void)
                 case SDL_MOUSEBUTTONUP:
                     switch ( event.button.button ) {
                         case SDL_BUTTON_LEFT:
-                            dragging = false;
+                            UpdateSelectionBox(); // So you don't see the prev.
+                            draggingObjects = false;
+                            if ( draggingSelectionBox ) {
+                                draggingSelectionBox = false;
+                                SelectObjectsInSelectionBox();
+                            }
                             break;
                         default:
                             break;
@@ -244,8 +326,12 @@ void EditorLoop(void)
             }
         }
 
-        if ( (mouseButtons & SDL_BUTTON_LEFT) && dragging ) {
-            DragSelected();
+        if ( (mouseButtons & SDL_BUTTON_LEFT) )
+        {
+            if ( draggingObjects )
+                DragSelectedObjects();
+            else if ( draggingSelectionBox )
+                UpdateSelectionBox();
         }
 
         static float scrollSpeed = 0.0f;
@@ -253,7 +339,11 @@ void EditorLoop(void)
         if (   keys[SDL_SCANCODE_UP]
             || keys[SDL_SCANCODE_DOWN]
             || keys[SDL_SCANCODE_LEFT]
-            || keys[SDL_SCANCODE_RIGHT] )
+            || keys[SDL_SCANCODE_RIGHT]
+            || keys[SDL_SCANCODE_W]
+            || keys[SDL_SCANCODE_A]
+            || keys[SDL_SCANCODE_S]
+            || keys[SDL_SCANCODE_D] )
         {
             scrollSpeed += 60.0f * dt;
             float max = (600.0f / scale) * dt;
@@ -265,22 +355,24 @@ void EditorLoop(void)
             scrollSpeed = 0.0f;
         }
 
-        if ( keys[SDL_SCANCODE_UP] )
+        if ( keys[SDL_SCANCODE_UP] || keys[SDL_SCANCODE_W] )
             visibleRect.y -= scrollSpeed;
 
-        if ( keys[SDL_SCANCODE_DOWN] )
+        if ( keys[SDL_SCANCODE_DOWN] || keys[SDL_SCANCODE_S] )
             visibleRect.y += scrollSpeed;
 
-        if ( keys[SDL_SCANCODE_LEFT] )
+        if ( keys[SDL_SCANCODE_LEFT] || keys[SDL_SCANCODE_A] )
             visibleRect.x -= scrollSpeed;
 
-        if ( keys[SDL_SCANCODE_RIGHT] )
+        if ( keys[SDL_SCANCODE_RIGHT] || keys[SDL_SCANCODE_D] )
             visibleRect.x += scrollSpeed;
 
         SDL_SetRenderDrawColor(renderer, 248, 248, 248, 255);
         SDL_RenderClear(renderer);
 
         DrawMap();
+        if ( draggingSelectionBox )
+            DrawSelectionBox(&selectionBox);
 
         SDL_RenderPresent(renderer);
     }
