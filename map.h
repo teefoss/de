@@ -17,6 +17,8 @@
 typedef struct {
     SDL_Point origin;
     bool selected;
+    int referenceCount;
+    bool removed;
 } Vertex;
 
 typedef struct {

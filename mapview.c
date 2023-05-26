@@ -162,6 +162,8 @@ static void DrawPoints(void)
     Vertex * v = map.vertices->data;
     for ( int i = 0; i < map.vertices->count; i++, v++ )
     {
+        if ( v->removed ) continue;
+        
         if (   v->origin.x < left
             || v->origin.x > right
             || v->origin.y < top

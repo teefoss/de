@@ -14,16 +14,22 @@
 
 #include <stdbool.h>
 
+#define SHIFT_DOWN (mods & KMOD_SHIFT)
+
 const u8 * keys;
 SDL_Keymod mods;
 SDL_Point mouse;
 
-SDL_Point GetGridPoint(SDL_Point worldPoint)
+bool dragging;
+SDL_Point previousDragPoint;
+bool dragged;
+
+SDL_Point GridPoint(const SDL_Point * worldPoint)
 {
-    float x = (float)worldPoint.x / (float)gridSize;
-    float y = (float)worldPoint.y / (float)gridSize;
-    x += worldPoint.x < 0.0f ? -0.5f : 0.5f;
-    y += worldPoint.y < 0.0f ? -0.5f : 0.5f;
+    float x = (float)worldPoint->x / (float)gridSize;
+    float y = (float)worldPoint->y / (float)gridSize;
+    x += worldPoint->x < 0.0f ? -0.5f : 0.5f;
+    y += worldPoint->y < 0.0f ? -0.5f : 0.5f;
 
     SDL_Point gridPoint = { (int)x * gridSize, (int)y * gridSize };
 
@@ -48,21 +54,64 @@ void DeselectAll(void)
     }
 }
 
+void StartDrag(void)
+{
+    dragging = true;
+    previousDragPoint = GridPoint(&mouse);
+}
+
+void DragSelected(void)
+{
+    SDL_Point current = GridPoint(&mouse);
+    int dx = current.x - previousDragPoint.x;
+    int dy = current.y - previousDragPoint.y;
+
+    Vertex * vertices = map.vertices->data;
+    for ( int i = 0; i < map.vertices->count; i++ )
+    {
+        if ( vertices[i].removed ) continue;
+
+        if ( vertices[i].selected )
+        {
+            vertices[i].origin.x += dx;
+            vertices[i].origin.y += dy;
+        }
+    }
+
+    Thing * things = map.things->data;
+    for ( int i = 0; i < map.things->count; i++ )
+    {
+        if ( things[i].selected ) {
+            things[i].origin.x += dx;
+            things[i].origin.y += dy;
+        }
+    }
+
+    previousDragPoint = current;
+}
+
 void Select(void)
 {
-//    Box clickBox = MakeCenteredSquare(mouse.x, mouse.y, SELECTION_SIZE);
     SDL_Rect clickRect = MakeCenteredRect(&mouse, SELECTION_SIZE);
 
     Vertex * vertices = map.vertices->data;
     for ( int i = 0; i < map.vertices->count; i++ )
     {
+        if ( vertices[i].removed ) continue;
+
         Vertex * p = &vertices[i];
         if ( SDL_PointInRect(&p->origin, &clickRect) )
         {
-            if ( !(mods & KMOD_SHIFT) )
+            if ( !SHIFT_DOWN && !p->selected )
                 DeselectAll();
-            
+
+            if ( p->selected && SHIFT_DOWN ) {
+                p->selected = false;
+                return;
+            }
+
             p->selected = true;
+            StartDrag();
             return;
         }
     }
@@ -76,13 +125,19 @@ void Select(void)
                         &vertices[l->v2].origin,
                         &clickRect) )
         {
-            if ( !(mods & KMOD_SHIFT) )
+            if ( !SHIFT_DOWN && !l->selected )
                 DeselectAll();
+
+            if ( SHIFT_DOWN && l->selected )
+            {
+                l->selected = false;
+                return;
+            }
 
             l->selected = true;
             vertices[l->v1].selected = true;
             vertices[l->v2]. selected = true;
-
+            StartDrag();
             return;
         }
     }
@@ -94,10 +149,16 @@ void Select(void)
     {
         if ( SDL_PointInRect(&thing->origin, &clickRect) )
         {
-            if ( !(mods & KMOD_SHIFT) )
+            if ( !SHIFT_DOWN && !thing->selected )
                 DeselectAll();
 
+            if ( SHIFT_DOWN && thing->selected ) {
+                thing->selected = false;
+                return;
+            }
+
             thing->selected = true;
+            StartDrag();
             return;
         }
     }
@@ -116,7 +177,7 @@ void EditorLoop(void)
     while ( run )
     {
         mods = SDL_GetModState();
-        SDL_GetMouseState(&mouse.x, &mouse.y);
+        u32 mouseButtons = SDL_GetMouseState(&mouse.x, &mouse.y);
         mouse = WindowToWorld(&mouse);
 
         SDL_Event event;
@@ -169,9 +230,22 @@ void EditorLoop(void)
                             break;
                     }
                     break;
+                case SDL_MOUSEBUTTONUP:
+                    switch ( event.button.button ) {
+                        case SDL_BUTTON_LEFT:
+                            dragging = false;
+                            break;
+                        default:
+                            break;
+                    }
+                    break;
                 default:
                     break;
             }
+        }
+
+        if ( (mouseButtons & SDL_BUTTON_LEFT) && dragging ) {
+            DragSelected();
         }
 
         static float scrollSpeed = 0.0f;
@@ -181,12 +255,10 @@ void EditorLoop(void)
             || keys[SDL_SCANCODE_LEFT]
             || keys[SDL_SCANCODE_RIGHT] )
         {
-            scrollSpeed += 64.0f * dt;
-            float max = (768.0f / scale) * dt;
+            scrollSpeed += 60.0f * dt;
+            float max = (600.0f / scale) * dt;
             if ( scrollSpeed > max )
-            {
                 scrollSpeed = max;
-            }
         }
         else
         {

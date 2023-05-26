@@ -74,17 +74,28 @@ void LoadMap(const Wad * wad, const char * lumpLabel)
         exit(EXIT_FAILURE);
     }
 
+    // Load vertices.
+
     int verticesIndex = labelIndex + ML_VERTEXES;
-    mapvertex_t * vertices = GetLumpWithIndex(wad, verticesIndex);
+    mapvertex_t * mapVertices = GetLumpWithIndex(wad, verticesIndex);
     int numVertices = GetLumpSize(wad, verticesIndex) / sizeof(mapvertex_t);
 
     map.vertices = NewArray(numVertices, sizeof(Vertex), 16);
     for ( int i = 0; i < numVertices; i++ )
     {
-        Vertex vertex = { vertices[i].x, vertices[i].y };
+        Vertex vertex =
+        {
+            .origin.x = mapVertices[i].x,
+            .origin.y = mapVertices[i].y,
+            .referenceCount = 0,
+            .removed = true, // This will be updated once a line uses this vert.
+        };
+
         Push(map.vertices, &vertex);
 //        printf("loaded vertex %3d (%3d, %3d)\n", i, vertex.x, vertex.y);
     }
+
+    Vertex * vertices = map.vertices->data;
 
     int linesIndex = labelIndex + ML_LINEDEFS;
     maplinedef_t * lines = GetLumpWithIndex(wad, linesIndex);
@@ -94,13 +105,30 @@ void LoadMap(const Wad * wad, const char * lumpLabel)
     for ( int i = 0; i < numLines; i++ )
     {
         Line line = { 0 };
+
         line.v1 = lines[i].v1;
+        vertices[line.v1].referenceCount++;
+        vertices[line.v1].removed = false;
+
         line.v2 = lines[i].v2;
+        vertices[line.v2].referenceCount++;
+        vertices[line.v2].removed = false;
+
         line.flags = lines[i].flags;
         line.tag = lines[i].tag;
         // TODO: sidedefs
+
         Push(map.lines, &line);
-        printf("loaded line %3d: %3d, %3d\n", i, line.v1, line.v2);
+//        printf("loaded line %3d: %3d, %3d\n", i, line.v1, line.v2);
+    }
+
+    // After all lines are loaded, check if there are any 'dead' vertices,
+    // i.e. those that don't belong to a line.
+
+    for ( int i = 0; i < map.vertices->count; i++ ) {
+        if ( vertices[i].referenceCount == 0 ) {
+            vertices[i].removed = true;
+        }
     }
 
     int thingsIndex = labelIndex + ML_THINGS;
@@ -120,7 +148,7 @@ void LoadMap(const Wad * wad, const char * lumpLabel)
 
     TranslateAllPoints();
 
-    free(vertices);
+    free(mapVertices);
     free(lines);
     free(things);
 }
