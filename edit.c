@@ -9,19 +9,116 @@
 
 #include "common.h"
 #include "mapview.h"
+#include "map.h"
+#include "geometry.h"
+
 #include <stdbool.h>
 
-//const float scrollSpeed = 256.0f;
-//const float scrollAccel = 16.0f;
+const u8 * keys;
+SDL_Keymod mods;
+SDL_Point mouse;
+
+SDL_Point GetGridPoint(SDL_Point worldPoint)
+{
+    float x = (float)worldPoint.x / (float)gridSize;
+    float y = (float)worldPoint.y / (float)gridSize;
+    x += worldPoint.x < 0.0f ? -0.5f : 0.5f;
+    y += worldPoint.y < 0.0f ? -0.5f : 0.5f;
+
+    SDL_Point gridPoint = { (int)x * gridSize, (int)y * gridSize };
+
+    return gridPoint;
+}
+
+void DeselectAll(void)
+{
+    Vertex * vertices = map.vertices->data;
+    for ( int i = 0; i < map.vertices->count; i++ ) {
+        vertices[i].selected = false;
+    }
+
+    Line * lines = map.lines->data;
+    for ( int i = 0; i < map.lines->count; i++ ) {
+        lines[i].selected = false;
+    }
+
+    Thing * things = map.things->data;
+    for ( int i = 0; i < map.things->count; i++ ) {
+        things[i].selected = false;
+    }
+}
+
+void Select(void)
+{
+//    Box clickBox = MakeCenteredSquare(mouse.x, mouse.y, SELECTION_SIZE);
+    SDL_Rect clickRect = MakeCenteredRect(&mouse, SELECTION_SIZE);
+
+    Vertex * vertices = map.vertices->data;
+    for ( int i = 0; i < map.vertices->count; i++ )
+    {
+        Vertex * p = &vertices[i];
+        if ( SDL_PointInRect(&p->origin, &clickRect) )
+        {
+            if ( !(mods & KMOD_SHIFT) )
+                DeselectAll();
+            
+            p->selected = true;
+            return;
+        }
+    }
+
+    Line * lines = map.lines->data;
+    for ( int i = 0; i < map.lines->count; i++ )
+    {
+        Line * l = &lines[i];
+
+        if ( LineInRect(&vertices[l->v1].origin,
+                        &vertices[l->v2].origin,
+                        &clickRect) )
+        {
+            if ( !(mods & KMOD_SHIFT) )
+                DeselectAll();
+
+            l->selected = true;
+            vertices[l->v1].selected = true;
+            vertices[l->v2]. selected = true;
+
+            return;
+        }
+    }
+
+    clickRect = MakeCenteredRect(&mouse, THING_SIZE);
+
+    Thing * thing = map.things->data;
+    for ( int i = 0; i < map.things->count; i++, thing++ )
+    {
+        if ( SDL_PointInRect(&thing->origin, &clickRect) )
+        {
+            if ( !(mods & KMOD_SHIFT) )
+                DeselectAll();
+
+            thing->selected = true;
+            return;
+        }
+    }
+
+    // Nothing was clicked
+    DeselectAll();
+}
 
 void EditorLoop(void)
 {
     const u8 * keys = SDL_GetKeyboardState(NULL);
+
     const float dt = 1.0f / GetRefreshRate();
 
     bool run = true;
     while ( run )
     {
+        mods = SDL_GetModState();
+        SDL_GetMouseState(&mouse.x, &mouse.y);
+        mouse = WindowToWorld(&mouse);
+
         SDL_Event event;
         while ( SDL_PollEvent(&event) )
         {
@@ -58,6 +155,15 @@ void EditorLoop(void)
                         case SDLK_LEFTBRACKET:
                             if ( gridSize / 2 >= 1 )
                                 gridSize /= 2;
+                            break;
+                        default:
+                            break;
+                    }
+                    break;
+                case SDL_MOUSEBUTTONDOWN:
+                    switch ( event.button.button ) {
+                        case SDL_BUTTON_LEFT:
+                            Select();
                             break;
                         default:
                             break;

@@ -10,13 +10,14 @@
 
 #include "array.h"
 #include "wad.h"
+#include <stdbool.h>
 
 #define MAP_LABEL_LENGTH 6
 
 typedef struct {
-    s16 x;
-    s16 y;
-} Point;
+    SDL_Point origin;
+    bool selected;
+} Vertex;
 
 typedef struct {
     s16 v1;
@@ -24,19 +25,22 @@ typedef struct {
     s16 flags;
     s16 special;
     s16 tag;
+
+    bool selected;
 } Line;
 
 typedef struct {
-    s16 x;
-    s16 y;
+    SDL_Point origin;
     s16 angle;
     s16 type;
     s16 options;
+
+    bool selected;
 } Thing;
 
 typedef struct {
     char label[MAP_LABEL_LENGTH]; // "ExMx" or "MAPxx" + \0
-    Array * points;
+    Array * vertices;
     Array * lines;
     Array * things;
 } Map;

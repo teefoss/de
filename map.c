@@ -13,19 +13,19 @@
 
 Map map;
 
-/// Translate all points from NeXTSTEP to SDL coordinate system or vice versa.
+/// Translate all vertices from NeXTSTEP to SDL coordinate system or vice versa.
 static void TranslateAllPoints(void)
 {
-    SDL_Rect bounds;
+    SDL_Rect bounds = GetMapBounds();
     int maxY = bounds.h - bounds.y;
 
-    Point * point = map.points->data;
-    for ( int i = 0; i < map.points->count; i++, point++ )
-        point->y = maxY - point->y;
+    Vertex * vertex = map.vertices->data;
+    for ( int i = 0; i < map.vertices->count; i++, vertex++ )
+        vertex->origin.y = maxY - vertex->origin.y;
 
     Thing * thing = map.things->data;
     for ( int i = 0; i < map.things->count; i++, thing++ )
-        thing->y = maxY - thing->y;
+        thing->origin.y = maxY - thing->origin.y;
 }
 
 SDL_Rect GetMapBounds(void)
@@ -38,19 +38,19 @@ SDL_Rect GetMapBounds(void)
 
     int max_y = INT_MIN;
 
-    Point * p = map.points->data;
-    for ( int i = 0; i < map.points->count; i++, p++ )
+    Vertex * v = map.vertices->data;
+    for ( int i = 0; i < map.vertices->count; i++, v++ )
     {
-        if ( p->y > max_y )
-            max_y = p->y;
-        if ( p->x < left )
-            left = p->x;
-        if ( p->y < top )
-            top = p->y;
-        if ( p->x > right )
-            right = p->x;
-        if ( p->y > bottom )
-            bottom = p->y;
+        if ( v->origin.y > max_y )
+            max_y = v->origin.y;
+        if ( v->origin.x < left )
+            left = v->origin.x;
+        if ( v->origin.y < top )
+            top = v->origin.y;
+        if ( v->origin.x > right )
+            right = v->origin.x;
+        if ( v->origin.y > bottom )
+            bottom = v->origin.y;
     }
 
     SDL_Rect bounds = {
@@ -78,12 +78,12 @@ void LoadMap(const Wad * wad, const char * lumpLabel)
     mapvertex_t * vertices = GetLumpWithIndex(wad, verticesIndex);
     int numVertices = GetLumpSize(wad, verticesIndex) / sizeof(mapvertex_t);
 
-    map.points = NewArray(numVertices, sizeof(Point), 16);
+    map.vertices = NewArray(numVertices, sizeof(Vertex), 16);
     for ( int i = 0; i < numVertices; i++ )
     {
-        Point point = { vertices[i].x, vertices[i].y };
-        Push(map.points, &point);
-        printf("loaded vertex %3d (%3d, %3d)\n", i, point.x, point.y);
+        Vertex vertex = { vertices[i].x, vertices[i].y };
+        Push(map.vertices, &vertex);
+//        printf("loaded vertex %3d (%3d, %3d)\n", i, vertex.x, vertex.y);
     }
 
     int linesIndex = labelIndex + ML_LINEDEFS;
@@ -93,7 +93,7 @@ void LoadMap(const Wad * wad, const char * lumpLabel)
     map.lines = NewArray(numLines, sizeof(Line), 16);
     for ( int i = 0; i < numLines; i++ )
     {
-        Line line;
+        Line line = { 0 };
         line.v1 = lines[i].v1;
         line.v2 = lines[i].v2;
         line.flags = lines[i].flags;
@@ -109,9 +109,9 @@ void LoadMap(const Wad * wad, const char * lumpLabel)
 
     map.things = NewArray(numThings, sizeof(Thing), 16);
     for ( int i = 0; i < numThings; i++ ) {
-        Thing thing;
-        thing.x = things[i].x;
-        thing.y = things[i].y;
+        Thing thing = { 0 };
+        thing.origin.x = things[i].x;
+        thing.origin.y = things[i].y;
         thing.options = things[i].options;
         thing.angle = things[i].angle;
         thing.type = things[i].type;
@@ -119,7 +119,7 @@ void LoadMap(const Wad * wad, const char * lumpLabel)
     }
 
     TranslateAllPoints();
-    
+
     free(vertices);
     free(lines);
     free(things);
