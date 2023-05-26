@@ -23,6 +23,7 @@ SDL_Point mouse;
 // Vertex, Line, Thing, and selection box dragging.
 bool draggingObjects;
 bool draggingSelectionBox;
+bool draggingView;
 SDL_Point previousDragPoint;
 SDL_Point dragStart;
 SDL_Rect selectionBox;
@@ -60,8 +61,7 @@ void DeselectAllObjects(void)
 void StartDraggingObjects(void)
 {
     draggingObjects = true;
-    dragStart = GridPoint(&mouse);
-    previousDragPoint = dragStart;
+    previousDragPoint = GridPoint(&mouse);
 }
 
 void DragSelectedObjects(void)
@@ -249,12 +249,19 @@ void EditorLoop(void)
 
     const float dt = 1.0f / GetRefreshRate();
 
+    int previousMouseX = 0;
+    int previousMouseY = 0;
+
+    // TODO: add some test that VSYNC is working, otherwise limit framerate.
     bool run = true;
     while ( run )
     {
         mods = SDL_GetModState();
-        u32 mouseButtons = SDL_GetMouseState(&mouse.x, &mouse.y);
-        mouse = WindowToWorld(&mouse);
+
+        int mouseX;
+        int mouseY;
+        u32 mouseButtons = SDL_GetMouseState(&mouseX, &mouseY);
+        mouse = WindowToWorld(&(SDL_Point){ mouseX, mouseY });
 
         SDL_Event event;
         while ( SDL_PollEvent(&event) )
@@ -300,8 +307,10 @@ void EditorLoop(void)
                 case SDL_MOUSEBUTTONDOWN:
                     switch ( event.button.button ) {
                         case SDL_BUTTON_LEFT:
-                            SelectObject();
-                            printf("clicked\n");
+                            previousMouseX = mouseX;
+                            previousMouseY = mouseY;
+                            if ( !keys[SDL_SCANCODE_SPACE] )
+                                SelectObject();
                             break;
                         default:
                             break;
@@ -312,6 +321,7 @@ void EditorLoop(void)
                         case SDL_BUTTON_LEFT:
                             UpdateSelectionBox(); // So you don't see the prev.
                             draggingObjects = false;
+                            draggingView = false;
                             if ( draggingSelectionBox ) {
                                 draggingSelectionBox = false;
                                 SelectObjectsInSelectionBox();
@@ -321,6 +331,12 @@ void EditorLoop(void)
                             break;
                     }
                     break;
+                case SDL_MOUSEWHEEL:
+                    if ( event.wheel.y < 0 )
+                        ZoomIn();
+                    else if ( event.wheel.y > 0 )
+                        ZoomOut();
+                    break;
                 default:
                     break;
             }
@@ -328,10 +344,32 @@ void EditorLoop(void)
 
         if ( (mouseButtons & SDL_BUTTON_LEFT) )
         {
-            if ( draggingObjects )
+            if ( keys[SDL_SCANCODE_SPACE] )
+            {
+                if ( !draggingView )
+                {
+                    draggingView = true;
+                    previousMouseX = mouseX;
+                    previousMouseY = mouseY;
+                }
+
+                int dx = mouseX - previousMouseX;
+                int dy = mouseY - previousMouseY;
+
+                visibleRect.x -= dx;
+                visibleRect.y -= dy;
+
+                previousMouseX = mouseX;
+                previousMouseY = mouseY;
+            }
+            else if ( draggingObjects )
+            {
                 DragSelectedObjects();
+            }
             else if ( draggingSelectionBox )
+            {
                 UpdateSelectionBox();
+            }
         }
 
         static float scrollSpeed = 0.0f;
