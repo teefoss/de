@@ -22,6 +22,12 @@ typedef struct {
 } Vertex;
 
 typedef struct {
+    s16 flags;
+    s16 sector;
+//    s16
+} Side;
+
+typedef struct {
     s16 v1;
     s16 v2;
     s16 flags;
@@ -29,6 +35,9 @@ typedef struct {
     s16 tag;
 
     bool selected;
+
+    // Which side should be shown when opening the line panel.
+    bool panelBackSelected;
 } Line;
 
 typedef struct {
@@ -51,5 +60,7 @@ extern Map map;
 
 void LoadMap(const Wad * wad, const char * lumpLabel);
 SDL_Rect GetMapBounds(void);
+SDL_Point LineMidpoint(const Line * line);
+float LineLength(const Line * line);
 
 #endif /* Map_h */

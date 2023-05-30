@@ -1,5 +1,5 @@
 //
-//  main.cc
+//  main.c
 //  de
 //
 //  Created by Thomas Foster on 5/19/23.
@@ -12,6 +12,8 @@
 #include "mapview.h"
 #include "args.h"
 #include "edit.h"
+
+#include "panels.h"
 
 #include <SDL2/SDL.h>
 #include <string.h>
@@ -261,6 +263,7 @@ int main(int argc, char ** argv)
 
         LoadMap(editWad, mapLabel);
         InitWindow(800, 800);
+        LoadLinePanel();
         InitMapView();
         
         EditorLoop();

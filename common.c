@@ -83,3 +83,14 @@ int GetRefreshRate(void)
 
     return displayMode.refresh_rate;
 }
+
+
+float LerpEpsilon(float a, float b, float w, float epsilon)
+{
+    float result = (1.0f - w) * a + w * b;
+    if ( fabsf(result - b) < epsilon ) {
+        result = b;
+    }
+
+    return result;
+}

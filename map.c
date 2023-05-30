@@ -152,3 +152,27 @@ void LoadMap(const Wad * wad, const char * lumpLabel)
     free(lines);
     free(things);
 }
+
+SDL_Point LineMidpoint(const Line * line)
+{
+    Vertex * vertices = map.vertices->data;
+    SDL_Point p1 = vertices[line->v1].origin;
+    SDL_Point p2 = vertices[line->v2].origin;
+
+    float dx = p2.x - p1.x;
+    float dy = p2.y - p1.y;
+
+    return (SDL_Point){ p1.x + dx / 2.0f, p1.y + dy / 2.0f };
+}
+
+float LineLength(const Line * line)
+{
+    Vertex * vertices = map.vertices->data;
+    SDL_Point p1 = vertices[line->v1].origin;
+    SDL_Point p2 = vertices[line->v2].origin;
+
+    float dx = p2.x - p1.x;
+    float dy = p2.y - p1.y;
+
+    return sqrtf(dx * dx + dy * dy);
+}

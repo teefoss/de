@@ -13,11 +13,11 @@
 
 #define FILLED (-1)
 
-SDL_Rect visibleRect;
+SDL_FRect visibleRect;
 float scale = 1.0f;
 int gridSize = 8;
 
-static SDL_Point WorldToWindow(const SDL_Point * point)
+SDL_Point WorldToWindow(const SDL_Point * point)
 {
     SDL_Point converted = {
         .x = (point->x - visibleRect.x) * scale,
@@ -54,7 +54,7 @@ static void PerformZoom(float factor)
 
     // Adjust the visible rect, keeping the center focus point the same.
 
-    SDL_Rect oldVisibleRect = visibleRect;
+    SDL_FRect oldVisibleRect = visibleRect;
 
     visibleRect.w /= (scale / oldScale);
     visibleRect.h /= (scale / oldScale);
@@ -79,7 +79,10 @@ void InitMapView(void)
 {
     SDL_Rect bounds = GetMapBounds();
 
-    SDL_GetWindowSize(window, &visibleRect.w, &visibleRect.h);
+    int w, h;
+    SDL_GetWindowSize(window, &w, &h);
+    visibleRect.w = w;
+    visibleRect.h = h;
     visibleRect.x = bounds.x + (bounds.w / 2) - visibleRect.w / 2;
     visibleRect.y = bounds.y + (bounds.h / 2) - visibleRect.h / 2;
 }
@@ -132,10 +135,10 @@ static void SetGridColor(int coordinate)
 
 static void DrawGrid(void)
 {
-    int left = visibleRect.x;
-    int right = visibleRect.x + visibleRect.w;
-    int top = visibleRect.y;
-    int bottom = visibleRect.y + visibleRect.h;
+    float left = visibleRect.x;
+    float right = visibleRect.x + visibleRect.w;
+    float top = visibleRect.y;
+    float bottom = visibleRect.y + visibleRect.h;
 
     SDL_SetRenderDrawColor(renderer, 192, 192, 255, 255);
 
@@ -217,8 +220,8 @@ static void DrawLines(void)
         float dx = p2.x - p1.x;
         float dy = p2.y - p1.y;
 
-        float length = sqrtf(dx * dx + dy * dy) / 6.0f;
-        SDL_Point mid = { p1.x + dx / 2.0f, p1.y + dy / 2.0f };
+        float length = LineLength(l) / 6.0f;
+        SDL_Point mid = LineMidpoint(l);
         SDL_Point normal = { mid.x - dy / length , mid.y + dx / length };
 
         DrawLine(&mid, &normal);

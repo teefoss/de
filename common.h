@@ -43,5 +43,6 @@ extern SDL_Renderer * renderer;
 
 void InitWindow(int width, int height);
 int GetRefreshRate(void);
+float LerpEpsilon(float a, float b, float w, float epsilon);
 
 #endif /* defines_h */

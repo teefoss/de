@@ -14,7 +14,7 @@
 #define SELECTION_SIZE 7
 #define THING_DRAW_SIZE 32
 
-extern SDL_Rect visibleRect;
+extern SDL_FRect visibleRect;
 extern int gridSize;
 extern float scale;
 
@@ -24,6 +24,7 @@ void DrawMap(void);
 void DrawSelectionBox(const SDL_Rect * box);
 
 SDL_Point WindowToWorld(const SDL_Point * point);
+SDL_Point WorldToWindow(const SDL_Point * point);
 
 void ZoomIn(void);
 void ZoomOut(void);
