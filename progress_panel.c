@@ -1,0 +1,70 @@
+//
+//  progress_panel.c
+//  de
+//
+//  Created by Thomas Foster on 6/12/23.
+//
+
+#include "progress_panel.h"
+#include "panel.h"
+
+#define MAX_STR 44
+
+Panel progressPanel;
+
+static char title[MAX_STR];
+static char info[MAX_STR];
+static float progress;
+
+void OpenProgressPanel(const char * _title)
+{
+    openPanels[++topPanel] = &progressPanel;
+    progress = 0.0f;
+    strncpy(title, _title, sizeof(title));
+    info[0] = '\0';
+}
+
+void SetProgress(float _progress, const char * _info)
+{
+    progress = _progress;
+    strncpy(info, _info, sizeof(title));
+}
+
+void RenderProgressPanel(void)
+{
+    int w, h;
+    SDL_GetWindowSize(window, &w, &h);
+
+    progressPanel.location.x = (w - (progressPanel.width * FONT_WIDTH)) / 2;
+    progressPanel.location.y = (h - (progressPanel.height * FONT_HEIGHT)) / 2;
+
+    RenderPanelTexture(&progressPanel);
+
+    SDL_RenderSetViewport(renderer, &progressPanel.location);
+
+    // Title and info strings
+    SetPanelColor(15);
+    PANEL_PRINT(2, 1, title);
+    PANEL_PRINT(progressPanel.width - 2 - (int)strlen(info), 3, info);
+
+    // Render progress bar
+    SetPanelColor(10);
+    int barWidth = progressPanel.width - 4;
+    int numSegments = barWidth * progress;
+
+    for ( int i = 0; i < numSegments; i++ )
+        PANEL_PRINT(2 + i, 2, "%c", 219);
+
+    SDL_RenderSetViewport(renderer, NULL);
+}
+
+void LoadProgressPanel(void)
+{
+    progressPanel = LoadPanel(PANEL_DIRECTORY"progress.panel");
+    progressPanel.render = RenderProgressPanel;
+}
+
+void CloseProgressPanel(void)
+{
+    --topPanel;
+}

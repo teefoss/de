@@ -12,8 +12,14 @@
 #include <stdint.h>
 #include <string.h>
 
+#define CLAMP(a, min, max) if (a<min) { a=min; } else if (a>max) { a=max; }
+#define SIGN(a) (a < 0 ? -1 : a > 0 ? 1 : 0)
+#define MAX(a, b) ((a > b) ? (a) : (b))
+#define MIN(a, b) ((a < b) ? (a) : (b))
+
 #define SWAP16(x)   SDL_SwapLE16(x)
 #define SWAP32(x)   SDL_SwapLE32(x)
+
 #define STRNEQ(a, b, n) (strncmp(a, b, n) == 0)
 
 #if DEBUG
@@ -44,5 +50,6 @@ extern SDL_Renderer * renderer;
 void InitWindow(int width, int height);
 int GetRefreshRate(void);
 float LerpEpsilon(float a, float b, float w, float epsilon);
+SDL_Texture * GetScreen(void);
 
 #endif /* defines_h */

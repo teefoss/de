@@ -14,13 +14,19 @@
 #include "geometry.h"
 #include "text.h"
 #include "panel.h"
-#include "panels.h"
+#include "line_panel.h"
+#include "patch.h"
 
 #include <stdbool.h>
+#include <limits.h>
 
 #define SHIFT_DOWN (mods & KMOD_SHIFT)
 
 bool running = true;
+
+GameType gameType;
+
+Wad * resourceWad;
 
 // Input
 
@@ -35,8 +41,14 @@ static SDL_Rect selectionBox;
 static int previousMouseX;
 static int previousMouseY;
 static SDL_Point visibleRectTarget;
-static int selectedLineIndex = -1;
 
+
+enum {
+    SHOW_NONE,
+    SHOW_LINE_PANEL,
+    SHOW_LINE_SPECIALS_CATEGORY_PANEL,
+    SHOW_LINE_SPECIALS_PANEL,
+} panelShown;
 
 SDL_Point GridPoint(const SDL_Point * worldPoint)
 {
@@ -67,7 +79,7 @@ void DeselectAllObjects(void)
         things[i].selected = false;
     }
 
-    selectedLineIndex = -1;
+    topPanel = -1; // Close all panels.
 }
 
 #pragma mark - AUTOSCROLL
@@ -301,15 +313,9 @@ void SelectObject(bool openPanel)
 
                 if ( openPanel )
                 {
-                    selectedLineIndex = i;
-
-                    // TODO: refactor LineMidpoint()
-                    SDL_Point p1 = vertices[line->v1].origin;
-                    SDL_Point p2 = vertices[line->v2].origin;
-                    int dx = p2.x - p1.x;
-                    int dy = p2.y - p2.y;
-                    SDL_Point midpoint = { p1.x + dx / 2, p1.y + dy / 2 };
-                    AutoScrollToPoint(midpoint);
+                    linePanel.data = line;
+                    openPanels[++topPanel] = &linePanel;
+                    UpdateLinePanelContent();
                 }
                 else
                 {
@@ -351,67 +357,45 @@ void SelectObject(bool openPanel)
     editorState = ES_DRAG_BOX;
 }
 
-bool HandlePanelEvent(const SDL_Event * event)
+/// Autoscroll to the center of selected object(s)
+void CenterSelectedObjects(void)
 {
-    Panel * panel = NULL;
-    PanelEventHandler handler = NULL;
-    void * object = NULL;
-    PanelItem * item = NULL;
-
-    if ( selectedLineIndex != -1 ) {
-        panel = &line_panel;
-        handler = HandleLinePanelEvent;
-        object = Get(map.lines, selectedLineIndex);
-    }
-
-    // TODO: things etc.
-
-    // Nothing is currently selected.
-    if ( panel == NULL ) {
-        return false;
-    }
-
-    item = &panel->items[panel->selection];
-
-    switch ( event->type )
+    Box box =
     {
-        case SDL_KEYDOWN:
-            switch ( event->key.keysym.sym )
-            {
-                case SDLK_UP:
-                    if ( item->up == 0 )
-                        panel->selection--;
-                    else if ( item->up > 0 )
-                        panel->selection = item->up;
-                    return true;
+        .left = INT_MAX,
+        .top = INT_MAX,
+        .right = INT_MIN,
+        .bottom = INT_MIN
+    };
 
-                case SDLK_DOWN:
-                    if ( item->down == 0 )
-                        panel->selection++;
-                    else if ( item->down > 0 )
-                        panel->selection = item->down;
-                    return true;
+    Vertex * vertex = map.vertices->data;
+    for ( int i = 0; i < map.vertices->count; i++, vertex++ )
+        if ( vertex->selected )
+            EnclosePoint(&vertex->origin, &box);
 
-                case SDLK_LEFT:
-                    if ( item->left != -1 )
-                        panel->selection = item->left;
-                    return true;
-
-                case SDLK_RIGHT:
-                    if ( item->right != -1 )
-                        panel->selection = item->right;
-                    return true;
-
-                case SDLK_RETURN:
-                    return handler(event, object);
-
-                default:
-                    return false;
-            }
-
-        default:
-            return false;
+    Vertex * vertices = map.vertices->data;
+    Line * line = map.lines->data;
+    for ( int i = 0; i < map.lines->count; i++, line++ )
+    {
+        if ( line->selected )
+        {
+            EnclosePoint(&vertices[line->v1].origin, &box);
+            EnclosePoint(&vertices[line->v2].origin, &box);
+        }
     }
+
+    Thing * thing = map.things->data;
+    for ( int i = 0; i < map.things->count; i++, thing++ )
+        if ( thing->selected )
+            EnclosePoint(&thing->origin, &box);
+
+    SDL_Point focus =
+    {
+        .x = box.left + (box.right - box.left) / 2,
+        .y = box.top + (box.bottom - box.top) / 2
+    };
+
+    AutoScrollToPoint(focus);
 }
 
 void HandleEditEvent(const SDL_Event * event)
@@ -455,14 +439,17 @@ void HandleEditEvent(const SDL_Event * event)
                 case SDLK_ESCAPE:
                     DeselectAllObjects();
                     break;
+                case SDLK_c:
+                    CenterSelectedObjects();
+                    break;
                 default:
                     break;
             }
             break;
 
         case SDL_MOUSEBUTTONDOWN:
-            switch ( event->button.button ) {
-
+            switch ( event->button.button )
+            {
                 case SDL_BUTTON_LEFT:
                     previousMouseX = windowMouse.x;
                     previousMouseY = windowMouse.y;
@@ -534,7 +521,7 @@ void UpdateEdit(float dt)
 
 #pragma mark -
 
-static void RenderEditor(void)
+void RenderEditor(void)
 {
     SDL_SetRenderDrawColor(renderer, 248, 248, 248, 255);
     SDL_RenderClear(renderer);
@@ -544,11 +531,8 @@ static void RenderEditor(void)
     if ( editorState == ES_DRAG_BOX )
         DrawSelectionBox(&selectionBox);
 
-    if ( selectedLineIndex != -1 )
-    {
-        Line * line = Get(map.lines, selectedLineIndex);
-        RenderLinePanel(line);
-    }
+    for ( int i = 0; i <= topPanel; i++ )
+        openPanels[i]->render();
 
     PrintString(0, 0, "World Point: %d, %d", worldMouse.x, worldMouse.y);
 
@@ -576,10 +560,43 @@ void EditorLoop(void)
         SDL_Event event;
         while ( SDL_PollEvent(&event) )
         {
-            if ( HandlePanelEvent(&event) )
-                continue;
+            if ( topPanel >= 0 )
+                if ( ProcessPanelEvent(openPanels[topPanel], &event) )
+                    continue;
 
             StateHandleEvent(&event);
+
+            // TODO: handle quit separately here.
+        }
+
+        // Update mouse hover item.
+
+        if ( topPanel >= 0 )
+        {
+            Panel * panel = openPanels[topPanel];
+            SDL_Rect rect = PanelRenderLocation(panel);
+            panel->mouseHover = -1;
+
+            if ( SDL_PointInRect(&windowMouse, &rect) )
+            {
+                // Mouse text col/row in panel.
+                int cx = (windowMouse.x - rect.x) / FONT_WIDTH;
+                int cy = (windowMouse.y - rect.y) / FONT_HEIGHT;
+
+                for ( int i = 0; i < panel->numItems; i++ )
+                {
+                    PanelItem * item = &panel->items[i];
+                    if ( cy == item->y ) {
+                        for ( int x = item->x; x < item->x + item->width; x++ )
+                        {
+                            if ( cx == x )
+                            {
+                                panel->mouseHover = i;
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         StateUpdate(dt);

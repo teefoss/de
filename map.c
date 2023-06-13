@@ -8,6 +8,7 @@
 #include "map.h"
 #include "wad.h"
 #include "doomdata.h"
+#include "common.h"
 
 #include <limits.h>
 
@@ -63,6 +64,30 @@ SDL_Rect GetMapBounds(void)
     return bounds;
 }
 
+void * LoadMapData(const Wad * wad, const char * lumpName, int dataType, int * count)
+{
+    int labelIndex = GetLumpIndex(wad, lumpName);
+    int dataIndex = labelIndex + dataType;
+
+    size_t dataSize = 0;
+    switch ( dataType )
+    {
+        case ML_THINGS:   dataSize = sizeof(mapthing_t); break;
+        case ML_LINEDEFS: dataSize = sizeof(maplinedef_t); break;
+        case ML_SIDEDEFS: dataSize = sizeof(mapsidedef_t); break;
+        case ML_VERTEXES: dataSize = sizeof(mapvertex_t); break;
+        default:
+//            ASSERT("Bad map data type!");
+            if ( count ) *count = 0;
+            return NULL;
+    }
+
+    if ( count )
+        *count = GetLumpSize(wad, dataIndex) / dataSize;
+
+    return GetLumpWithIndex(wad, dataIndex);
+}
+
 void LoadMap(const Wad * wad, const char * lumpLabel)
 {
     strncpy(map.label, lumpLabel, sizeof(map.label));
@@ -76,9 +101,8 @@ void LoadMap(const Wad * wad, const char * lumpLabel)
 
     // Load vertices.
 
-    int verticesIndex = labelIndex + ML_VERTEXES;
-    mapvertex_t * mapVertices = GetLumpWithIndex(wad, verticesIndex);
-    int numVertices = GetLumpSize(wad, verticesIndex) / sizeof(mapvertex_t);
+    int numVertices = 0;
+    mapvertex_t * mapVertices = LoadMapData(wad, lumpLabel, ML_VERTEXES, &numVertices);
 
     map.vertices = NewArray(numVertices, sizeof(Vertex), 16);
     for ( int i = 0; i < numVertices; i++ )
@@ -97,9 +121,11 @@ void LoadMap(const Wad * wad, const char * lumpLabel)
 
     Vertex * vertices = map.vertices->data;
 
-    int linesIndex = labelIndex + ML_LINEDEFS;
-    maplinedef_t * lines = GetLumpWithIndex(wad, linesIndex);
-    int numLines = GetLumpSize(wad, linesIndex) / sizeof(maplinedef_t);
+    int numLines = 0;
+    maplinedef_t * lines = LoadMapData(wad, lumpLabel, ML_LINEDEFS, &numLines);
+
+
+    mapsidedef_t * sidedefs = LoadMapData(wad, lumpLabel, ML_SIDEDEFS, NULL);
 
     map.lines = NewArray(numLines, sizeof(Line), 16);
     for ( int i = 0; i < numLines; i++ )
@@ -116,7 +142,22 @@ void LoadMap(const Wad * wad, const char * lumpLabel)
 
         line.flags = lines[i].flags;
         line.tag = lines[i].tag;
-        // TODO: sidedefs
+        line.special = lines[i].special;
+
+        for ( int s = 0; s < 2; s++ )
+        {
+            Side * side = &line.sides[s];
+            mapsidedef_t * mside = &sidedefs[lines[i].sidenum[s]];
+
+            side->offsetX = mside->textureoffset;
+            side->offsetY = mside->rowoffset;
+            strncpy(side->bottom, mside->bottomtexture, 8);
+            side->bottom[8] = '\0';
+            strncpy(side->middle, mside->midtexture, 8);
+            side->middle[8] = '\0';
+            strncpy(side->top, mside->toptexture, 8);
+            side->top[8] = '\0';
+        }
 
         Push(map.lines, &line);
 //        printf("loaded line %3d: %3d, %3d\n", i, line.v1, line.v2);
@@ -131,9 +172,8 @@ void LoadMap(const Wad * wad, const char * lumpLabel)
         }
     }
 
-    int thingsIndex = labelIndex + ML_THINGS;
-    mapthing_t * things = GetLumpWithIndex(wad, thingsIndex);
-    int numThings = GetLumpSize(wad, thingsIndex) / sizeof(mapthing_t);
+    int numThings = 0;
+    mapthing_t * things = LoadMapData(wad, lumpLabel, ML_THINGS, &numThings);
 
     map.things = NewArray(numThings, sizeof(Thing), 16);
     for ( int i = 0; i < numThings; i++ ) {
@@ -150,6 +190,7 @@ void LoadMap(const Wad * wad, const char * lumpLabel)
 
     free(mapVertices);
     free(lines);
+    free(sidedefs);
     free(things);
 }
 

@@ -32,7 +32,7 @@ void InitWindow(int width, int height)
 
     if ( SDL_Init(SDL_INIT_VIDEO) != 0 )
     {
-        fprintf(stderr, "Error: could not create window (%s)\n", SDL_GetError());
+        fprintf(stderr, "Error: could not init SDL (%s)\n", SDL_GetError());
         exit(EXIT_FAILURE);
     }
 
@@ -49,7 +49,12 @@ void InitWindow(int width, int height)
         exit(EXIT_FAILURE);
     }
 
-    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC);
+    u32 rendererFlags = 0;
+    rendererFlags |= SDL_RENDERER_PRESENTVSYNC;
+    rendererFlags |= SDL_RENDERER_TARGETTEXTURE;
+    rendererFlags |= SDL_RENDERER_SOFTWARE;
+//    rendererFlags |= SDL_RENDERER_ACCELERATED;
+    renderer = SDL_CreateRenderer(window, -1, rendererFlags);
 
     if ( renderer == NULL )
     {
@@ -93,4 +98,12 @@ float LerpEpsilon(float a, float b, float w, float epsilon)
     }
 
     return result;
+}
+
+SDL_Texture * GetScreen(void)
+{
+    SDL_Surface * surface = SDL_GetWindowSurface(window);
+    if ( surface == NULL )
+        printf("%s\n", SDL_GetError());
+    return SDL_CreateTextureFromSurface(renderer, surface);
 }

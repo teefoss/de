@@ -22,9 +22,12 @@ typedef struct {
 } Vertex;
 
 typedef struct {
-    s16 flags;
-    s16 sector;
-//    s16
+    int offsetX;
+    int offsetY;
+    char bottom[9];
+    char middle[9];
+    char top[9];
+    // sectordef
 } Side;
 
 typedef struct {
@@ -33,6 +36,7 @@ typedef struct {
     s16 flags;
     s16 special;
     s16 tag;
+    Side sides[2];
 
     bool selected;
 

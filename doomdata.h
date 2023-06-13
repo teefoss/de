@@ -141,20 +141,20 @@ typedef struct
 
 typedef struct
 {
-    s16     originx;
-    s16     originy;
-    s16     patch;
-    s16     stepdir;
-    s16     colormap;
+    s16     originx;    // Horizontal location within texture.
+    s16     originy;    // Vertical location within texture.
+    s16     patch;      // Patch number in PNAMES lump.
+    s16     stepdir;    // Unused
+    s16     colormap;   // Unused
 } mappatch_t;
 
 typedef struct
 {
-    char        name[8];
-    bool        masked;
+    u8          name[8];
+    s32         masked; // OBSOLETE
     s16         width;
     s16         height;
-    void        **columndirectory;    // OBSOLETE
+    s32         columndirectory;    // OBSOLETE
     s16         patchcount;
     mappatch_t  patches[1];
 } maptexture_t;
@@ -171,14 +171,17 @@ typedef struct
 // posts are runs of non masked source pixels
 typedef struct
 {
-    byte    topdelta; // -1 is the last post in a column
-    byte    length;
+    u8 topdelta; // -1 is the last post in a column
+    u8 length;
+    u8 padding; // Unused
+
 // length data bytes follows
 } post_t;
 
 // column_t is a list of 0 or more post_t, (byte)-1 terminated
 typedef post_t column_t;
 
+// Structure within WAD (e.g. patches within P_START-P_END and S_START-S_END)
 // a patch holds one or more columns
 // patches are used for sprites and all masked pictures
 typedef struct

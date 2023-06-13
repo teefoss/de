@@ -12,8 +12,9 @@
 #include "mapview.h"
 #include "args.h"
 #include "edit.h"
-
-#include "panels.h"
+#include "line_panel.h"
+#include "patch.h"
+#include "progress_panel.h"
 
 #include <SDL2/SDL.h>
 #include <string.h>
@@ -214,7 +215,6 @@ int main(int argc, char ** argv)
         PrintUsageAndExit();
 
     Wad * editWad = NULL;
-    Wad * resourceWad = NULL;
 
     char * subprogram = argv[0];
 
@@ -227,7 +227,7 @@ int main(int argc, char ** argv)
     {
         // de edit [WAD file] --map [map label] --iwad [WAD file]
 
-        if ( argc != 6 )
+        if ( argc < 6 )
             PrintUsageAndExit();
 
         char * fileToEdit = argv[1];
@@ -263,9 +263,45 @@ int main(int argc, char ** argv)
 
         LoadMap(editWad, mapLabel);
         InitWindow(800, 800);
-        LoadLinePanel();
+
+        // Determine game type.
+
+        char * gameType = GetOptionArg("--game");
+        if ( gameType != NULL ) {
+            for ( char * c = gameType; *c != '\0'; c++ )
+                *c = toupper(*c);
+
+            if ( strcmp(gameType, "DOOM") == 0 ) {
+                LoadLinePanels(DOOM1_DSP_PATH"linespecials.dsp");
+            } else if ( strcmp(gameType, "DOOMSE") == 0 ) {
+                LoadLinePanels(DOOMSE_DSP_PATH"linespecials.dsp");
+            } else if ( strcmp(gameType, "DOOM2") ) {
+                LoadLinePanels(DOOM2_DSP_PATH"linespecials.dsp");
+            } else {
+                fprintf(stderr, "--game: bad argument. Should be"
+                        "'doom', 'doomse', or 'doom2'\n");
+                exit(EXIT_FAILURE);
+            }
+        } else {
+            // Determine the game type from the IWAD name.
+
+            for ( char * c = iwadName; *c != '\0'; c++ )
+                *c = toupper(*c);
+
+            if ( strcmp(iwadName, "DOOM1.WAD") == 0 )
+                LoadLinePanels(DOOM1_DSP_PATH"linespecials.dsp");
+            else if ( strcmp(iwadName, "DOOM.WAD") == 0 )
+                LoadLinePanels(DOOMSE_DSP_PATH"linespecials.dsp");
+            else
+                // Doom 2 is the default otherwise.
+                LoadLinePanels(DOOM2_DSP_PATH"linespecials.dsp");
+        }
+
         InitMapView();
-        
+        LoadProgressPanel();
+        InitPlayPalette(resourceWad);
+        LoadAllPatches(resourceWad);
+
         EditorLoop();
     }
 

@@ -59,3 +59,31 @@ bool LineInRect(const SDL_Point * p1, const SDL_Point * p2, const SDL_Rect * r)
 
     return left || right || top || bottom;
 }
+
+void EnclosePoint(const SDL_Point * point, Box * box)
+{
+    if ( point->x < box->left )
+        box->left = point->x;
+
+    if ( point->x > box->right )
+        box->right = point->x;
+
+    if ( point->y < box->top )
+        box->top = point->y;
+
+    if ( point->y > box->bottom )
+        box->bottom = point->y;
+}
+
+SDL_Rect BoxToRect(const Box * box)
+{
+    SDL_Rect rect =
+    {
+        .x = box->left,
+        .y = box->top,
+        .w = box->right - box->left,
+        .h = box->bottom - box->top
+    };
+
+    return rect;
+}
