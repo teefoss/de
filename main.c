@@ -272,11 +272,11 @@ int main(int argc, char ** argv)
                 *c = toupper(*c);
 
             if ( strcmp(gameType, "DOOM") == 0 ) {
-                LoadLinePanels(DOOM1_DSP_PATH"linespecials.dsp");
+                LoadLinePanels(DOOM1_PATH"linespecials.dsp");
             } else if ( strcmp(gameType, "DOOMSE") == 0 ) {
-                LoadLinePanels(DOOMSE_DSP_PATH"linespecials.dsp");
+                LoadLinePanels(DOOMSE_PATH"linespecials.dsp");
             } else if ( strcmp(gameType, "DOOM2") ) {
-                LoadLinePanels(DOOM2_DSP_PATH"linespecials.dsp");
+                LoadLinePanels(DOOM2_PATH"linespecials.dsp");
             } else {
                 fprintf(stderr, "--game: bad argument. Should be"
                         "'doom', 'doomse', or 'doom2'\n");
@@ -289,12 +289,12 @@ int main(int argc, char ** argv)
                 *c = toupper(*c);
 
             if ( strcmp(iwadName, "DOOM1.WAD") == 0 )
-                LoadLinePanels(DOOM1_DSP_PATH"linespecials.dsp");
+                LoadLinePanels(DOOM1_PATH"linespecials.dsp");
             else if ( strcmp(iwadName, "DOOM.WAD") == 0 )
-                LoadLinePanels(DOOMSE_DSP_PATH"linespecials.dsp");
+                LoadLinePanels(DOOMSE_PATH"linespecials.dsp");
             else
                 // Doom 2 is the default otherwise.
-                LoadLinePanels(DOOM2_DSP_PATH"linespecials.dsp");
+                LoadLinePanels(DOOM2_PATH"linespecials.dsp");
         }
 
         InitMapView();

@@ -10,9 +10,9 @@
 
 #include "wad.h"
 
-#define DOOM1_DSP_PATH "doom_dsp/"
-#define DOOMSE_DSP_PATH "doomSE_dsp/"
-#define DOOM2_DSP_PATH "doom2-dsp/"
+#define DOOM1_PATH "doom1/"
+#define DOOMSE_PATH "doomSE/"
+#define DOOM2_PATH "doom2/"
 
 typedef enum
 {
