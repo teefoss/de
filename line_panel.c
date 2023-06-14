@@ -269,6 +269,11 @@ static void LinePanelAction(int selection)
             StartTextEditing(&linePanel, LP_OFFSET_X, &side->offsetX);
             break;
 
+        case LP_OFFSET_Y:
+            SDL_itoa(side->offsetY, linePanel.text, 10);
+            StartTextEditing(&linePanel, LP_OFFSET_Y, &side->offsetY);
+            break;
+
         case LP_SUGGEST_TAG:
             line->tag = SuggestTag();
             break;
@@ -486,15 +491,18 @@ static void RenderLinePanel(void)
         RenderMark(&items[LP_FRONT], 1);
     }
 
-    int x = items[LP_OFFSET_X].x;
-    int y = items[LP_OFFSET_X].y;
-    if ( linePanel.isTextEditing )
-        RenderPanelTextInput(&linePanel);
-    else
-        PANEL_PRINT(x, y, "%d", side->offsetX);
+    if ( !linePanel.isTextEditing || (linePanel.isTextEditing && linePanel.textItem != LP_OFFSET_X) )
+    {
+        PANEL_PRINT(items[LP_OFFSET_X].x, items[LP_OFFSET_X].y, "%d", side->offsetX);
+    }
 
-    x = items[LP_SPECIAL].x;
-    y = items[LP_SPECIAL].y;
+    if ( !linePanel.isTextEditing || (linePanel.isTextEditing && linePanel.textItem != LP_OFFSET_Y) )
+    {
+        PANEL_PRINT(items[LP_OFFSET_Y].x, items[LP_OFFSET_Y].y, "%d", side->offsetY);
+    }
+
+    int x = items[LP_SPECIAL].x;
+    int y = items[LP_SPECIAL].y;
 
     if ( line->special == 0 )
     {
@@ -510,12 +518,13 @@ static void RenderLinePanel(void)
             PANEL_PRINT(x, y, "%s", special->name);
     }
 
-    x = items[LP_TAG].x;
-    y = items[LP_TAG].y;
     if ( linePanel.isTextEditing )
         RenderPanelTextInput(&linePanel);
-    else
-        PANEL_PRINT(x, y, "%d", line->tag);
+
+    if ( !linePanel.isTextEditing || (linePanel.isTextEditing && linePanel.textItem != LP_TAG) )
+    {
+        PANEL_PRINT(items[LP_TAG].x, items[LP_TAG].y, "%d", line->tag);
+    }
 
     SDL_RenderSetViewport(renderer, NULL);
 }
