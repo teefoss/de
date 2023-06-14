@@ -12,6 +12,8 @@
 #include <SDL2/SDL.h>
 #include <stdbool.h>
 
+#define MAX_PATCHES 100 // Max patches per texture
+
 typedef struct
 {
     SDL_Rect rect;
@@ -19,9 +21,21 @@ typedef struct
     SDL_Texture * texture;
 } Patch; // A loaded patch for use in the editor
 
+typedef struct
+{
+    char name[9];
+    int width;
+    int height;
+    int numPatches;
+    Patch patches[MAX_PATCHES];
+    SDL_Texture * texture; // Loaded on the fly.
+} Texture;
+
 void InitPlayPalette(const Wad * wad);
 Patch LoadPatch(const Wad * wad, int lumpIndex);
 void LoadAllPatches(const Wad * wad);
-void RenderPatch(const Patch * patch, int x, int y, int scale);
+void LoadAllTextures(const Wad * wad);
+
+void RenderTextureInRect(const char * name, const SDL_Rect * rect);
 
 #endif /* patch_h */

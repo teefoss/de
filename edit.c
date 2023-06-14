@@ -353,8 +353,11 @@ void SelectObject(bool openPanel)
     if ( !SHIFT_DOWN )
         DeselectAllObjects();
 
-    dragStart = worldMouse;
-    editorState = ES_DRAG_BOX;
+    if ( !openPanel )
+    {
+        dragStart = worldMouse;
+        editorState = ES_DRAG_BOX;
+    }
 }
 
 /// Autoscroll to the center of selected object(s)
@@ -534,7 +537,8 @@ void RenderEditor(void)
     for ( int i = 0; i <= topPanel; i++ )
         openPanels[i]->render();
 
-    PrintString(0, 0, "World Point: %d, %d", worldMouse.x, worldMouse.y);
+//    PrintString(0, 0, "World Point: %d, %d", worldMouse.x, worldMouse.y);
+//    RenderTexture("SKINMET1", 0, 0);
 
     SDL_RenderPresent(renderer);
 }

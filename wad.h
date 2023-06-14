@@ -20,16 +20,6 @@ typedef struct
 
 typedef struct
 {
-    u8 name[8];
-    u32 unused;
-    u16 width;
-    u16 height;
-    u32 unused2;
-    
-} Texture;
-
-typedef struct
-{
     u8 identifer[4]; // "IWAD" or "PWAD"
     u32 lumpCount;
     u32 directoryOffset;

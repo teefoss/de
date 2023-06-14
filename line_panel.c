@@ -9,6 +9,7 @@
 #include "map.h"
 #include "text.h"
 #include "mapview.h"
+#include "patch.h"
 
 #include "doomdata.h"
 
@@ -17,7 +18,7 @@
 
 enum
 {
-    LP_FRONT,
+    LP_FRONT = 1,
     LP_BACK,
 
     LP_LOWER,
@@ -48,33 +49,34 @@ enum
 
 static PanelItem linePanelItems[] =
 {
-    { 6, 5, 9, -1, LP_LOWER, -1, LP_BACK }, // front
-    { 20, 5, 9, -1, LP_UPPER, LP_FRONT, -1 }, // back
+    { 0 },
+    { 20, 3, 5, -1, LP_MIDDLE, -1, LP_BACK }, // front
+    { 34, 3, 4, -1, LP_UPPER, LP_FRONT, -1 }, // back
 
-    { 3, 6, 8, LP_FRONT, LP_LOWER_NAME, -1, LP_MIDDLE },
-    { 13, 6, 8, LP_BACK, LP_MIDDLE_NAME, LP_LOWER, LP_UPPER },
-    { 23, 6, 8, LP_BACK, LP_UPPER_NAME, LP_MIDDLE, -1 },
+    { 6, 4, 5, LP_FRONT, LP_LOWER_NAME, -1, LP_MIDDLE },
+    { 20, 4, 6, LP_FRONT, LP_MIDDLE_NAME, LP_LOWER, LP_UPPER },
+    { 34, 4, 5, LP_BACK, LP_UPPER_NAME, LP_MIDDLE, -1 },
 
-    { 3, 13, 8, LP_LOWER, LP_OFFSET_X, -1, LP_MIDDLE_NAME },
-    { 13, 13, 8, LP_MIDDLE, LP_OFFSET_X, LP_LOWER_NAME, LP_UPPER_NAME },
-    { 23, 13, 8, LP_UPPER, LP_OFFSET_Y, LP_MIDDLE_NAME, -1 },
+    { 7, 12, 8, LP_LOWER, LP_OFFSET_X, -1, LP_MIDDLE_NAME },
+    { 21, 12, 8, LP_MIDDLE, LP_OFFSET_X, LP_LOWER_NAME, LP_UPPER_NAME },
+    { 35, 12, 8, LP_UPPER, LP_OFFSET_Y, LP_MIDDLE_NAME, -1 },
 
-    { 12, 14, 3, LP_LOWER_NAME, LP_BLOCKS_ALL, -1, LP_OFFSET_Y }, // offset x
-    { 27, 14, 3, LP_UPPER_NAME, 0, LP_OFFSET_X, -1 }, // offset y
+    { 14, 13, 4, LP_LOWER_NAME, LP_BLOCKS_ALL, -1, LP_OFFSET_Y }, // offset x
+    { 35, 13, 4, LP_UPPER_NAME, LP_TWO_SIDED, LP_OFFSET_X, -1 }, // offset y
 
-    { 6, 16, 26, LP_OFFSET_X, 0, -1, -1 },
-    { 6, 17, 26, 0, 0, -1, -1 },
-    { 6, 18, 26, 0, 0, -1, -1 },
-    { 6, 19, 26, 0, 0, -1, -1 },
-    { 6, 20, 26, 0, 0, -1, -1 },
-    { 6, 21, 26, 0, 0, -1, -1 },
-    { 6, 22, 26, 0, 0, -1, -1 },
-    { 6, 23, 26, 0, 0, -1, -1 },
-    { 6, 24, 26, 0, 0, -1, -1 },
+    { 8, 16, 16, LP_OFFSET_X, 0, -1, LP_TWO_SIDED }, // LP_BLOCKS_ALL,
+    { 8, 17, 16, 0, 0, -1, LP_ALWAYS_ON_MAP }, // LP_BLOCKS_MONSTERS,
+    { 8, 18, 16, 0, LP_UPPER_UNPEGGED, -1, LP_NOT_ON_MAP }, // LP_BLOCKS_SOUND,
+    { 29, 16, 16, LP_OFFSET_Y, LP_ALWAYS_ON_MAP, LP_BLOCKS_ALL, -1 }, //     LP_TWO_SIDED,
+    { 8, 19, 16, LP_BLOCKS_SOUND, 0, -1, LP_SECRET }, // LP_UPPER_UNPEGGED,
+    { 8, 20, 16, 0, LP_SPECIAL, -1, LP_SECRET }, // LP_LOWER_UNPEGGED,
+    { 29, 17, 16, LP_TWO_SIDED, 0, LP_BLOCKS_MONSTERS, -1 }, // LP_ALWAYS_ON_MAP,
+    { 29, 18, 16, 0, 0, LP_BLOCKS_SOUND, -1 }, // LP_NOT_ON_MAP,
+    { 29, 19, 16, 0, LP_SPECIAL, LP_UPPER_UNPEGGED, -1 }, // LP_SECRET,
 
-    { 2, 26, 30, 0, 0, -1, -1 }, // special
-    { 7, 27, 4, 0, -1, -1, LP_SUGGEST_TAG }, // tag
-    { 15, 27, 9, LP_SPECIAL, -1, LP_TAG, -1 }, // suggest
+    { 4, 23, 30, LP_LOWER_UNPEGGED, 0, -1, -1 }, // special
+    { 9, 24, 4, 0, -1, -1, LP_SUGGEST_TAG }, // tag
+    { 25, 24, 9, LP_SPECIAL, -1, LP_TAG, -1 }, // suggest
 };
 
 static PanelItem specialCategoryItems[] =
@@ -218,11 +220,25 @@ void UpdateVisibleSpecials(void)
     }
 }
 
+int SuggestTag(void)
+{
+    Line * line = map.lines->data;
+    int max = -1;
+    for ( int i = 0; i < map.lines->count; i++, line++ )
+    {
+        if ( line->tag > max )
+            max = line->tag;
+    }
+
+    return max + 1;
+}
+
 #pragma mark - INPUT
 
 static void LinePanelAction(int selection)
 {
     Line * line = linePanel.data;
+    Side * side = &line->sides[line->panelBackSelected];
 
     switch ( selection )
     {
@@ -246,6 +262,15 @@ static void LinePanelAction(int selection)
         case LP_TAG:
             SDL_itoa(line->tag, linePanel.text, 10);
             StartTextEditing(&linePanel, LP_TAG, &line->tag);
+            break;
+
+        case LP_OFFSET_X:
+            SDL_itoa(side->offsetX, linePanel.text, 10);
+            StartTextEditing(&linePanel, LP_OFFSET_X, &side->offsetX);
+            break;
+
+        case LP_SUGGEST_TAG:
+            line->tag = SuggestTag();
             break;
 
         default:
@@ -408,6 +433,7 @@ void UpdateLinePanelContent(void)
 static void RenderLinePanel(void)
 {
     const Line * line = linePanel.data;
+    const Side * side = &line->sides[line->panelBackSelected];
 
     int windowWidth;
     int windowHeight;
@@ -422,13 +448,27 @@ static void RenderLinePanel(void)
 
     SDL_RenderSetViewport(renderer, &linePanel.location);
 
-    SetPanelColor(15);
-    PrintString(10 * FONT_WIDTH, 3 * FONT_HEIGHT, "%g", LineLength(line));
-
     PanelItem * items = linePanelItems;
 
     if ( !linePanel.isTextEditing )
         RenderPanelSelection(&linePanel);
+
+    SDL_Rect textureRect = { .w = 12 * FONT_WIDTH, .h = 6 * FONT_HEIGHT };
+
+    textureRect.x = (items[LP_LOWER].x - 1) * FONT_WIDTH;
+    textureRect.y = (items[LP_LOWER].y + 1) * FONT_HEIGHT;
+    if ( side->bottom[0] != '-')
+        RenderTextureInRect(side->bottom, &textureRect);
+
+    textureRect.x = (items[LP_MIDDLE].x - 1) * FONT_WIDTH;
+    if ( side->middle[0] != '-')
+        RenderTextureInRect(side->middle, &textureRect);
+
+    textureRect.x = (items[LP_UPPER].x - 1) * FONT_WIDTH;
+    if ( side->top[0] != '-')
+        RenderTextureInRect(side->top, &textureRect);
+
+
 
     RenderMark(&items[LP_BLOCKS_ALL], line->flags & ML_BLOCKING);
     RenderMark(&items[LP_BLOCKS_MONSTERS], line->flags & ML_BLOCKMONSTERS);
@@ -446,8 +486,15 @@ static void RenderLinePanel(void)
         RenderMark(&items[LP_FRONT], 1);
     }
 
-    int x = items[LP_SPECIAL].x;
-    int y = items[LP_SPECIAL].y;
+    int x = items[LP_OFFSET_X].x;
+    int y = items[LP_OFFSET_X].y;
+    if ( linePanel.isTextEditing )
+        RenderPanelTextInput(&linePanel);
+    else
+        PANEL_PRINT(x, y, "%d", side->offsetX);
+
+    x = items[LP_SPECIAL].x;
+    y = items[LP_SPECIAL].y;
 
     if ( line->special == 0 )
     {
@@ -504,11 +551,12 @@ static void RenderSpecialsPanel(void)
 
 void LoadLinePanels(const char * dspPath)
 {
-    linePanel = LoadPanel(PANEL_DIRECTORY"test.panel");
+    linePanel = LoadPanel(PANEL_DIRECTORY"newline.panel");
     linePanel.items = linePanelItems;
     linePanel.numItems = LP_NUM_ITEMS;
     linePanel.render = RenderLinePanel;
     linePanel.processEvent = ProcessLinePanelEvent;
+    linePanel.selection = 1;
 
     printf("Loading line specials from %s...\n", dspPath);
     LoadSpecials(dspPath);

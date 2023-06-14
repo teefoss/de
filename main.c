@@ -301,6 +301,7 @@ int main(int argc, char ** argv)
         LoadProgressPanel();
         InitPlayPalette(resourceWad);
         LoadAllPatches(resourceWad);
+        LoadAllTextures(resourceWad);
 
         EditorLoop();
     }

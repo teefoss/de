@@ -150,7 +150,7 @@ typedef struct
 
 typedef struct
 {
-    u8          name[8];
+    char        name[8];
     s32         masked; // OBSOLETE
     s16         width;
     s16         height;
