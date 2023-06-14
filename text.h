@@ -21,7 +21,7 @@ typedef struct
 } BufferCell;
 
 BufferCell GetCell(u16 data);
-void PrintChar(int x, int y, unsigned char character);
-int PrintString(int x, int y, const char * format, ...);
+void RenderChar(int x, int y, unsigned char character);
+int RenderString(int x, int y, const char * format, ...);
 
 #endif /* text_h */

@@ -21,7 +21,7 @@ BufferCell GetCell(u16 data)
     return cell;
 }
 
-void PrintChar(int x, int y, unsigned char character)
+void RenderChar(int x, int y, unsigned char character)
 {
     SDL_RenderSetScale(renderer, TEXT_SCALE, TEXT_SCALE);
 
@@ -54,7 +54,7 @@ void PrintChar(int x, int y, unsigned char character)
 }
 
 // TODO: use a global or static buffer and only resize when needed.
-int PrintString(int x, int y, const char * format, ...)
+int RenderString(int x, int y, const char * format, ...)
 {
     va_list args[2];
     va_start(args[0], format);
@@ -84,7 +84,7 @@ int PrintString(int x, int y, const char * format, ...)
                     ;
                 break;
             default:
-                PrintChar(x1, y1, *c);
+                RenderChar(x1, y1, *c);
                 x1 += w;
                 break;
         }

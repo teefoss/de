@@ -428,6 +428,20 @@ void UpdateLinePanelContent(void)
     Line * line = linePanel.data;
     Side * side = &line->sides[line->panelBackSelected];
 
+    int i;
+    for ( i = 0; i < map.lines->count; i++ )
+    {
+        Line * check = Get(map.lines, i);
+        if ( check == line )
+            break;
+    }
+
+    char title[100] = { 0 };
+    snprintf(title, sizeof(title), "Line %d", i);
+
+    SetPanelColor(1, 7);
+    PanelPrint(&linePanel, 2, 1, title);
+
     ItemPrint(&linePanel, LP_LOWER_NAME, side->bottom);
     ItemPrint(&linePanel, LP_MIDDLE_NAME, side->middle);
     ItemPrint(&linePanel, LP_UPPER_NAME, side->top);
@@ -493,12 +507,12 @@ static void RenderLinePanel(void)
 
     if ( !linePanel.isTextEditing || (linePanel.isTextEditing && linePanel.textItem != LP_OFFSET_X) )
     {
-        PANEL_PRINT(items[LP_OFFSET_X].x, items[LP_OFFSET_X].y, "%d", side->offsetX);
+        PANEL_RENDER_STRING(items[LP_OFFSET_X].x, items[LP_OFFSET_X].y, "%d", side->offsetX);
     }
 
     if ( !linePanel.isTextEditing || (linePanel.isTextEditing && linePanel.textItem != LP_OFFSET_Y) )
     {
-        PANEL_PRINT(items[LP_OFFSET_Y].x, items[LP_OFFSET_Y].y, "%d", side->offsetY);
+        PANEL_RENDER_STRING(items[LP_OFFSET_Y].x, items[LP_OFFSET_Y].y, "%d", side->offsetY);
     }
 
     int x = items[LP_SPECIAL].x;
@@ -506,16 +520,16 @@ static void RenderLinePanel(void)
 
     if ( line->special == 0 )
     {
-        PANEL_PRINT(x, y, "(none)");
+        PANEL_RENDER_STRING(x, y, "(none)");
     }
     else
     {
         LineSpecial * special = FindSpecial(line->special);
 
         if ( special == NULL )
-            PANEL_PRINT(x, y, "Bad Special! (%d)", line->special);
+            PANEL_RENDER_STRING(x, y, "Bad Special! (%d)", line->special);
         else
-            PANEL_PRINT(x, y, "%s", special->name);
+            PANEL_RENDER_STRING(x, y, "%s", special->name);
     }
 
     if ( linePanel.isTextEditing )
@@ -523,7 +537,7 @@ static void RenderLinePanel(void)
 
     if ( !linePanel.isTextEditing || (linePanel.isTextEditing && linePanel.textItem != LP_TAG) )
     {
-        PANEL_PRINT(items[LP_TAG].x, items[LP_TAG].y, "%d", line->tag);
+        PANEL_RENDER_STRING(items[LP_TAG].x, items[LP_TAG].y, "%d", line->tag);
     }
 
     SDL_RenderSetViewport(renderer, NULL);
@@ -546,8 +560,8 @@ static void RenderSpecialsPanel(void)
 
     // Print Panel Title
 
-    SetPanelColor(1);
-    PrintString(3 * FONT_WIDTH,
+    SetPanelRenderColor(1);
+    RenderString(3 * FONT_WIDTH,
                 1 * FONT_HEIGHT,
                 "%s Specials", category->name);
 

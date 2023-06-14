@@ -43,17 +43,17 @@ void RenderProgressPanel(void)
     SDL_RenderSetViewport(renderer, &progressPanel.location);
 
     // Title and info strings
-    SetPanelColor(15);
-    PANEL_PRINT(2, 1, title);
-    PANEL_PRINT(progressPanel.width - 2 - (int)strlen(info), 3, info);
+    SetPanelRenderColor(15);
+    PANEL_RENDER_STRING(2, 1, title);
+    PANEL_RENDER_STRING(progressPanel.width - 2 - (int)strlen(info), 3, info);
 
     // Render progress bar
-    SetPanelColor(10);
+    SetPanelRenderColor(10);
     int barWidth = progressPanel.width - 4;
     int numSegments = barWidth * progress;
 
     for ( int i = 0; i < numSegments; i++ )
-        PANEL_PRINT(2 + i, 2, "%c", 219);
+        PANEL_RENDER_STRING(2 + i, 2, "%c", 219);
 
     SDL_RenderSetViewport(renderer, NULL);
 }

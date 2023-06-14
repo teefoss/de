@@ -18,8 +18,8 @@
 #define MAX_PANELS 10
 #define MAX_TEXT 256
 
-#define PANEL_PRINT(x, y, ...) \
-    PrintString((x) * FONT_WIDTH, (y) * FONT_HEIGHT, __VA_ARGS__)
+#define PANEL_RENDER_STRING(x, y, ...) \
+    RenderString((x) * FONT_WIDTH, (y) * FONT_HEIGHT, __VA_ARGS__)
 
 // TODO: type? i.e. radio, toggle, input
 typedef struct
@@ -66,14 +66,24 @@ extern int topPanel;
 Panel LoadPanel(const char * path);
 bool ProcessPanelEvent(Panel * panel, const SDL_Event * event);
 void RenderPanelTexture(const Panel * panel);
+
+//
+// Set foreground and background panel palette colors.
+//
+void SetTextColor(int index);
+void SetBackgroundColor(int index);
+void SetPanelColor(int text, int background);
+
+/// Update the panel's console buffer at `x`, `y`.
 void PanelPrint(const Panel * panel, int x, int y, const char * string);
+
 void UpdatePanel(const Panel * panel, int x, int y, u8 ch, bool setTarget);
 
 /// Render a gray bar on the panel's current selection.
 void RenderPanelSelection(const Panel * panel);
 
 SDL_Rect PanelRenderLocation(const Panel * panel);
-void SetPanelColor(int index);
+void SetPanelRenderColor(int index);
 void RenderMark(const PanelItem * item, int value);
 void RenderPanelTextInput(Panel * panel);
 

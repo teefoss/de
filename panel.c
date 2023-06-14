@@ -38,7 +38,23 @@ static SDL_Color palette[16] = {
 };
 
 
-void SetPanelColor(int index)
+void SetTextColor(int index)
+{
+    textColor = index;
+}
+
+void SetBackgroundColor(int index)
+{
+    backgroundColor = index;
+}
+
+void SetPanelColor(int text, int background)
+{
+    textColor = text;
+    backgroundColor = background;
+}
+
+void SetPanelRenderColor(int index)
 {
     SDL_Color c = palette[index];
 
@@ -58,11 +74,11 @@ void UpdatePanel(const Panel * panel, int x, int y, u8 ch, bool setTarget)
     r.x = x * FONT_WIDTH;
     r.y = y * FONT_HEIGHT;
 
-    SetPanelColor(backgroundColor);
+    SetPanelRenderColor(backgroundColor);
     SDL_RenderFillRect(renderer, &r);
 
-    SetPanelColor(textColor);
-    PrintChar(r.x, r.y, ch);
+    SetPanelRenderColor(textColor);
+    RenderChar(r.x, r.y, ch);
 
     if ( setTarget )
         SDL_SetRenderTarget(renderer, NULL);
@@ -152,8 +168,8 @@ SDL_Rect PanelRenderLocation(const Panel * panel)
 void RenderMark(const PanelItem * item, int value)
 {
     if ( value != 0 ) {
-        SetPanelColor(15);
-        PrintChar((item->x - 3) * FONT_WIDTH, item->y * FONT_HEIGHT, 7);
+        SetPanelRenderColor(15);
+        RenderChar((item->x - 3) * FONT_WIDTH, item->y * FONT_HEIGHT, 7);
     }
 }
 
@@ -185,11 +201,11 @@ void RenderBar(const Panel * panel, const PanelItem * item, int color)
             FONT_HEIGHT
         };
 
-        SetPanelColor(color);
+        SetPanelRenderColor(color);
         SDL_RenderFillRect(renderer, &r);
 
-        SetPanelColor(15);
-        PrintChar(x * FONT_WIDTH, y * FONT_HEIGHT, cell.character);
+        SetPanelRenderColor(15);
+        RenderChar(x * FONT_WIDTH, y * FONT_HEIGHT, cell.character);
     }
 }
 
@@ -212,10 +228,10 @@ void RenderPanelTextInput(Panel * panel)
 {
     int x = panel->items[panel->textItem].x;
     int y = panel->items[panel->textItem].y;
-    PANEL_PRINT(x, y, panel->text);
+    PANEL_RENDER_STRING(x, y, panel->text);
 
     if ( SDL_GetTicks() % 600 < 300 )
-        PANEL_PRINT(x + panel->cursor, y, "_");
+        PANEL_RENDER_STRING(x + panel->cursor, y, "_");
 }
 
 void StartTextEditing(Panel * panel, int itemIndex, int * value)
