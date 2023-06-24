@@ -24,18 +24,28 @@ typedef struct
 typedef struct
 {
     char name[9];
-    int width;
-    int height;
+
+    // x, y used for texture palette location and are relative to
+    // the texture panel's paletteRect.
+    SDL_Rect rect;
+
     int numPatches;
     Patch patches[MAX_PATCHES];
+
     SDL_Texture * texture; // Loaded on the fly.
 } Texture;
+
+extern Array * resourceTextures;
 
 void InitPlayPalette(const Wad * wad);
 Patch LoadPatch(const Wad * wad, int lumpIndex);
 void LoadAllPatches(const Wad * wad);
 void LoadAllTextures(const Wad * wad);
+void FreePatchesAndTextures(void);
+Texture * FindTexture(const char * name);
 
 void RenderTextureInRect(const char * name, const SDL_Rect * rect);
+void RenderPatchInRect(const Patch * patch, const SDL_Rect * rect);
+void RenderTexture(Texture * texture, int x, int y, float scale);
 
 #endif /* patch_h */

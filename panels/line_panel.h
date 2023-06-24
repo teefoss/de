@@ -23,5 +23,6 @@ extern Panel linePanel;
 
 void LoadLinePanels(const char * dspPath);
 void UpdateLinePanelContent(void);
+void FreeLinePanels(void);
 
 #endif /* line_panel_h */

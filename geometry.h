@@ -33,4 +33,10 @@ bool LineInRect(const SDL_Point * p1, const SDL_Point * p2, const SDL_Rect * r);
 void EnclosePoint(const SDL_Point * point, Box * box);
 SDL_Rect BoxToRect(const Box * box);
 
+/// Expand or shrink `rect` to fit in `container`, centered, keeping its
+/// aspect ratio correct. `rect` will be inset by `margin` pixels.
+SDL_Rect FitAndCenterRect(const SDL_Rect * rect,
+                          const SDL_Rect * container,
+                          int margin);
+
 #endif /* geometry_h */

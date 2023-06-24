@@ -47,9 +47,15 @@ typedef uint64_t u64;
 extern SDL_Window * window;
 extern SDL_Renderer * renderer;
 
+// TODO: organize this!
 void InitWindow(int width, int height);
 int GetRefreshRate(void);
 float LerpEpsilon(float a, float b, float w, float epsilon);
 SDL_Texture * GetScreen(void);
+void draw_line_antialias(int x1, int y1, int x2, int y2);
+void Capitalize(char * string);
+void DrawRect(const SDL_Rect * rect, int thinkness);
+void SetRenderDrawColor(const SDL_Color * c);
+SDL_Color Int24ToSDL(int integer);
 
 #endif /* defines_h */

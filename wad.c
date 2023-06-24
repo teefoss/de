@@ -106,7 +106,7 @@ void ListDirectory(const Wad * wad)
     }
 }
 
-void AddLump(const Wad * wad, const char * name, void * data, u32 size)
+void AddLump(Wad * wad, const char * name, void * data, u32 size)
 {
     LumpInfo lump = { 0 };
 
@@ -117,8 +117,9 @@ void AddLump(const Wad * wad, const char * name, void * data, u32 size)
     WadInfo info = GetWadInfo(wad);
 
     if ( info.directoryOffset == 0 ) {
-        // There's no directory yet, add to end of file.
+        // There's no directory yet, create at end of file.
         fseek(wad->stream, 0, SEEK_END);
+        wad->directory = NewArray(1, sizeof(LumpInfo), 1);
     } else {
         // There's already a directory. The directory starts right after the
         // last lump, so add the new lump here, then rewrite the directory.
@@ -179,6 +180,9 @@ int GetLumpIndex(const Wad * wad, const char * name)
 
 void * GetLumpWithIndex(const Wad * wad, int index)
 {
+    if ( index < 0 )
+        return NULL;
+    
     LumpInfo * directory = wad->directory->data;
 
     void * buffer = malloc(directory[index].size);

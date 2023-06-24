@@ -130,6 +130,7 @@ typedef struct
 #define MTF_NORMAL  2
 #define MTF_HARD    4
 #define MTF_AMBUSH  8
+#define MTF_NETWORK 16
 
 /*
 ===============================================================================

@@ -11,7 +11,7 @@
 #include <SDL2/SDL.h>
 
 #define VERTEX_DRAW_SIZE 4
-#define SELECTION_SIZE 7
+#define SELECTION_SIZE 12 // Box width/height around click point
 #define THING_DRAW_SIZE 32
 
 extern SDL_FRect visibleRect;

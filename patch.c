@@ -11,10 +11,23 @@
 #include "array.h"
 #include "progress_panel.h"
 #include "edit.h"
+#include "geometry.h"
 
-SDL_Color playPalette[256];
-Array * patches;
-Array * resourceTextures;
+static SDL_Color playPalette[256];
+static Array /* Patch */ * patches;
+Array /* Texture */ * resourceTextures;
+//static Array /* Patch */ * sprites;
+
+void FreePatchesAndTextures(void)
+{
+    Patch * patch = patches->data;
+    for ( int i = 0; i < patches->count; i++, patch++ )
+        SDL_DestroyTexture(patch->texture);
+
+    Texture * texture = resourceTextures->data;
+    for ( int i = 0; i < resourceTextures->count; i++, texture++ )
+        SDL_DestroyTexture(texture->texture);
+}
 
 void InitPlayPalette(const Wad * wad)
 {
@@ -132,11 +145,11 @@ void LoadAllPatches(const Wad * wad)
         for ( int i = start + 1; i < end; i++ )
         {
             Patch patch = LoadPatch(wad, i);
-            printf("loaded patch %s\n", patch.name);
+//            printf("loaded patch %s\n", patch.name);
+            count++;
             Push(patches, &patch);
         }
 
-        CloseProgressPanel();
         ++section;
     }
 
@@ -156,6 +169,9 @@ void LoadAllTextures(const Wad * wad)
     resourceTextures = NewArray(0, sizeof(Texture), 1);
 
     int section = 1;
+
+    int maxWidth = 0;
+    int maxHeight = 0;
 
     while ( 1 )
     {
@@ -183,8 +199,12 @@ void LoadAllTextures(const Wad * wad)
             Texture texture;
             strncpy(texture.name, mtexture->name, 8);
             texture.name[8] = '\0';
-            texture.width = mtexture->width;
-            texture.height = mtexture->height;
+            texture.rect.w = mtexture->width;
+            texture.rect.h = mtexture->height;
+            if ( texture.rect.w > maxWidth )
+                maxWidth = texture.rect.w;
+            if ( texture.rect.h > maxHeight )
+                maxHeight = texture.rect.h;
             texture.numPatches = mtexture->patchcount;
             texture.texture = NULL;
 
@@ -211,7 +231,8 @@ void LoadAllTextures(const Wad * wad)
 
             Push(resourceTextures, &texture);
 
-            printf("%s: %d x %d\n", texture.name, texture.width, texture.height);
+#if 0
+            printf("%s: %d x %d\n", texture.name, texture.rect.w, texture.rect.h);
             printf("  patches (%d):\n", texture.numPatches);
             for ( int j = 0; j < texture.numPatches; j++ )
             {
@@ -220,10 +241,13 @@ void LoadAllTextures(const Wad * wad)
                        texture.patches[j].rect.x,
                        texture.patches[j].rect.y);
             }
+#endif
         }
 
         section++;
     }
+
+    printf("max texture size: %d x %d\n", maxWidth, maxHeight);
 }
 
 Texture * FindTexture(const char * name)
@@ -237,7 +261,7 @@ Texture * FindTexture(const char * name)
     return NULL;
 }
 
-void RenderTexture(const Texture * texture, int x, int y, float scale)
+void RenderTexturePatches(const Texture * texture, int x, int y, float scale)
 {
     for ( int j = 0; j < texture->numPatches; j++ )
         RenderPatch(&texture->patches[j],
@@ -246,46 +270,56 @@ void RenderTexture(const Texture * texture, int x, int y, float scale)
                     scale);
 }
 
+void CreateTextureSDLTexture(Texture * texture)
+{
+    texture->texture = SDL_CreateTexture(renderer,
+                                         SDL_PIXELFORMAT_RGBA8888,
+                                         SDL_TEXTUREACCESS_TARGET,
+                                         texture->rect.w,
+                                         texture->rect.h);
+
+    if ( texture->texture == NULL )
+    {
+        printf("Could not create texture for %s!\n", texture->name);
+    }
+
+    SDL_SetTextureBlendMode(texture->texture, SDL_BLENDMODE_BLEND);
+
+    SDL_SetRenderTarget(renderer, texture->texture);
+    RenderTexturePatches(texture, 0, 0, 1.0f);
+    SDL_SetRenderTarget(renderer, NULL);
+}
+
+#define IMAGE_MARGIN 4
+
 void RenderTextureInRect(const char * name, const SDL_Rect * rect)
 {
     Texture * texture = FindTexture(name);
 
     if ( texture->texture == NULL )
-    {
-        texture->texture = SDL_CreateTexture(renderer,
-                                             SDL_PIXELFORMAT_RGBA8888,
-                                             SDL_TEXTUREACCESS_TARGET,
-                                             texture->width,
-                                             texture->height);
+        CreateTextureSDLTexture(texture);
 
-        if ( texture->texture == NULL )
-        {
-            printf("Could not create texture for %s!\n", name);
-        }
+    SDL_Rect dst = FitAndCenterRect(&texture->rect, rect, IMAGE_MARGIN);
+    SDL_RenderCopy(renderer, texture->texture, NULL, &dst);
+}
 
-        SDL_SetRenderTarget(renderer, texture->texture);
-        RenderTexture(texture, 0, 0, 1.0f);
-        SDL_SetRenderTarget(renderer, NULL);
-    }
+void RenderPatchInRect(const Patch * patch, const SDL_Rect * rect)
+{
+    SDL_Rect dst = FitAndCenterRect(&patch->rect, rect, IMAGE_MARGIN);
+    SDL_RenderCopy(renderer, patch->texture, NULL, &dst);
+}
 
-    float scale;
-    int xOffset = 0;
-    int yOffset = 0;
-    if ( texture->width > texture->height ) {
-        scale = (float)rect->w / texture->width;
-        yOffset = (rect->h - texture->height * scale) / 2.0f;
-    } else {
-        scale = (float)rect->h / texture->height;
-        xOffset = (rect->w - texture->width * scale) / 2.0f;
-    }
+void RenderTexture(Texture * texture, int x, int y, float scale)
+{
+    if ( texture->texture == NULL )
+        CreateTextureSDLTexture(texture);
 
-    SDL_Rect dst = {
-        .x = rect->x + xOffset, // center in rect
-        .y = rect->y + yOffset,
-        .w = texture->width * scale,
-        .h = texture->height * scale
+    SDL_Rect dest = {
+        .x = x,
+        .y = y,
+        .w = texture->rect.w * scale,
+        .h = texture->rect.h * scale
     };
 
-    SDL_RenderCopy(renderer, texture->texture, NULL, &dst);
-//    RenderTexture(texture, rect->x, rect->y, scale);
+    SDL_RenderCopy(renderer, texture->texture, NULL, &dest);
 }

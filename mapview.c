@@ -10,6 +10,9 @@
 #include "common.h"
 #include "geometry.h"
 #include "edit.h"
+#include "doomdata.h"
+#include "defaults.h"
+#include "text.h"
 
 #define FILLED (-1)
 
@@ -87,16 +90,16 @@ void InitMapView(void)
     visibleRect.y = bounds.y + (bounds.h / 2) - visibleRect.h / 2;
 }
 
-static void DrawLine(const SDL_Point * p1, const SDL_Point * p2)
+static void WorldDrawLine(const SDL_Point * p1, const SDL_Point * p2)
 {
     SDL_Point c1 = WorldToWindow(p1);
     SDL_Point c2 = WorldToWindow(p2);
 
-    SDL_RenderDrawLine(renderer, c1.x, c1.y, c2.x, c2.y);
+    draw_line_antialias(c1.x, c1.y, c2.x, c2.y);
 }
 
 /// Draw a filled rect, accounting for view origin and scale.
-static void DrawRect(const SDL_Rect * rect, int thinkness)
+static void WorldDrawRect(const SDL_Rect * rect, int thinkness)
 {
     SDL_Point rectOrigin = { rect->x, rect->y };
     rectOrigin = WorldToWindow(&rectOrigin);
@@ -112,25 +115,8 @@ static void DrawRect(const SDL_Rect * rect, int thinkness)
     if ( thinkness == FILLED ) {
         SDL_RenderFillRect(renderer, &translatedRect);
     } else {
-        for ( int i = 0; i < thinkness; i++ ) {
-            SDL_RenderDrawRect(renderer, &translatedRect);
-            translatedRect.x++;
-            translatedRect.y++;
-            translatedRect.w -= 2;
-            translatedRect.h -= 2;
-            
-            if ( translatedRect.w <= 0 || translatedRect.h <= 0 )
-                return;
-        }
+        DrawRect(&translatedRect, thinkness);
     }
-}
-
-static void SetGridColor(int coordinate)
-{
-    if ( coordinate % 64 == 0 )
-        SDL_SetRenderDrawColor(renderer, 160, 160, 255, 255);
-    else
-        SDL_SetRenderDrawColor(renderer, 216, 216, 216, 255);
 }
 
 static void DrawGrid(void)
@@ -140,26 +126,63 @@ static void DrawGrid(void)
     float top = visibleRect.y;
     float bottom = visibleRect.y + visibleRect.h;
 
-    SDL_SetRenderDrawColor(renderer, 192, 192, 255, 255);
+    int gridStartX;
+    int gridStartY;
 
-    int gridStartX = left;
-    while ( gridStartX % gridSize != 0 )
-        gridStartX++;
-
-    for ( int x = gridStartX; x <= right; x += gridSize )
+    // Don't draw grid lines if too dense.
+    if ( gridSize * scale >= 4 )
     {
-        SetGridColor(x);
-        DrawLine(&(SDL_Point){ x, top }, &(SDL_Point){ x, bottom });
+        gridStartX = left;
+        while ( gridStartX % gridSize != 0 )
+            gridStartX++;
+
+        SDL_Color gridColor = DefaultColor(GRID_LINES);
+        SetRenderDrawColor(&gridColor);
+
+        for ( int x = gridStartX; x <= right; x += gridSize )
+        {
+            if ( x % 64 == 0 )
+                continue;
+            WorldDrawLine(&(SDL_Point){ x, top }, &(SDL_Point){ x, bottom });
+        }
+
+        gridStartY = top;
+        while ( gridStartY % gridSize != 0 )
+            gridStartY++;
+
+        for ( int y = gridStartY; y <= bottom; y += gridSize )
+        {
+            if ( y % 64 == 0 )
+                continue;
+            WorldDrawLine(&(SDL_Point){ left, y }, &(SDL_Point){ right, y });
+
+        }
     }
 
-    int gridStartY = top;
-    while ( gridStartY % gridSize != 0 )
-        gridStartY++;
+    // Tile Grid
 
-    for ( int y = gridStartY; y <= bottom; y += gridSize )
+    if ( scale > 4.0f / 64 )
     {
-        SetGridColor(y);
-        DrawLine(&(SDL_Point){ left, y }, &(SDL_Point){ right, y });
+        gridStartX = left;
+        while ( gridStartX % 64 != 0 )
+            gridStartX++;
+
+        SDL_Color tileColor = DefaultColor(GRID_TILES);
+        SetRenderDrawColor(&tileColor);
+
+        for ( int x = gridStartX; x <= right; x += 64 )
+        {
+            WorldDrawLine(&(SDL_Point){ x, top }, &(SDL_Point){ x, bottom });
+        }
+
+        gridStartY = top;
+        while ( gridStartY % 64 != 0 )
+            gridStartY++;
+
+        for ( int y = gridStartY; y <= bottom; y += 64 )
+        {
+            WorldDrawLine(&(SDL_Point){ left, y }, &(SDL_Point){ right, y });
+        }
     }
 }
 
@@ -191,12 +214,16 @@ static void DrawPoints(void)
         pointRect.x = v->origin.x - VERTEX_DRAW_SIZE / 2;
         pointRect.y = v->origin.y - VERTEX_DRAW_SIZE / 2;
 
-        if ( v->selected )
-            SDL_SetRenderDrawColor(renderer, 248, 64, 64, 255);
-        else
-            SDL_SetRenderDrawColor(renderer, 8, 8, 8, 255);
+        SDL_Color color;
 
-        DrawRect(&pointRect, FILLED);
+        if ( v->selected )
+            color = DefaultColor(SELECTION);
+        else
+            color = DefaultColor(VERTEX);
+
+        SetRenderDrawColor(&color);
+
+        WorldDrawRect(&pointRect, FILLED);
     }
 }
 
@@ -209,13 +236,19 @@ static void DrawLines(void)
         SDL_Point p1 = vertices[l->v1].origin;
         SDL_Point p2 = vertices[l->v2].origin;
 
-        if ( l->selected ) {
-            SDL_SetRenderDrawColor(renderer, 248, 64, 64, 255);
-        } else {
-            SDL_SetRenderDrawColor(renderer, 8, 8, 8, 255);
-        }
+        SDL_Color color;
 
-        DrawLine(&p1, &p2);
+        if ( l->selected )
+            color = DefaultColor(SELECTION);
+        else if ( l->special > 0 )
+            color = DefaultColor(LINE_SPECIAL);
+        else if ( l->flags & ML_TWOSIDED )
+            color = DefaultColor(LINE_TWO_SIDED);
+        else
+            color = DefaultColor(LINE_ONE_SIDED);
+
+        SetRenderDrawColor(&color);
+        WorldDrawLine(&p1, &p2);
 
         float dx = p2.x - p1.x;
         float dy = p2.y - p1.y;
@@ -224,11 +257,17 @@ static void DrawLines(void)
         SDL_Point mid = LineMidpoint(l);
         SDL_Point normal = { mid.x - dy / length , mid.y + dx / length };
 
-        DrawLine(&mid, &normal);
+        if ( l->selected > 0 ) {
+            SDL_SetRenderDrawColor(renderer, 0, 128, 0, 255);
+            SDL_Point p = WorldToWindow(&normal);
+            RenderChar(p.x - 4, p.y - 8, l->selected == FRONT_SELECTED ? 'F' : 'B' );
+        }
+
+        WorldDrawLine(&mid, &normal);
     }
 }
 
-static void DrawThings(void)
+static void DrawThings(void) // TODO: sort selected and draw on top
 {
     const int thingSize = THING_DRAW_SIZE;
 
@@ -258,7 +297,7 @@ static void DrawThings(void)
         else
             SDL_SetRenderDrawColor(renderer, 8, 8, 8, 255);
 
-        DrawRect(&thingRect, FILLED);
+        WorldDrawRect(&thingRect, FILLED);
     }
 }
 
@@ -292,5 +331,5 @@ void DrawSelectionBox(const SDL_Rect * box)
         return;
 
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 128);
-    DrawRect(box, 4);
+    WorldDrawRect(box, 4);
 }

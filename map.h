@@ -10,6 +10,8 @@
 
 #include "array.h"
 #include "wad.h"
+#include "thing.h"
+
 #include <stdbool.h>
 
 #define MAP_LABEL_LENGTH 6
@@ -38,20 +40,16 @@ typedef struct {
     s16 tag;
     Side sides[2];
 
-    bool selected;
+    enum {
+        DELETED = -1, // TODO: this should be separate
+        DESELECTED,
+        FRONT_SELECTED,
+        BACK_SELECTED,
+    } selected;
 
     // Which side should be shown when opening the line panel.
     bool panelBackSelected;
 } Line;
-
-typedef struct {
-    SDL_Point origin;
-    s16 angle;
-    s16 type;
-    s16 options;
-
-    bool selected;
-} Thing;
 
 typedef struct {
     char label[MAP_LABEL_LENGTH]; // "ExMx" or "MAPxx" + \0
@@ -66,5 +64,6 @@ void LoadMap(const Wad * wad, const char * lumpLabel);
 SDL_Rect GetMapBounds(void);
 SDL_Point LineMidpoint(const Line * line);
 float LineLength(const Line * line);
+void GetLinePoints(int index, SDL_Point * p1, SDL_Point * p2);
 
 #endif /* Map_h */

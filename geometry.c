@@ -87,3 +87,37 @@ SDL_Rect BoxToRect(const Box * box)
 
     return rect;
 }
+
+SDL_Rect FitAndCenterRect(const SDL_Rect * rect,
+                          const SDL_Rect * container,
+                          int margin)
+{
+    float scale;
+    int xOffset = 0;
+    int yOffset = 0;
+
+    if ( rect->w > rect->h )
+    {
+        scale = (float)container->w / rect->w;
+        yOffset = (container->h - rect->h * scale) / 2.0f;
+    }
+    else
+    {
+        scale = (float)container->h /rect->h;
+        xOffset = (container->w - rect->w * scale) / 2.0f;
+    }
+
+    SDL_Rect result = {
+        .x = container->x + xOffset,
+        .y = container->y + yOffset,
+        .w = rect->w * scale,
+        .h = rect->h * scale,
+    };
+
+    result.x += margin;
+    result.y += margin;
+    result.w -= margin * 2;
+    result.h -= margin * 2;
+
+    return result;
+}

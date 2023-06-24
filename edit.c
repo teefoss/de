@@ -15,7 +15,10 @@
 #include "text.h"
 #include "panel.h"
 #include "line_panel.h"
+#include "thing_panel.h"
 #include "patch.h"
+#include "defaults.h"
+#include "sector.h"
 
 #include <stdbool.h>
 #include <limits.h>
@@ -30,6 +33,8 @@ Wad * resourceWad;
 
 // Input
 
+bool usingMouse;
+
 static const u8 * keys;
 static SDL_Keymod mods;
 static SDL_Point worldMouse;
@@ -42,13 +47,9 @@ static int previousMouseX;
 static int previousMouseY;
 static SDL_Point visibleRectTarget;
 
+static int bmapDY = 0;
+static int bmapDX = 0;
 
-enum {
-    SHOW_NONE,
-    SHOW_LINE_PANEL,
-    SHOW_LINE_SPECIALS_CATEGORY_PANEL,
-    SHOW_LINE_SPECIALS_PANEL,
-} panelShown;
 
 SDL_Point GridPoint(const SDL_Point * worldPoint)
 {
@@ -264,7 +265,7 @@ void HandleDragViewEvent(const SDL_Event * event)
 
 void SelectObject(bool openPanel)
 {
-    SDL_Rect clickRect = MakeCenteredRect(&worldMouse, SELECTION_SIZE);
+    SDL_Rect clickRect = MakeCenteredRect(&worldMouse, SELECTION_SIZE / scale);
 
     Vertex * vertex = map.vertices->data;
     for ( int i = 0; i < map.vertices->count; i++, vertex++ )
@@ -283,6 +284,7 @@ void SelectObject(bool openPanel)
             else
             {
                 vertex->selected = true;
+                //printf("%d, %d\n", vertex->origin.x, vertex->origin.y);
                 StartDraggingObjects();
             }
 
@@ -311,11 +313,18 @@ void SelectObject(bool openPanel)
                 vertices[line->v1].selected = true;
                 vertices[line->v2]. selected = true;
 
+                printf("selected line %d:\n", i);
+                printf("- v1: %d, %d\n",
+                       vertices[line->v1].origin.x,
+                       vertices[line->v1].origin.y);
+                printf("- v2: %d, %d\n",
+                       vertices[line->v2].origin.x,
+                       vertices[line->v2].origin.y);
+
                 if ( openPanel )
                 {
-                    linePanel.data = line;
-                    openPanels[++topPanel] = &linePanel;
-                    UpdateLinePanelContent();
+                    OpenPanel(&linePanel, line);
+                    UpdateLinePanelContent(); // TODO: panel->refresh
                 }
                 else
                 {
@@ -343,7 +352,14 @@ void SelectObject(bool openPanel)
             else
             {
                 thing->selected = true;
-                StartDraggingObjects();
+                if ( openPanel )
+                {
+                    OpenPanel(&thingPanel, thing);
+                }
+                else
+                {
+                    StartDraggingObjects();
+                }
             }
 
             return;
@@ -353,7 +369,11 @@ void SelectObject(bool openPanel)
     if ( !SHIFT_DOWN )
         DeselectAllObjects();
 
-    if ( !openPanel )
+    if ( openPanel )
+    {
+        SelectSector(&worldMouse);
+    }
+    else
     {
         dragStart = worldMouse;
         editorState = ES_DRAG_BOX;
@@ -425,6 +445,14 @@ void HandleEditEvent(const SDL_Event * event)
         case SDL_KEYDOWN:
             switch ( event->key.keysym.sym )
             {
+#ifdef DRAW_BLOCK_MAP
+                case SDLK_o:
+                    bmapScale /= 2.0f;
+                    break;
+                case SDLK_p:
+                    bmapScale *= 2.0f;
+                    break;
+#endif
                 case SDLK_EQUALS:
                     ZoomIn();
                     break;
@@ -438,6 +466,9 @@ void HandleEditEvent(const SDL_Event * event)
                 case SDLK_LEFTBRACKET:
                     if ( gridSize / 2 >= 1 )
                         gridSize /= 2;
+                    break;
+                case SDLK_F1:
+//                    showBlockMap = !showBlockMap;
                     break;
                 case SDLK_ESCAPE:
                     DeselectAllObjects();
@@ -475,6 +506,9 @@ void HandleEditEvent(const SDL_Event * event)
             break;
 
         case SDL_MOUSEWHEEL:
+//            printf("precise x, y: %f, %f\n", event->wheel.preciseX, event->wheel.preciseY);
+//            visibleRect.x += event->wheel.preciseX * 8.0f;// * 64.0f;
+//            visibleRect.y -= event->wheel.preciseY * 8.0f;// * 64.0f;
             if ( event->wheel.y < 0 )
                 ZoomIn();
             else if ( event->wheel.y > 0 )
@@ -526,7 +560,8 @@ void UpdateEdit(float dt)
 
 void RenderEditor(void)
 {
-    SDL_SetRenderDrawColor(renderer, 248, 248, 248, 255);
+    SDL_Color background = DefaultColor(BACKGROUND);
+    SetRenderDrawColor(&background);
     SDL_RenderClear(renderer);
 
     DrawMap();
@@ -535,10 +570,18 @@ void RenderEditor(void)
         DrawSelectionBox(&selectionBox);
 
     for ( int i = 0; i <= topPanel; i++ )
-        openPanels[i]->render();
+//        openPanels[i]->render();
+        RenderPanel(openPanels[i]);
 
 //    PrintString(0, 0, "World Point: %d, %d", worldMouse.x, worldMouse.y);
 //    RenderTexture("SKINMET1", 0, 0);
+
+//    if ( showBlockMap )
+//    {
+//        SDL_Rect dest = { 0 };
+//        SDL_QueryTexture(bmapTexture, NULL, NULL, &dest.w, &dest.h);
+//        SDL_RenderCopy(renderer, bmapTexture, NULL, &dest);
+//    }
 
     SDL_RenderPresent(renderer);
 }
@@ -547,64 +590,106 @@ void EditorLoop(void)
 {
     keys = SDL_GetKeyboardState(NULL);
 
-    const float dt = 1.0f / GetRefreshRate();
+    int refreshRate = GetRefreshRate();
+    printf("refresh rate: %d Hz\n", refreshRate);
+    const float dt = 1.0f / refreshRate;
 
     visibleRectTarget.x = visibleRect.x;
     visibleRectTarget.y = visibleRect.y;
 
     // TODO: add some test that VSYNC is working, otherwise limit framerate.
 
+    // FIXME: get smooth scrolling and non-laggy mouse movement
+//#define LIMIT_FRAME_RATE
+#ifdef LIMIT_FRAME_RATE
+    int current = SDL_GetTicks();
+    int last = current;
+    int frameMsec = 1000.0f / refreshRate;
+#endif
+
     while ( running )
     {
+#ifdef LIMIT_FRAME_RATE
+        current = SDL_GetTicks();
+        int elapsed = current - last;
+
+        if ( elapsed < frameMsec )
+        {
+            SDL_Delay(1);
+            continue;
+        }
+
+        last = current;
+#endif
+
         mods = SDL_GetModState();
 
         mouseButtons = SDL_GetMouseState(&windowMouse.x, &windowMouse.y);
         worldMouse = WindowToWorld(&windowMouse);
 
+        bmapDY = 0;
+        bmapDX = 0;
+
         SDL_Event event;
         while ( SDL_PollEvent(&event) )
         {
-            if ( topPanel >= 0 )
-                if ( ProcessPanelEvent(openPanels[topPanel], &event) )
-                    continue;
+            if ( event.type == SDL_KEYDOWN )
+                usingMouse = false;
+            else if (   event.type == SDL_MOUSEMOTION
+                     || event.type == SDL_MOUSEBUTTONDOWN )
+                usingMouse = true;
+
+            for ( int i = topPanel; i >= 0; i-- )
+            {
+                //            if ( topPanel >= 0 )
+                if ( ProcessPanelEvent(openPanels[i], &event) )
+                    goto nextEvent;
+            }
 
             StateHandleEvent(&event);
 
             // TODO: handle quit separately here.
+        nextEvent:
+            ;
         }
 
-        // Update mouse hover item.
+        if ( usingMouse )
+            UpdatePanelMouse(&windowMouse);
 
-        if ( topPanel >= 0 )
-        {
-            Panel * panel = openPanels[topPanel];
-            SDL_Rect rect = PanelRenderLocation(panel);
-            panel->mouseHover = -1;
-
-            if ( SDL_PointInRect(&windowMouse, &rect) )
-            {
-                // Mouse text col/row in panel.
-                int cx = (windowMouse.x - rect.x) / FONT_WIDTH;
-                int cy = (windowMouse.y - rect.y) / FONT_HEIGHT;
-
-                for ( int i = 0; i < panel->numItems; i++ )
-                {
-                    PanelItem * item = &panel->items[i];
-                    if ( cy == item->y ) {
-                        for ( int x = item->x; x < item->x + item->width; x++ )
-                        {
-                            if ( cx == x )
-                            {
-                                panel->mouseHover = i;
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        // Block map texture scrolling.
+#ifdef DRAW_BLOCK_MAP
+        if ( keys[SDL_SCANCODE_RIGHT] )
+            bmapLocation.x -= 2 * bmapScale;
+        if ( keys[SDL_SCANCODE_LEFT] )
+            bmapLocation.x += 2 * bmapScale;
+        if ( keys[SDL_SCANCODE_UP] )
+            bmapLocation.y += 2 * bmapScale;
+        if ( keys[SDL_SCANCODE_DOWN] )
+            bmapLocation.y -= 2 * bmapScale;
+#endif
 
         StateUpdate(dt);
 
         RenderEditor();
+
+#ifdef DRAW_BLOCK_MAP
+        if ( bmapRenderer )
+        {
+            SDL_SetRenderDrawColor(bmapRenderer, 128, 128, 128, 255);
+            SDL_RenderClear(bmapRenderer);
+
+            SDL_QueryTexture(bmapTexture,
+                             NULL,
+                             NULL,
+                             &bmapLocation.w,
+                             &bmapLocation.h);
+
+            bmapLocation.w *= bmapScale;
+            bmapLocation.h *= bmapScale;
+
+            SDL_RenderCopy(bmapRenderer, bmapTexture, NULL, &bmapLocation);
+            SDL_RenderPresent(bmapRenderer);
+        }
+#endif
     }
 }

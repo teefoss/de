@@ -9,6 +9,7 @@
 #define edit_h
 
 #include "wad.h"
+#include <stdbool.h>
 
 #define DOOM1_PATH "doom1/"
 #define DOOMSE_PATH "doomSE/"
@@ -21,9 +22,12 @@ typedef enum
     GAME_DOOM2
 } GameType;
 
+extern GameType gameType;
 extern Wad * resourceWad;
+extern bool usingMouse;
 
 void EditorLoop(void);
 void RenderEditor(void);
+void DeselectAllObjects(void);
 
 #endif /* edit_h */

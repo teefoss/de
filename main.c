@@ -13,12 +13,38 @@
 #include "args.h"
 #include "edit.h"
 #include "line_panel.h"
+#include "thing_panel.h"
 #include "patch.h"
 #include "progress_panel.h"
+#include "texture_panel.h"
+#include "defaults.h"
 
 #include <SDL2/SDL.h>
 #include <string.h>
 #include <stdbool.h>
+
+// Bugs List
+// FIXME: Clicking on a panel, outside an item rect should not close panel
+// FIXME: Opening specials panel closes specials category panel
+// FIXME: When getting the mouse item for panels, stop at the first one hit.
+// FIXME: Clicking on a panel lower in the stack should close all upper panels.
+// FIXME: closing texture pal should clear filters.
+
+// TODO List
+// TODO: 'Remove Texture' button in texture palette
+// TODO: 'New Texture' button in texture palette
+// TODO: 'Edit Texture' button in texture palette
+// TODO: Display size in texture palette
+// TODO: Thing palette: "all", with filter?
+// TODO: LoadPanel -> LoadPanelConsole, move data init to global struct init.
+// TODO: selection hover in texture palette
+// TODO: player starts sprites: use correct palette colors
+// TODO: texture palette wide enough for 4 x 64 width textures, and resize vert.
+// TODO: change image well to solid background
+
+// Nice-to-have TODO list
+// TODO: animated sprites?
+// TODO: spectre sprite fuzz effect
 
 // de --help, -h
 // de <subprogram> (<command>) [arguments]
@@ -226,6 +252,7 @@ int main(int argc, char ** argv)
     else if ( STRNEQ(subprogram, "edit", 4 ) )
     {
         // de edit [WAD file] --map [map label] --iwad [WAD file]
+        LoadDefaults("de.config");
 
         if ( argc < 6 )
             PrintUsageAndExit();
@@ -266,18 +293,19 @@ int main(int argc, char ** argv)
 
         // Determine game type.
 
-        char * gameType = GetOptionArg("--game");
-        if ( gameType != NULL ) {
-            for ( char * c = gameType; *c != '\0'; c++ )
-                *c = toupper(*c);
+        char * gameTypeParam = GetOptionArg("--game");
 
-            if ( strcmp(gameType, "DOOM") == 0 ) {
-                LoadLinePanels(DOOM1_PATH"linespecials.dsp");
-            } else if ( strcmp(gameType, "DOOMSE") == 0 ) {
-                LoadLinePanels(DOOMSE_PATH"linespecials.dsp");
-            } else if ( strcmp(gameType, "DOOM2") ) {
-                LoadLinePanels(DOOM2_PATH"linespecials.dsp");
-            } else {
+        Capitalize(gameTypeParam);
+
+        if ( gameTypeParam != NULL ) {
+            if ( strcmp(gameTypeParam, "DOOM") == 0 )
+                gameType = GAME_DOOM1;
+            else if ( strcmp(gameTypeParam, "DOOMSE") )
+                gameType = GAME_DOOM1SE;
+            else if ( strcmp(gameTypeParam, "DOOM2") )
+                gameType = GAME_DOOM2;
+            else
+            {
                 fprintf(stderr, "--game: bad argument. Should be"
                         "'doom', 'doomse', or 'doom2'\n");
                 exit(EXIT_FAILURE);
@@ -285,16 +313,28 @@ int main(int argc, char ** argv)
         } else {
             // Determine the game type from the IWAD name.
 
-            for ( char * c = iwadName; *c != '\0'; c++ )
-                *c = toupper(*c);
-
+            Capitalize(iwadName);
             if ( strcmp(iwadName, "DOOM1.WAD") == 0 )
-                LoadLinePanels(DOOM1_PATH"linespecials.dsp");
+                gameType = GAME_DOOM1;
             else if ( strcmp(iwadName, "DOOM.WAD") == 0 )
-                LoadLinePanels(DOOMSE_PATH"linespecials.dsp");
+                gameType = GAME_DOOM1SE;
             else
-                // Doom 2 is the default otherwise.
+                gameType = GAME_DOOM2;
+        }
+
+        switch ( gameType )
+        {
+            case GAME_DOOM1:
+                LoadLinePanels(DOOM1_PATH"linespecials.dsp");
+                break;
+            case GAME_DOOM1SE:
+                LoadLinePanels(DOOMSE_PATH"linespecials.dsp");
+                break;
+            case GAME_DOOM2:
                 LoadLinePanels(DOOM2_PATH"linespecials.dsp");
+                break;
+            default:
+                break;
         }
 
         InitMapView();
@@ -302,9 +342,16 @@ int main(int argc, char ** argv)
         InitPlayPalette(resourceWad);
         LoadAllPatches(resourceWad);
         LoadAllTextures(resourceWad);
+        LoadTexturePanel();
+        LoadThingPanel();
+        LoadThingDefinitions(); // Needs thing palette to be loaded first.
 
         EditorLoop();
     }
+
+    FreePanel(&texturePanel);
+    FreeLinePanels();
+    FreePatchesAndTextures();
 
     return 0;
 }

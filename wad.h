@@ -43,7 +43,7 @@ void FreeWad(Wad * wad);
 
 void ListDirectory(const Wad * wad);
 void WriteDirectory(const Wad * wad, u32 offset);
-void AddLump(const Wad * wad, const char * name, void * data, u32 size);
+void AddLump(Wad * wad, const char * name, void * data, u32 size);
 void RemoveLump(const Wad * wad, const char * name);
 WadInfo GetWadInfo(const Wad * wad);
 const char * GetWadType(const Wad * wad);

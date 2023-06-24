@@ -1,2 +1,2 @@
 all:
-	cc *.c -lSDL2 -o de
+	cc *.c panels/*.c -Ipanels -lSDL2 -o de

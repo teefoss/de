@@ -10,6 +10,7 @@
 #include "text.h"
 #include "mapview.h"
 #include "patch.h"
+#include "texture_panel.h"
 
 #include "doomdata.h"
 
@@ -21,12 +22,10 @@ enum
     LP_FRONT = 1,
     LP_BACK,
 
-    LP_LOWER,
-    LP_MIDDLE,
     LP_UPPER,
-    LP_LOWER_NAME,
-    LP_MIDDLE_NAME,
-    LP_UPPER_NAME,
+    LP_MIDDLE,
+    LP_LOWER,
+
     LP_OFFSET_X,
     LP_OFFSET_Y,
 
@@ -50,45 +49,41 @@ enum
 static PanelItem linePanelItems[] =
 {
     { 0 },
-    { 20, 3, 5, -1, LP_MIDDLE, -1, LP_BACK }, // front
-    { 34, 3, 4, -1, LP_UPPER, LP_FRONT, -1 }, // back
+    { 17, 2, 5, -1, LP_UPPER, -1, LP_BACK, true, 13, 2, 21, 2 }, // front
+    { 27, 2, 4, -1, LP_UPPER, LP_FRONT, -1, true, 23, 2, 30, 2 }, // back
 
-    { 6, 4, 5, LP_FRONT, LP_LOWER_NAME, -1, LP_MIDDLE },
-    { 20, 4, 6, LP_FRONT, LP_MIDDLE_NAME, LP_LOWER, LP_UPPER },
-    { 34, 4, 5, LP_BACK, LP_UPPER_NAME, LP_MIDDLE, -1 },
+    { 15, 6,  8, LP_FRONT, 0, -1, -1, true, 2, 4, 13, 9 },
+    { 15, 13, 8, 0, 0, -1, -1, true, 2, 11, 13, 16 },
+    { 15, 20, 8, 0, 0, -1, -1, true, 2, 18, 13, 23 },
 
-    { 7, 12, 8, LP_LOWER, LP_OFFSET_X, -1, LP_MIDDLE_NAME },
-    { 21, 12, 8, LP_MIDDLE, LP_OFFSET_X, LP_LOWER_NAME, LP_UPPER_NAME },
-    { 35, 12, 8, LP_UPPER, LP_OFFSET_Y, LP_MIDDLE_NAME, -1 },
+    { 12, 25, 4, 0, LP_BLOCKS_ALL, -1, LP_OFFSET_Y, true, 2, 25, 15, 25 }, // offset x
+    { 27, 25, 4, LP_LOWER, LP_BLOCKS_ALL, LP_OFFSET_X, -1, true, 17, 25, 30, 25 }, // offset y
 
-    { 14, 13, 4, LP_LOWER_NAME, LP_BLOCKS_ALL, -1, LP_OFFSET_Y }, // offset x
-    { 35, 13, 4, LP_UPPER_NAME, LP_TWO_SIDED, LP_OFFSET_X, -1 }, // offset y
+    { 6, 27, 27, LP_OFFSET_X, 0, -1, -1, true, 2, 27, 34, 27 }, // LP_BLOCKS_ALL,
+    { 6, 28, 27, 0, 0, -1, -1, true, 2, 28, 34, 28 },
+    { 6, 29, 27, 0, 0, -1, -1, true, 2, 29, 34, 29 },
+    { 6, 30, 27, 0, 0, -1, -1, true, 2, 30, 34, 30 },
+    { 6, 31, 27, 0, 0, -1, -1, true, 2, 31, 34, 31 },
+    { 6, 32, 27, 0, 0, -1, -1, true, 2, 32, 34, 32 },
+    { 6, 33, 27, 0, 0, -1, -1, true, 2, 33, 34, 33 },
+    { 6, 34, 27, 0, 0, -1, -1, true, 2, 34, 34, 34 },
+    { 6, 35, 27, 0, 0, -1, -1, true, 2, 35, 34, 35 },
 
-    { 8, 16, 16, LP_OFFSET_X, 0, -1, LP_TWO_SIDED }, // LP_BLOCKS_ALL,
-    { 8, 17, 16, 0, 0, -1, LP_ALWAYS_ON_MAP }, // LP_BLOCKS_MONSTERS,
-    { 8, 18, 16, 0, LP_UPPER_UNPEGGED, -1, LP_NOT_ON_MAP }, // LP_BLOCKS_SOUND,
-    { 29, 16, 16, LP_OFFSET_Y, LP_ALWAYS_ON_MAP, LP_BLOCKS_ALL, -1 }, //     LP_TWO_SIDED,
-    { 8, 19, 16, LP_BLOCKS_SOUND, 0, -1, LP_SECRET }, // LP_UPPER_UNPEGGED,
-    { 8, 20, 16, 0, LP_SPECIAL, -1, LP_SECRET }, // LP_LOWER_UNPEGGED,
-    { 29, 17, 16, LP_TWO_SIDED, 0, LP_BLOCKS_MONSTERS, -1 }, // LP_ALWAYS_ON_MAP,
-    { 29, 18, 16, 0, 0, LP_BLOCKS_SOUND, -1 }, // LP_NOT_ON_MAP,
-    { 29, 19, 16, 0, LP_SPECIAL, LP_UPPER_UNPEGGED, -1 }, // LP_SECRET,
-
-    { 4, 23, 30, LP_LOWER_UNPEGGED, 0, -1, -1 }, // special
-    { 9, 24, 4, 0, -1, -1, LP_SUGGEST_TAG }, // tag
-    { 25, 24, 9, LP_SPECIAL, -1, LP_TAG, -1 }, // suggest
+    { 2, 37, 31, 0, 0, -1, -1 }, // special
+    { 7, 38, 4, 0, -1, -1, LP_SUGGEST_TAG, true, 2, 38, 20, 38 }, // tag
+    { 17, 38, 7, LP_SPECIAL, -1, LP_TAG, -1 }, // suggest
 };
 
 static PanelItem specialCategoryItems[] =
 {
-    { 6, 3, 13, -1, 0, -1, -1 },
-    { 6, 4, 13, 0, 0, -1, -1 },
-    { 6, 5, 13, 0, 0, -1, -1 },
-    { 6, 6, 13, 0, 0, -1, -1 },
-    { 6, 7, 13, 0, 0, -1, -1 },
-    { 6, 8, 13, 0, 0, -1, -1 },
-    { 6, 9, 13, 0, 0, -1, -1 },
-    { 6, 10, 13, 0, -1, -1, -1 }
+    { 2, 1, 11, -1, 0, -1, -1 }, // None
+    { 2, 3, 11, 0, 0, -1, -1 }, // Button
+    { 2, 4, 11, 0, 0, -1, -1 },
+    { 2, 5, 11, 0, 0, -1, -1 },
+    { 2, 6, 11, 0, 0, -1, -1 },
+    { 2, 7, 11, 0, 0, -1, -1 },
+    { 2, 8, 11, 0, 0, -1, -1 },
+    { 2, 9, 11, 0, -1, -1, -1 }
 };
 
 static PanelItem specialItems[NUM_SPECIAL_ROWS]; // Inited in LoadLinePanels()
@@ -105,6 +100,7 @@ typedef struct
     char name[80];
     int startIndex;
     int count;
+    int maxShortNameLength;
 } SpecialCategory;
 
 SpecialCategory categories[NUM_SPECIAL_CATEGORIES];
@@ -112,6 +108,10 @@ int numCategories = 0;
 int selectedCategory; // Index into `categories`
 int selectedSpecial;
 int firstSpecial; // Index of topmost visible special in list.
+
+//static void RenderSpecialsPanel(void);
+static bool ProcessSpecialPanelEvent(const SDL_Event * event);
+
 
 #pragma mark -
 
@@ -127,7 +127,7 @@ static void LoadSpecials(const char * path)
     fscanf(file, "numspecials: %d\n", &numSpecials);
     specials = calloc(numSpecials, sizeof(*specials));
 
-    long maxShortNameLen = 0;
+    int longestName = 0;
 
     for ( int i = 0; i < numSpecials; i++ )
     {
@@ -137,14 +137,15 @@ static void LoadSpecials(const char * path)
 
         fscanf(file, "%s\n", specials[i].name);
 
+        int len = (int)strlen(specials[i].name);
+        if ( len > longestName )
+            longestName = len;
+
         // Extract the category name.
         char category[80] = { 0 };
         strncpy(category, specials[i].name, 80);
         long firstSpaceIndex = strchr(category, '_') - category;
         specials[i].shortName = &specials[i].name[firstSpaceIndex + 1];
-
-        if ( strlen(specials[i].shortName) > maxShortNameLen )
-            maxShortNameLen = strlen(specials[i].shortName);
 
         category[firstSpaceIndex] = '\0';
 
@@ -170,13 +171,29 @@ static void LoadSpecials(const char * path)
     }
 
     for ( int i = 0; i < numCategories; i++ )
+    {
+        SpecialCategory * category = &categories[i];
+        category->maxShortNameLength = 0;
+
+        int start = category->startIndex;
+        int end = start + category->count - 1;
+
+        for ( int j = start; j <= end; j++ )
+        {
+            int len = (int)strlen(specials[j].shortName);
+            if (  len > category->maxShortNameLength )
+                category->maxShortNameLength = len;
+        }
+
+#if 0
         printf("Cateogry %d: %s; start: %d; count: %d\n",
                i,
                categories[i].name,
                categories[i].startIndex,
                categories[i].count);
-
-    printf("max short name length: %ld\n", maxShortNameLen);
+#endif
+    }
+    printf("Longest name: %d\n", longestName);
 }
 
 LineSpecial * FindSpecial(int id)
@@ -206,7 +223,7 @@ void UpdateVisibleSpecials(void)
         if ( specialIndex <= last )
         {
             if ( ((Line *)linePanel.data)->special == specials[specialIndex].id )
-                UpdatePanel(&specialsPanel,
+                UpdatePanelConsole(&specialsPanel,
                             specialItems[i].x - 2,
                             specialItems[i].y, 7, true);
 
@@ -242,6 +259,16 @@ static void LinePanelAction(int selection)
 
     switch ( selection )
     {
+        case LP_LOWER:
+            OpenTexturePanel(side->bottom);
+            break;
+        case LP_MIDDLE:
+            OpenTexturePanel(side->middle);
+            break;
+        case LP_UPPER:
+            OpenTexturePanel(side->top);
+            break;
+
         case LP_BLOCKS_ALL:       line->flags ^= ML_BLOCKING; break;
         case LP_BLOCKS_MONSTERS:  line->flags ^= ML_BLOCKMONSTERS; break;
         case LP_BLOCKS_SOUND:     line->flags ^= ML_SOUNDBLOCK; break;
@@ -260,18 +287,15 @@ static void LinePanelAction(int selection)
             break;
 
         case LP_TAG:
-            SDL_itoa(line->tag, linePanel.text, 10);
-            StartTextEditing(&linePanel, LP_TAG, &line->tag);
+            StartTextEditing(&linePanel, LP_TAG, &line->tag, VALUE_INT);
             break;
 
         case LP_OFFSET_X:
-            SDL_itoa(side->offsetX, linePanel.text, 10);
-            StartTextEditing(&linePanel, LP_OFFSET_X, &side->offsetX);
+            StartTextEditing(&linePanel, LP_OFFSET_X, &side->offsetX, VALUE_INT);
             break;
 
         case LP_OFFSET_Y:
-            SDL_itoa(side->offsetY, linePanel.text, 10);
-            StartTextEditing(&linePanel, LP_OFFSET_Y, &side->offsetY);
+            StartTextEditing(&linePanel, LP_OFFSET_Y, &side->offsetY, VALUE_INT);
             break;
 
         case LP_SUGGEST_TAG:
@@ -303,9 +327,8 @@ static bool ProcessLinePanelEvent(const SDL_Event * event)
             switch ( event->button.button )
             {
                 case SDL_BUTTON_LEFT:
-                    if ( linePanel.mouseHover != -1 )
+                    if ( linePanel.mouseItem != -1 )
                     {
-                        linePanel.selection = linePanel.mouseHover;
                         LinePanelAction(linePanel.selection);
                         return true;
                     }
@@ -323,43 +346,74 @@ static bool ProcessLinePanelEvent(const SDL_Event * event)
 
 void OpenSpecialsPanel(void)
 {
-    openPanels[++topPanel] = &specialsPanel;
+    // TODO: don't remake entire panel, change to SetupPanel(&panel)
     selectedCategory = specialCategoriesPanel.selection - 1;
-    firstSpecial = 0;
-    specialsPanel.numItems = MIN(categories[selectedCategory].count,
-                                 NUM_SPECIAL_ROWS);
-    UpdateVisibleSpecials();
-}
+    SpecialCategory * cat = &categories[selectedCategory];
 
-bool IsMouseActionEvent(const SDL_Event * event)
-{
-    return event->type == SDL_MOUSEBUTTONDOWN
-        && event->button.button == SDL_BUTTON_LEFT;
-}
+    FreePanel(&specialsPanel);
 
-bool IsActionEvent(const SDL_Event * event)
-{
-    bool isKeyAction
-        =  event->type == SDL_KEYDOWN
-        && event->key.keysym.sym == SDLK_RETURN;
+    specialsPanel = NewPanel(specialCategoriesPanel.width,
+                             specialCategoriesPanel.selection + 2,
+                             cat->maxShortNameLength + 4,
+                             cat->count + 2,
+                             cat->count);
 
-    return isKeyAction || IsMouseActionEvent(event);
+
+    SDL_Rect rect = specialCategoriesPanel.location;
+
+    specialsPanel.location.x = rect.x + rect.w + 8;
+    specialsPanel.location.y = rect.y + rect.h - specialsPanel.location.h;
+    specialsPanel.items[0].up = -1;
+    specialsPanel.items[cat->count - 1].down = -1;
+
+    SetPanelColor(10, 1);
+    for ( int y = 0; y < specialsPanel.height; y++ )
+    {
+        for ( int x = 0; x < specialsPanel.width; x++ )
+        {
+            PanelPrint(&specialsPanel, x, y, " ");
+        }
+    }
+
+    for ( int i = 0; i < cat->count; i++ )
+    {
+        PanelItem * item = &specialsPanel.items[i];
+        item->x = 2;
+        item->y = i + 1;
+        item->width = cat->maxShortNameLength;
+        item->left = -1;
+        item->right = -1;
+
+        SetPanelColor(15, 1);
+        PanelPrint(&specialsPanel,
+                   item->x,
+                   item->y,
+                   specials[i + cat->startIndex].shortName);
+    }
+
+//    specialsPanel.render = RenderSpecialsPanel;
+    specialsPanel.processEvent = ProcessSpecialPanelEvent;
+
+    openPanels[++topPanel] = &specialsPanel;
 }
 
 static bool ProcessSpecialCategoriesPanelEvent(const SDL_Event * event)
 {
-    if ( IsActionEvent(event) )
+    if ( IsActionEvent(event, &specialCategoriesPanel) )
     {
-        if ( IsMouseActionEvent(event) && linePanel.mouseHover != -1 )
-            specialCategoriesPanel.selection = specialCategoriesPanel.mouseHover;
-
         if ( specialCategoriesPanel.selection == 0 )
         {
             ((Line *)linePanel.data)->special = 0;
             topPanel--;
         }
         else
+        {
+            // If the special panel is already open, close it first.
+            if ( GetPanelStackPosition(&specialsPanel) < topPanel )
+                topPanel--;
+
             OpenSpecialsPanel();
+        }
 
         return true;
     }
@@ -367,14 +421,10 @@ static bool ProcessSpecialCategoriesPanelEvent(const SDL_Event * event)
     return false;
 }
 
-bool ProcessSpecialPanelEvent(const SDL_Event * event)
+static bool ProcessSpecialPanelEvent(const SDL_Event * event)
 {
-    if ( IsActionEvent(event) )
+    if ( IsActionEvent(event, &specialsPanel) )
     {
-        if ( IsMouseActionEvent(event) && linePanel.mouseHover != -1 )
-            specialsPanel.selection = specialsPanel.mouseHover;
-
-
         int i = categories[selectedCategory].startIndex;
         i += firstSpecial;
         i += specialsPanel.selection;
@@ -438,13 +488,14 @@ void UpdateLinePanelContent(void)
 
     char title[100] = { 0 };
     snprintf(title, sizeof(title), "Line %d", i);
-
-    SetPanelColor(1, 7);
+    SetPanelColor(15, 1);
     PanelPrint(&linePanel, 2, 1, title);
 
-    ItemPrint(&linePanel, LP_LOWER_NAME, side->bottom);
-    ItemPrint(&linePanel, LP_MIDDLE_NAME, side->middle);
-    ItemPrint(&linePanel, LP_UPPER_NAME, side->top);
+    SetPanelColor(14, 1);
+
+    ItemPrint(&linePanel, LP_LOWER, side->bottom);
+    ItemPrint(&linePanel, LP_MIDDLE, side->middle);
+    ItemPrint(&linePanel, LP_UPPER, side->top);
 }
 
 #pragma mark - RENDER
@@ -453,41 +504,30 @@ static void RenderLinePanel(void)
 {
     const Line * line = linePanel.data;
     const Side * side = &line->sides[line->panelBackSelected];
-
-    int windowWidth;
-    int windowHeight;
-    SDL_GetWindowSize(window, &windowWidth, &windowHeight);
-
-    linePanel.location.x = windowWidth - linePanel.location.w - FONT_WIDTH * 2;
-    linePanel.location.y = FONT_HEIGHT;
-
-    RenderPanelTexture(&linePanel);
-
-    // Render Properties
-
-    SDL_RenderSetViewport(renderer, &linePanel.location);
-
     PanelItem * items = linePanelItems;
 
-    if ( !linePanel.isTextEditing )
-        RenderPanelSelection(&linePanel);
+    //
+    // Upper, Middle, and Lower Textures
+    //
 
     SDL_Rect textureRect = { .w = 12 * FONT_WIDTH, .h = 6 * FONT_HEIGHT };
 
-    textureRect.x = (items[LP_LOWER].x - 1) * FONT_WIDTH;
-    textureRect.y = (items[LP_LOWER].y + 1) * FONT_HEIGHT;
-    if ( side->bottom[0] != '-')
-        RenderTextureInRect(side->bottom, &textureRect);
-
-    textureRect.x = (items[LP_MIDDLE].x - 1) * FONT_WIDTH;
-    if ( side->middle[0] != '-')
-        RenderTextureInRect(side->middle, &textureRect);
-
-    textureRect.x = (items[LP_UPPER].x - 1) * FONT_WIDTH;
+    textureRect.x = items[LP_UPPER].mouseX1 * FONT_WIDTH;
+    textureRect.y = items[LP_UPPER].mouseY1 * FONT_HEIGHT;
     if ( side->top[0] != '-')
         RenderTextureInRect(side->top, &textureRect);
 
+    textureRect.y = items[LP_MIDDLE].mouseY1 * FONT_HEIGHT;
+    if ( side->middle[0] != '-')
+        RenderTextureInRect(side->middle, &textureRect);
 
+    textureRect.y = items[LP_LOWER].mouseY1 * FONT_HEIGHT;
+    if ( side->bottom[0] != '-')
+        RenderTextureInRect(side->bottom, &textureRect);
+
+    //
+    // Option marks
+    //
 
     RenderMark(&items[LP_BLOCKS_ALL], line->flags & ML_BLOCKING);
     RenderMark(&items[LP_BLOCKS_MONSTERS], line->flags & ML_BLOCKMONSTERS);
@@ -499,11 +539,19 @@ static void RenderLinePanel(void)
     RenderMark(&items[LP_NOT_ON_MAP], line->flags & ML_DONTDRAW);
     RenderMark(&items[LP_SECRET], line->flags & ML_SECRET);
 
+    //
+    // Front/Back selection mark
+    //
+
     if ( line->panelBackSelected ) {
         RenderMark(&items[LP_BACK], 1);
     } else {
         RenderMark(&items[LP_FRONT], 1);
     }
+
+    //
+    // X and Y Offsets
+    //
 
     if ( !linePanel.isTextEditing || (linePanel.isTextEditing && linePanel.textItem != LP_OFFSET_X) )
     {
@@ -515,8 +563,13 @@ static void RenderLinePanel(void)
         PANEL_RENDER_STRING(items[LP_OFFSET_Y].x, items[LP_OFFSET_Y].y, "%d", side->offsetY);
     }
 
+    //
+    // Special
+    //
+
     int x = items[LP_SPECIAL].x;
     int y = items[LP_SPECIAL].y;
+    SetPanelRenderColor(14);
 
     if ( line->special == 0 )
     {
@@ -527,54 +580,52 @@ static void RenderLinePanel(void)
         LineSpecial * special = FindSpecial(line->special);
 
         if ( special == NULL )
+        {
+            SetPanelRenderColor(12);
             PANEL_RENDER_STRING(x, y, "Bad Special! (%d)", line->special);
+        }
         else
             PANEL_RENDER_STRING(x, y, "%s", special->name);
     }
 
-    if ( linePanel.isTextEditing )
-        RenderPanelTextInput(&linePanel);
+    //
+    // Tag
+    //
 
     if ( !linePanel.isTextEditing || (linePanel.isTextEditing && linePanel.textItem != LP_TAG) )
     {
+        SetPanelRenderColor(15);
         PANEL_RENDER_STRING(items[LP_TAG].x, items[LP_TAG].y, "%d", line->tag);
     }
 
-    SDL_RenderSetViewport(renderer, NULL);
+//    SDL_RenderSetViewport(renderer, NULL);
 }
 
-static void RenderSpecialCategoriesPanel(void)
-{
-    RenderPanelTexture(&specialCategoriesPanel);
-    RenderPanelSelection(&specialCategoriesPanel);
-}
+//static void RenderSpecialCategoriesPanel(void)
+//{
+//    RenderPanelTexture(&specialCategoriesPanel);
+//    RenderPanelSelection(&specialCategoriesPanel);
+//}
 
-static void RenderSpecialsPanel(void)
-{
-    RenderPanelTexture(&specialsPanel);
-
-    const SpecialCategory * category = &categories[selectedCategory];
-
-    SDL_Rect panelLocation = PanelRenderLocation(&specialsPanel);
-    SDL_RenderSetViewport(renderer, &panelLocation);
-
-    // Print Panel Title
-
-    SetPanelRenderColor(1);
-    RenderString(3 * FONT_WIDTH,
-                1 * FONT_HEIGHT,
-                "%s Specials", category->name);
-
-    RenderPanelSelection(&specialsPanel);
-
-    SDL_RenderSetViewport(renderer, NULL);
-}
+//static void RenderSpecialsPanel(void)
+//{
+//    RenderPanelTexture(&specialsPanel);
+//
+//    SDL_Rect panelLocation = PanelRenderLocation(&specialsPanel);
+//    SDL_RenderSetViewport(renderer, &panelLocation);
+//
+//    RenderPanelSelection(&specialsPanel);
+//
+//    SDL_RenderSetViewport(renderer, NULL);
+//}
 
 #pragma mark -
 
 void LoadLinePanels(const char * dspPath)
 {
-    linePanel = LoadPanel(PANEL_DIRECTORY"newline.panel");
+    linePanel = LoadPanel(PANEL_DATA_DIRECTORY "line.panel");
+    linePanel.location.x = PANEL_SCREEN_MARGIN;
+    linePanel.location.y = PANEL_SCREEN_MARGIN;
     linePanel.items = linePanelItems;
     linePanel.numItems = LP_NUM_ITEMS;
     linePanel.render = RenderLinePanel;
@@ -584,35 +635,22 @@ void LoadLinePanels(const char * dspPath)
     printf("Loading line specials from %s...\n", dspPath);
     LoadSpecials(dspPath);
 
-    specialCategoriesPanel = LoadPanel(PANEL_DIRECTORY"special_categories.panel");
+    specialCategoriesPanel = LoadPanel(PANEL_DATA_DIRECTORY"special_categories.panel");
     specialCategoriesPanel.items = specialCategoryItems;
     specialCategoriesPanel.numItems = numCategories + 1;
-    specialCategoriesPanel.parent = &linePanel;
-    specialCategoriesPanel.location.x = linePanelItems[LP_SPECIAL].x * FONT_WIDTH;
-    specialCategoriesPanel.location.y = (linePanelItems[LP_SPECIAL].y - 3) * FONT_HEIGHT;
-    specialCategoriesPanel.render = RenderSpecialCategoriesPanel;
+//    specialCategoriesPanel.parent = &linePanel;
+    specialCategoriesPanel.location.x = linePanel.location.x + linePanel.location.w + 8;
+    specialCategoriesPanel.location.y = linePanel.location.y + linePanel.location.h - specialCategoriesPanel.location.h;
+    specialCategoriesPanel.render = NULL;
     specialCategoriesPanel.processEvent = ProcessSpecialCategoriesPanelEvent;
 
     if ( numCategories != NUM_SPECIAL_CATEGORIES )
         printf("!!! warning: numCategories != NUM_SPECIAL_CATEGORIES\n");
+}
 
-    specialsPanel = LoadPanel(PANEL_DIRECTORY"specials.panel");
-    specialsPanel.parent = &linePanel;
-    specialsPanel.location.x = specialCategoriesPanel.location.x;
-    specialsPanel.location.y = specialCategoriesPanel.location.y;
-    specialsPanel.render = RenderSpecialsPanel;
-    specialsPanel.processEvent = ProcessSpecialPanelEvent;
-    specialsPanel.items = specialItems;
-    specialsPanel.numItems = NUM_SPECIAL_ROWS;
-
-    for ( int i = 0; i < NUM_SPECIAL_ROWS; i++ )
-    {
-        specialItems[i].x = 4;
-        specialItems[i].y = i + 3;
-        specialItems[i].width = 26;
-        specialItems[i].left = specialItems[i].right = -1;
-    }
-
-    specialItems[0].up = -1;
-    specialItems[NUM_SPECIAL_ROWS - 1].down = -1;
+void FreeLinePanels(void)
+{
+    FreePanel(&linePanel);
+    FreePanel(&specialCategoriesPanel);
+    FreePanel(&specialsPanel);
 }

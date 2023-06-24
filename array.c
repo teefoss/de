@@ -1,6 +1,5 @@
 //
 //  array.c
-//  Game
 //
 //  Created by Thomas Foster on 9/30/22.
 //

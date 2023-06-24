@@ -60,7 +60,7 @@ void RenderProgressPanel(void)
 
 void LoadProgressPanel(void)
 {
-    progressPanel = LoadPanel(PANEL_DIRECTORY"progress.panel");
+    progressPanel = LoadPanel(PANEL_DATA_DIRECTORY"progress.panel");
     progressPanel.render = RenderProgressPanel;
 }
 

@@ -29,6 +29,8 @@ static void TranslateAllPoints(void)
         thing->origin.y = maxY - thing->origin.y;
 }
 
+#define BOUNDS_BORDER 128
+
 SDL_Rect GetMapBounds(void)
 {
 
@@ -55,10 +57,10 @@ SDL_Rect GetMapBounds(void)
     }
 
     SDL_Rect bounds = {
-        .x = left,
-        .y = top,
-        .w = right - left,
-        .h = bottom - top
+        .x = left - BOUNDS_BORDER,
+        .y = top - BOUNDS_BORDER,
+        .w = right - left + BOUNDS_BORDER * 2,
+        .h = bottom - top + BOUNDS_BORDER * 2
     };
 
     return bounds;
@@ -166,11 +168,11 @@ void LoadMap(const Wad * wad, const char * lumpLabel)
     // After all lines are loaded, check if there are any 'dead' vertices,
     // i.e. those that don't belong to a line.
 
-    for ( int i = 0; i < map.vertices->count; i++ ) {
-        if ( vertices[i].referenceCount == 0 ) {
-            vertices[i].removed = true;
-        }
-    }
+//    for ( int i = 0; i < map.vertices->count; i++ ) {
+//        if ( vertices[i].referenceCount == 0 ) {
+//            vertices[i].removed = true;
+//        }
+//    }
 
     int numThings = 0;
     mapthing_t * things = LoadMapData(wad, lumpLabel, ML_THINGS, &numThings);
@@ -183,6 +185,7 @@ void LoadMap(const Wad * wad, const char * lumpLabel)
         thing.options = things[i].options;
         thing.angle = things[i].angle;
         thing.type = things[i].type;
+        
         Push(map.things, &thing);
     }
 
@@ -216,4 +219,13 @@ float LineLength(const Line * line)
     float dy = p2.y - p1.y;
 
     return sqrtf(dx * dx + dy * dy);
+}
+
+void GetLinePoints(int index, SDL_Point * p1, SDL_Point * p2)
+{
+    Line * line = Get(map.lines, index);
+    Vertex * vertices = map.vertices->data;
+
+    *p1 = vertices[line->v1].origin;
+    *p2 = vertices[line->v2].origin;
 }
