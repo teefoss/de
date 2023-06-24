@@ -13,6 +13,7 @@
 #include "doomdata.h"
 #include "defaults.h"
 #include "text.h"
+#include "sector.h"
 
 #define FILLED (-1)
 
@@ -257,11 +258,14 @@ static void DrawLines(void)
         SDL_Point mid = LineMidpoint(l);
         SDL_Point normal = { mid.x - dy / length , mid.y + dx / length };
 
+        // DEBUG: draw an 'F' or 'B' to show which side is selected.
+#ifdef DRAW_BLOCK_MAP
         if ( l->selected > 0 ) {
             SDL_SetRenderDrawColor(renderer, 0, 128, 0, 255);
             SDL_Point p = WorldToWindow(&normal);
             RenderChar(p.x - 4, p.y - 8, l->selected == FRONT_SELECTED ? 'F' : 'B' );
         }
+#endif
 
         WorldDrawLine(&mid, &normal);
     }
@@ -282,7 +286,8 @@ static void DrawThings(void) // TODO: sort selected and draw on top
     };
 
     Thing * thing = map.things->data;
-    for ( int i = 0; i < map.things->count; i++, thing++ ) {
+    for ( int i = 0; i < map.things->count; i++, thing++ )
+    {
         if (   thing->origin.x < left
             || thing->origin.x > right
             || thing->origin.y < top
@@ -292,11 +297,14 @@ static void DrawThings(void) // TODO: sort selected and draw on top
         thingRect.x = thing->origin.x - THING_DRAW_SIZE / 2;
         thingRect.y = thing->origin.y - THING_DRAW_SIZE / 2;
 
+        ThingDef * def = GetThingDef(thing->type);
+        SDL_Color color;
         if ( thing->selected )
-            SDL_SetRenderDrawColor(renderer, 248, 64, 64, 255);
+            color = DefaultColor(SELECTION);
         else
-            SDL_SetRenderDrawColor(renderer, 8, 8, 8, 255);
+            color = DefaultColor(def->category + THING_PLAYER);
 
+        SetRenderDrawColor(&color);
         WorldDrawRect(&thingRect, FILLED);
     }
 }

@@ -16,9 +16,8 @@ SDL_Renderer * bmapRenderer;
 SDL_Texture * bmapTexture;
 
 SDL_Rect bmapLocation;
-float bmapScale = 1.0f;
+float bmapScale = 2.0f;
 
-static SDL_Color black = { 0, 0, 0, 255 };
 static SDL_Color red = { 255, 0, 0, 255 };
 static SDL_Color magenta = { 255, 0, 255, 255 };
 
@@ -48,24 +47,23 @@ static void Refresh(void)
 
 typedef enum { NO_DIRECTION, NORTH, EAST, SOUTH, WEST } Direction;
 
+// Block Flags
+#define SOUTH_FRONT     1 // north-facing side is the front
+#define WEST_FRONT      2 // west-facing side is the front
+#define VISITED         4 // visited during flood fill
+#define SKIP            8 // ignore this block (vertexes)
+
 typedef struct
 {
-    u16 north;
-    u16 east;
-    u16 south;
-    u16 west;
-    u16 northWest;
-    u16 northEast;
-    u16 southWest;
-    u16 southEast;
-    bool visited;
-    bool skip;
+    u16 lineIndex;
+    u8 flags;
 } Block;
 
 static SDL_Rect mapBounds;
 static Block * blockMap;
 static int blockMapWidth;
 static int blockMapHeight;
+static size_t allocated;
 
 
 static void DrawBlockMapLine(int lineIndex)
@@ -78,120 +76,13 @@ static void DrawBlockMapLine(int lineIndex)
     int x2 = (vertices[line->v2].origin.x - mapBounds.x) / BLOCK_MAP_RESOLUTION;
     int y2 = (vertices[line->v2].origin.y - mapBounds.y) / BLOCK_MAP_RESOLUTION;
 
-    int left, right, top, bottom;
-
-    if ( x1 == x2 ) // Vertical line
-    {
-//        printf("vertical line: (%d, %d) - (%d, %d)\n", x1, y1, x2, y2);
-        left = right = lineIndex + 1;
-
-        if ( y1 > y2 )
-        {
-            left |= BACK_SIDE_FLAG;
-        }
-        else
-        {
-            right |= BACK_SIDE_FLAG;
-            int temp = y1;
-            y1 = y2;
-            y2 = temp;
-        }
-
-        BLOCK(x1, y1)->skip = true;
-
-        while ( y1 > y2 )
-        {
-//            printf("- %d, %d\n", x1, y1);
-            Block * block = BLOCK(x1, y1);
-#ifdef DRAW_BLOCK_MAP
-            DrawPixel(x1, y1, block->skip ? magenta : black);
-#endif
-            block->west = left;
-            block->east = right;
-            y1--;
-        }
-
-        BLOCK(x1, y1)->skip = true;
-#ifdef DRAW_BLOCK_MAP
-        DrawPixel(x1, y2, magenta);
-#endif
-
-        return;
-    }
-
-    if ( y1 == y2 ) // Horizontal line
-    {
-        top = bottom = lineIndex + 1;
-
-        if ( x1 < x2 )
-        {
-            top |= BACK_SIDE_FLAG;
-        }
-        else
-        {
-            bottom |= BACK_SIDE_FLAG;
-            int temp = x1;
-            x1 = x2;
-            x2 = temp;
-        }
-
-        BLOCK(x1, y1)->skip = true;
-
-        while ( x1 < x2 )
-        {
-            Block * block = BLOCK(x1, y1);
-#ifdef DRAW_BLOCK_MAP
-            DrawPixel(x1, y1, block->skip ? magenta : black);
-#endif
-            block->north = top;
-            block->south = bottom;
-            x1++;
-        }
-
-        BLOCK(x2, y1)->skip = true;
-#ifdef DRAW_BLOCK_MAP
-        DrawPixel(x2, y1, magenta);
-#endif
-
-        return;
-    }
-
-    // Sloping line:
-
-    int index = lineIndex + 1;
-    int ne = 0;
-    int nw = 0;
-    int se = 0;
-    int sw = 0;
-
-//    printf("sloping line: (%d, %d) - (%d, %d)\n", x1, y1, x2, y2);
+    u8 frontFlags = 0;
 
     if ( x1 < x2 )
-    {
-        if ( y1 < y2 ) // NW-SE line, font side is SW
-        {
-            sw = index;
-            ne = index | BACK_SIDE_FLAG;
-        }
-        else // NE-SW line, front is SE
-        {
-            se = index;
-            nw = index | BACK_SIDE_FLAG;
-        }
-    }
-    else // x2 < x1
-    {
-        if ( y1 < y2 ) // NE-SW line, front is NW
-        {
-            nw = index;
-            se = index | BACK_SIDE_FLAG;
-        }
-        else // NW-SE line, front is NE
-        {
-            ne = index;
-            sw = index | BACK_SIDE_FLAG;
-        }
-    }
+        frontFlags |= SOUTH_FRONT;
+
+    if ( y1 < y2 )
+        frontFlags |= WEST_FRONT;
 
     int dx = abs(x2 - x1);
     int dy = -abs(y2 - y1);
@@ -203,20 +94,28 @@ static void DrawBlockMapLine(int lineIndex)
     int x = x1;
     int y = y1;
 
-    BLOCK(x1, y1)->skip = true;
+    // The starting block is a vertex, flag as skip.
+    BLOCK(x1, y1)->flags |= SKIP;
 
     while ( x != x2 || y != y2 )
     {
         Block * block = BLOCK((int)x, (int)y);
-#ifdef DRAW_BLOCK_MAP
-        DrawPixel(x, y, block->skip ? magenta : black);
-#endif
-//        printf("- %d, %d\n", x, y);
+        block->lineIndex = lineIndex + 1;
+        block->flags |= frontFlags;
 
-        block->northEast = ne;
-        block->southWest = sw;
-        block->northWest = nw;
-        block->southEast = se;
+#ifdef DRAW_BLOCK_MAP
+        if ( block->flags & SKIP )
+            SDL_SetRenderDrawColor(bmapRenderer, 255, 0, 255, 255);
+        else
+        {
+            SDL_SetRenderDrawColor(bmapRenderer,
+                                   0,
+                                   (frontFlags & WEST_FRONT) ? 255 : 0,
+                                   (frontFlags & SOUTH_FRONT) ? 255 : 0,
+                                   255);
+        }
+        SDL_RenderDrawPoint(bmapRenderer, x, y);
+#endif
 
         error2 = error * 2;
 
@@ -233,53 +132,80 @@ static void DrawBlockMapLine(int lineIndex)
         }
     }
 
-    BLOCK(x2, y2)->skip = true;
+    // The ending block is a vertex, flag as skip.
+    BLOCK(x2, y2)->flags |= SKIP;
+
 #ifdef DRAW_BLOCK_MAP
     DrawPixel(x2, y2, magenta);
 #endif
-
-//    printf("- %d, %d\n", x2, y2);
 }
+
+#if DRAW_BLOCK_MAP
+static void InitBlockMapWindow(void)
+{
+    if ( bmapWindow == NULL )
+    {
+        bmapWindow = SDL_CreateWindow("Sector Flood Fill Block Map",
+                                      0,
+                                      0,
+                                      blockMapWidth * 2, blockMapHeight * 2,
+                                      0);
+        if ( bmapWindow == NULL )
+            fprintf(stderr, "could not create bmap window: %s\n", SDL_GetError());
+
+        u32 flags = SDL_RENDERER_SOFTWARE | SDL_RENDERER_TARGETTEXTURE;
+        bmapRenderer = SDL_CreateRenderer(bmapWindow, -1, flags);
+
+        if ( bmapRenderer == NULL )
+            fprintf(stderr, "could not create bmap renderer: %s\n", SDL_GetError());
+    }
+    else
+    {
+        SDL_SetWindowSize(bmapWindow, blockMapWidth * 2, blockMapHeight * 2);
+    }
+
+    if ( bmapTexture )
+        SDL_DestroyTexture(bmapTexture);
+
+    bmapTexture = SDL_CreateTexture(bmapRenderer,
+                                    SDL_PIXELFORMAT_RGBA8888,
+                                    SDL_TEXTUREACCESS_TARGET,
+                                    blockMapWidth,
+                                    blockMapHeight);
+
+    if ( bmapTexture == NULL )
+        fprintf(stderr, "could not create bmap texture: %s\n", SDL_GetError());
+}
+#endif
 
 static void CreateBlockMap(void)
 {
     mapBounds = GetMapBounds();
 
-    // TODO: memset 0 and only realloc when needed.
-    if ( blockMap )
-        free(blockMap);
-
     blockMapWidth = mapBounds.w / BLOCK_MAP_RESOLUTION;
     blockMapHeight = mapBounds.h / BLOCK_MAP_RESOLUTION;
     printf("block map size: %d x %d\n", blockMapWidth, blockMapHeight);
 
-    errno = 0;
-    size_t allocSize = blockMapWidth * blockMapHeight * sizeof(*blockMap);
-    blockMap = calloc(blockMapWidth * blockMapHeight, sizeof(*blockMap));
-
-    if ( blockMap == NULL )
+    size_t newSize = blockMapWidth * blockMapHeight * sizeof(*blockMap);
+    if ( newSize > allocated )
     {
-        fprintf(stderr, "failed to allocate block map: %s\n", strerror(errno));
-        return;
+        errno = 0;
+        void * temp = realloc(blockMap, newSize);
+        if ( temp == NULL ) {
+            fprintf(stderr, "failed to allocate block map: %s\n", strerror(errno));
+            return;
+        }
+        blockMap = temp;
+        allocated = newSize;
+        printf("allocated %zu bytes for block map\n", allocated);
     }
 
-    printf("allocated %zu bytes for block map\n", allocSize);
+    memset(blockMap, 0, allocated);
 
 #ifdef DRAW_BLOCK_MAP
-    if ( bmapWindow == NULL ) {
-        bmapWindow = SDL_CreateWindow("", 0, 0, blockMapWidth * 2, blockMapHeight * 2, 0);
-        if ( bmapWindow == NULL )
-            fprintf(stderr, "could not create bmap window: %s\n", SDL_GetError());
-        bmapRenderer = SDL_CreateRenderer(bmapWindow, -1, SDL_RENDERER_SOFTWARE|SDL_RENDERER_TARGETTEXTURE);
-        if ( bmapRenderer == NULL )
-            fprintf(stderr, "could not create bmap renderer: %s\n", SDL_GetError());
-//        bmapRenderer = renderer;
-        bmapTexture = SDL_CreateTexture(bmapRenderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, blockMapWidth, blockMapHeight);
-        if ( bmapTexture == NULL )
-            fprintf(stderr, "could not create bmap texture: %s\n", SDL_GetError());
+    InitBlockMapWindow();
 
-    }
-
+    // Render block map lines.
     SDL_SetRenderTarget(bmapRenderer, bmapTexture);
     SDL_SetRenderDrawColor(bmapRenderer, 255, 255, 255, 255);
     SDL_RenderClear(bmapRenderer);
@@ -291,96 +217,66 @@ static void CreateBlockMap(void)
         if ( line->selected != DELETED )
             DrawBlockMapLine(i);
     }
-
-#ifdef DRAW_BLOCK_MAP
-    SDL_SetRenderTarget(bmapRenderer, NULL);
-#endif
 }
 
-static void SelectLine(int index)
+static void SelectLine(int index, int selectedSide)
 {
     Line * lines = map.lines->data;
     index--;
 
-    if ( index & BACK_SIDE_FLAG )
-    {
-        index &= ~BACK_SIDE_FLAG;
-        lines[index].selected = BACK_SELECTED;
-    }
-    else
-    {
-        lines[index].selected = FRONT_SELECTED;
-    }
+    // Don't select the back of one-sided lines.
+    if ( selectedSide == BACK_SELECTED && !(lines[index].flags & ML_TWOSIDED) )
+        return;
+
+    lines[index].selected = selectedSide;
 }
 
+bool cancelFill;
 
-static void FloodFill2(int x, int y, Direction direction)
+static void FloodFill(int x, int y, Direction direction)
 {
     if ( x < 0 || x >= blockMapWidth || y < 0 || y >= blockMapHeight )
     {
         fprintf(stderr, "Fill point out of bounds! (%d, %d)\n", x, y);
+        cancelFill = true;
+        DeselectAllObjects();
         return;
     }
 
     Block * block = BLOCK(x, y);
 
-    if ( block->skip )
+    if ( cancelFill || block->flags & SKIP || block->flags & VISITED )
         return;
 
-    if ( block->visited )
-        return;
-
-    switch ( direction )
+    if ( block->lineIndex && direction != NO_DIRECTION )
     {
-        case NO_DIRECTION:
-            break;
-        case NORTH: {
-            if ( block->south )
-                return SelectLine(block->south);
-            else if ( block->southEast )
-                return SelectLine(block->southEast);
-            else if ( block->southWest )
-                return SelectLine(block->southWest);
-            break;
-        }
-        case SOUTH: {
-            if ( block->north )
-                return SelectLine(block->north);
-            else if ( block->northEast )
-                return SelectLine(block->northEast);
-            else if ( block->northWest )
-                return SelectLine(block->northWest);
-            break;
-        }
-        case EAST:
-            if ( block->west )
-                return SelectLine(block->west);
-            else if ( block->northWest )
-                return SelectLine(block->northWest);
-            else if ( block->southWest )
-                return SelectLine(block->southWest);
-            break;
-        case WEST:
-            if ( block->east )
-                return SelectLine(block->east);
-            else if ( block->northEast )
-                return SelectLine(block->northEast);
-            else if ( block->southEast )
-                return SelectLine(block->southEast);
-            break;
+        bool westFront = block->flags & WEST_FRONT;
+        bool southFront = block->flags & SOUTH_FRONT;
+        int index = block->lineIndex;
+
+        if ( direction == EAST )
+            SelectLine(index, westFront ? FRONT_SELECTED : BACK_SELECTED);
+        else if ( direction == WEST )
+            SelectLine(index, westFront ? BACK_SELECTED : FRONT_SELECTED);
+        else if ( direction == NORTH )
+            SelectLine(index, southFront ? FRONT_SELECTED : BACK_SELECTED);
+        else if ( direction == SOUTH )
+            SelectLine(index, southFront ? BACK_SELECTED : FRONT_SELECTED);
+
+        return;
     }
 
-    block->visited = true;
+    block->flags |= VISITED;
 
 #ifdef DRAW_BLOCK_MAP
     DrawPixel(x, y, red);
     Refresh();
 #endif
 
-    FloodFill2(x + 1, y, EAST);
-    FloodFill2(x - 1, y, WEST);
-    FloodFill2(x, y - 1, NORTH);
-    FloodFill2(x, y + 1, SOUTH);
+    FloodFill(x + 1, y, EAST);
+    FloodFill(x - 1, y, WEST);
+    FloodFill(x, y - 1, NORTH);
+    FloodFill(x, y + 1, SOUTH);
 }
 
 void SelectSector(const SDL_Point * point)
@@ -388,6 +284,7 @@ void SelectSector(const SDL_Point * point)
     CreateBlockMap();
     DeselectAllObjects();
 
+    // Convert to block map space and scale.
     int x = (point->x - mapBounds.x) / BLOCK_MAP_RESOLUTION;
     int y = (point->y - mapBounds.y) / BLOCK_MAP_RESOLUTION;
 
@@ -395,9 +292,6 @@ void SelectSector(const SDL_Point * point)
     SDL_SetRenderTarget(bmapRenderer, bmapTexture);
 #endif
 
-    FloodFill2(x, y, NO_DIRECTION);
-
-#ifdef DRAW_BLOCK_MAP
-    SDL_SetRenderTarget(bmapRenderer, NULL);
-#endif
+    cancelFill = false;
+    FloodFill(x, y, NO_DIRECTION);
 }

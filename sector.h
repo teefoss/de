@@ -11,7 +11,7 @@
 #include <stdbool.h>
 #include <SDL2/SDL.h>
 
-#define DRAW_BLOCK_MAP
+//#define DRAW_BLOCK_MAP
 
 #ifdef DRAW_BLOCK_MAP
 extern SDL_Window * bmapWindow;
@@ -21,8 +21,6 @@ extern SDL_Rect bmapLocation;
 extern float bmapScale;
 #endif
 
-void floodFillSector(const SDL_Point * pt);
 void SelectSector(const SDL_Point * point);
-void RenderBlockMap(void);
 
 #endif /* sector_h */
