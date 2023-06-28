@@ -264,12 +264,9 @@ static void DrawLines(void)
         SetRenderDrawColor(&color);
         WorldDrawLine(&clipped1, &clipped2);
 
-        float dx = p2.x - p1.x;
-        float dy = p2.y - p1.y;
-
-        float length = LineLength(l) / 6.0f;
         SDL_Point mid = LineMidpoint(l);
-        SDL_Point normal = { mid.x - dy / length , mid.y + dx / length };
+        SDL_Point normal = LineNormal(l, 6.0f);
+        WorldDrawLine(&mid, &normal);
 
         // DEBUG: draw an 'F' or 'B' to show which side is selected.
 #ifdef DRAW_BLOCK_MAP
@@ -279,8 +276,6 @@ static void DrawLines(void)
             RenderChar(p.x - 4, p.y - 8, l->selected == FRONT_SELECTED ? 'F' : 'B' );
         }
 #endif
-
-        WorldDrawLine(&mid, &normal);
     }
 }
 
