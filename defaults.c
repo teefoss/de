@@ -163,6 +163,7 @@ static void ParseDefaults(FILE * file)
     }
 }
 
+// TODO: Parse line by line, only rewriting defaults present in the file.
 void SaveDefaults(const char * fileName)
 {
     FILE * file = fopen(fileName, "w");

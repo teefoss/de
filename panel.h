@@ -18,6 +18,7 @@
 #define MAX_PANELS 10
 #define MAX_TEXT 256
 #define PANEL_SCREEN_MARGIN 16
+#define PALETTE_ITEM_MARGIN 16
 
 #define SELECTION_BOX_MARGIN 5
 #define SELECTION_BOX_THICKNESS 2
@@ -73,6 +74,7 @@ typedef struct panel
     // over an item when clicking.
     int mouseItem;
     SDL_Point mouseLocation; // Relative to the panel origin.
+    SDL_Point textLocation; // Mouse location in text console coordinates.
 
     // The allocated "console" buffer and the SDL_Texture that displays it.
     SDL_Texture * texture;
@@ -123,6 +125,7 @@ SDL_Rect PanelRenderLocation(const Panel * panel);
 void SetPanelRenderColor(int index);
 void RenderMark(const PanelItem * item, int value);
 void RenderPanelTextInput(const Panel * panel);
+bool ShouldRenderInactiveTextField(const Panel * panel, int itemIndex);
 
 /// Caller should fill panel->text prior to calling.
 void StartTextEditing(Panel * panel, int itemIndex, void * value, int type);
@@ -133,5 +136,26 @@ int GetPanelStackPosition(const Panel * panel);
 bool IsMouseActionEvent(const SDL_Event * event, const Panel * panel);
 bool IsActionEvent(const SDL_Event * event, const Panel * panel);
 void UpdatePanelMouse(const SDL_Point * windowMouse);
+
+#pragma mark - SCROLLBAR
+
+typedef struct {
+    enum { SCROLLBAR_HORIZONTAL, SCROLLBAR_VERTICAL } type;
+    int location; // The row or col of the scroll bar.
+
+    // The span of the scroll bar. (x if horizontal, y if vertical)
+    int max;
+    int min;
+
+    bool isDragging;
+
+    int scrollPosition;
+    int maxScrollPosition;
+} Scrollbar;
+
+/// x, y is (usually) the click point in console coordinates
+/// - returns: the position or -1 if x, y is outside the scrollbar.
+int GetPositionInScrollbar(const Scrollbar * scrollbar, int x, int y);
+void ScrollToPosition(Scrollbar * scrollbar, int position);
 
 #endif /* panel_h */

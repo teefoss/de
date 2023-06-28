@@ -244,6 +244,9 @@ void RenderBar(const Panel * panel, const PanelItem * item, int color)
 
 void RenderPanelSelection(const Panel * panel)
 {
+    if ( panel->items == NULL )
+        return;
+
     SDL_Rect oldViewport;
     SDL_RenderGetViewport(renderer, &oldViewport); // Save current viewport.
     SDL_Rect renderLocation = PanelRenderLocation(panel);
@@ -266,6 +269,11 @@ void RenderPanelTextInput(const Panel * panel)
 
     if ( SDL_GetTicks() % 600 < 300 )
         PANEL_RENDER_STRING(x + panel->cursor, y, "_");
+}
+
+bool ShouldRenderInactiveTextField(const Panel * panel, int itemIndex)
+{
+    return !panel->isTextEditing || (panel->isTextEditing && panel->textItem != itemIndex);
 }
 
 void RenderPanel(const Panel * panel)
@@ -493,30 +501,26 @@ void UpdatePanelMouse(const SDL_Point * windowMouse)
             panel->mouseLocation.y = windowMouse->y - panel->location.y;
 
             // Mouse text col/row in panel.
-            int cx = (windowMouse->x - rect.x) / FONT_WIDTH;
-            int cy = (windowMouse->y - rect.y) / FONT_HEIGHT;
+            panel->textLocation.x = (windowMouse->x - rect.x) / FONT_WIDTH;
+            panel->textLocation.y = (windowMouse->y - rect.y) / FONT_HEIGHT;
 
             for ( int i = 0; i < panel->numItems; i++ )
             {
                 PanelItem * item = &panel->items[i];
 
-                if ( cy == item->y )
+                if (   panel->textLocation.y == item->y
+                    && panel->textLocation.x >= item->x
+                    && panel->textLocation.x < item->x + item->width )
                 {
-                    for ( int x = item->x; x < item->x + item->width; x++ )
-                    {
-                        if ( cx == x )
-                        {
-                            panel->mouseItem = i;
-                            panel->selection = i;
-                        }
-                    }
+                    panel->mouseItem = i;
+                    panel->selection = i;
                 }
 
                 if ( item->hasMouseRect
-                    && cx >= item->mouseX1
-                    && cx <= item->mouseX2
-                    && cy >= item->mouseY1
-                    && cy <= item->mouseY2 )
+                    && panel->textLocation.x >= item->mouseX1
+                    && panel->textLocation.x <= item->mouseX2
+                    && panel->textLocation.y >= item->mouseY1
+                    && panel->textLocation.y <= item->mouseY2 )
                 {
                     panel->mouseItem = i;
                     panel->selection = i;
@@ -525,4 +529,38 @@ void UpdatePanelMouse(const SDL_Point * windowMouse)
         }
     }
 
+}
+
+int GetPositionInScrollbar(const Scrollbar * scrollbar, int x, int y)
+{
+    bool aligned;
+    bool inside;
+
+    if ( scrollbar->type == SCROLLBAR_VERTICAL )
+    {
+        aligned = x == scrollbar->location;
+        inside = y >= scrollbar->min && y <= scrollbar->max;
+
+        if ( aligned && inside )
+            return y - scrollbar->min;
+    }
+    else
+    {
+        aligned = y == scrollbar->location;
+        inside = x >= scrollbar->min && x <= scrollbar->max;
+
+        if ( aligned && inside )
+            return x - scrollbar->min;
+    }
+
+    return -1;
+}
+
+void ScrollToPosition(Scrollbar * scrollbar, int position)
+{
+    int height = scrollbar->max - scrollbar->min;
+    float percent = (float)(position - scrollbar->min) / height;
+    scrollbar->scrollPosition = scrollbar->maxScrollPosition * percent;
+
+    CLAMP(scrollbar->scrollPosition, 0, scrollbar->maxScrollPosition);
 }

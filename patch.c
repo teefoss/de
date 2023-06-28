@@ -15,7 +15,7 @@
 
 static SDL_Color playPalette[256];
 static Array /* Patch */ * patches;
-Array /* Texture */ * resourceTextures;
+Array /* Texture */ * resourceTextures; // from the resourceWAD
 //static Array /* Patch */ * sprites;
 
 void FreePatchesAndTextures(void)
@@ -29,7 +29,7 @@ void FreePatchesAndTextures(void)
         SDL_DestroyTexture(texture->texture);
 }
 
-void InitPlayPalette(const Wad * wad)
+void GetPlayPalette(const Wad * wad, SDL_Color out[256])
 {
     u8 * palLBM = GetLumpWithName(wad, "playpal");
 
@@ -43,10 +43,10 @@ void InitPlayPalette(const Wad * wad)
 
     for ( int i = 0; i < 256; i++ )
     {
-        playPalette[i].r = *component++;
-        playPalette[i].g = *component++;
-        playPalette[i].b = *component++;
-        playPalette[i].a = 255;
+        out[i].r = *component++;
+        out[i].g = *component++;
+        out[i].b = *component++;
+        out[i].a = 255;
     }
 
     free(palLBM);
@@ -117,6 +117,8 @@ void LoadAllPatches(const Wad * wad)
     int startMS = SDL_GetTicks();
 
     patches = NewArray(0, sizeof(Patch), 1);
+
+    GetPlayPalette(wad, playPalette);
 
     int section = 1;
     int count = 0;

@@ -19,6 +19,8 @@
 #include "patch.h"
 #include "defaults.h"
 #include "sector.h"
+#include "sector_panel.h"
+#include "flat.h"
 
 #include <stdbool.h>
 #include <limits.h>
@@ -371,7 +373,8 @@ void SelectObject(bool openPanel)
 
     if ( openPanel )
     {
-        SelectSector(&worldMouse);
+        if ( SelectSector(&worldMouse) )
+            OpenSectorPanel();
     }
     else
     {
@@ -528,7 +531,7 @@ void ManualScrollView(float dt)
         || keys[SDL_SCANCODE_S]
         || keys[SDL_SCANCODE_D] )
     {
-        scrollSpeed += 60.0f * dt;
+        scrollSpeed += (60.0f / scale) * dt;
         float max = (600.0f / scale) * dt;
         if ( scrollSpeed > max )
             scrollSpeed = max;
@@ -570,18 +573,7 @@ void RenderEditor(void)
         DrawSelectionBox(&selectionBox);
 
     for ( int i = 0; i <= topPanel; i++ )
-//        openPanels[i]->render();
         RenderPanel(openPanels[i]);
-
-//    PrintString(0, 0, "World Point: %d, %d", worldMouse.x, worldMouse.y);
-//    RenderTexture("SKINMET1", 0, 0);
-
-//    if ( showBlockMap )
-//    {
-//        SDL_Rect dest = { 0 };
-//        SDL_QueryTexture(bmapTexture, NULL, NULL, &dest.w, &dest.h);
-//        SDL_RenderCopy(renderer, bmapTexture, NULL, &dest);
-//    }
 
     SDL_RenderPresent(renderer);
 }
@@ -589,6 +581,7 @@ void RenderEditor(void)
 void EditorLoop(void)
 {
     keys = SDL_GetKeyboardState(NULL);
+    mods = SDL_GetModState();
 
     int refreshRate = GetRefreshRate();
     printf("refresh rate: %d Hz\n", refreshRate);
@@ -615,15 +608,12 @@ void EditorLoop(void)
 
         if ( elapsed < frameMsec )
         {
-            SDL_Delay(1);
-            continue;
+            SDL_Delay(frameMsec - elapsed);
+//            continue;
         }
 
         last = current;
 #endif
-
-        mods = SDL_GetModState();
-
         mouseButtons = SDL_GetMouseState(&windowMouse.x, &windowMouse.y);
         worldMouse = WindowToWorld(&windowMouse);
 
@@ -675,6 +665,7 @@ void EditorLoop(void)
 #ifdef DRAW_BLOCK_MAP
         if ( bmapRenderer )
         {
+            SDL_SetRenderTarget(bmapRenderer, NULL);
             SDL_SetRenderDrawColor(bmapRenderer, 128, 128, 128, 255);
             SDL_RenderClear(bmapRenderer);
 

@@ -18,6 +18,8 @@
 #include "progress_panel.h"
 #include "texture_panel.h"
 #include "defaults.h"
+#include "sector_panel.h"
+#include "flat.h"
 
 #include <SDL2/SDL.h>
 #include <string.h>
@@ -29,8 +31,10 @@
 // FIXME: When getting the mouse item for panels, stop at the first one hit.
 // FIXME: Clicking on a panel lower in the stack should close all upper panels.
 // FIXME: closing texture pal should clear filters.
+// FIXME: texture palette items location messed up.
 
 // TODO List
+// TODO: line.c
 // TODO: 'Remove Texture' button in texture palette
 // TODO: 'New Texture' button in texture palette
 // TODO: 'Edit Texture' button in texture palette
@@ -41,6 +45,7 @@
 // TODO: player starts sprites: use correct palette colors
 // TODO: texture palette wide enough for 4 x 64 width textures, and resize vert.
 // TODO: change image well to solid background
+// TODO: refactor scroll bar: add 'scroll amount' and 'max scroll'
 
 // Nice-to-have TODO list
 // TODO: animated sprites?
@@ -337,14 +342,18 @@ int main(int argc, char ** argv)
                 break;
         }
 
+        // TODO: Lots of thing can and should be in edit.c
+
+        InitLineCross();
         InitMapView();
         LoadProgressPanel();
-        InitPlayPalette(resourceWad);
         LoadAllPatches(resourceWad);
         LoadAllTextures(resourceWad);
         LoadTexturePanel();
         LoadThingPanel();
         LoadThingDefinitions(); // Needs thing palette to be loaded first.
+        LoadFlats(resourceWad);
+        LoadSectorPanel();
 
         EditorLoop();
     }

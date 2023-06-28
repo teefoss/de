@@ -21,6 +21,6 @@ extern SDL_Rect bmapLocation;
 extern float bmapScale;
 #endif
 
-void SelectSector(const SDL_Point * point);
+bool SelectSector(const SDL_Point * point);
 
 #endif /* sector_h */

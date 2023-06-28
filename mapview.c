@@ -96,7 +96,8 @@ static void WorldDrawLine(const SDL_Point * p1, const SDL_Point * p2)
     SDL_Point c1 = WorldToWindow(p1);
     SDL_Point c2 = WorldToWindow(p2);
 
-    draw_line_antialias(c1.x, c1.y, c2.x, c2.y);
+//    draw_line_antialias(c1.x, c1.y, c2.x, c2.y);
+    SDL_RenderDrawLine(renderer, c1.x, c1.y, c2.x, c2.y);
 }
 
 /// Draw a filled rect, accounting for view origin and scale.
@@ -187,7 +188,7 @@ static void DrawGrid(void)
     }
 }
 
-static void DrawPoints(void)
+static void DrawVertices(void)
 {
     const int pointSize = VERTEX_DRAW_SIZE;
 
@@ -201,8 +202,8 @@ static void DrawPoints(void)
         .h = pointSize
     };
 
-    Vertex * v = map.vertices->data;
-    for ( int i = 0; i < map.vertices->count; i++, v++ )
+    Vertex * v;
+    FOR_EACH(v, map.vertices)
     {
         if ( v->removed ) continue;
         
@@ -234,8 +235,20 @@ static void DrawLines(void)
     Vertex * vertices = map.vertices->data;
     Line * l = map.lines->data;
     for ( int i = 0; i < map.lines->count; i++, l++ ) {
+
         SDL_Point p1 = vertices[l->v1].origin;
         SDL_Point p2 = vertices[l->v2].origin;
+
+        SDL_Point clipped1 = p1;
+        SDL_Point clipped2 = p2;
+
+        Visibility visibility = LineVisibility(i);
+
+        if ( visibility == VISIBILITY_NONE )
+            continue;
+
+        if ( visibility == VISIBILITY_PARTIAL )
+            ClipLine(i, &clipped1, &clipped2);
 
         SDL_Color color;
 
@@ -249,7 +262,7 @@ static void DrawLines(void)
             color = DefaultColor(LINE_ONE_SIDED);
 
         SetRenderDrawColor(&color);
-        WorldDrawLine(&p1, &p2);
+        WorldDrawLine(&clipped1, &clipped2);
 
         float dx = p2.x - p1.x;
         float dy = p2.y - p1.y;
@@ -313,7 +326,7 @@ void DrawMap(void)
 {
     DrawGrid();
     DrawLines();
-    DrawPoints();
+    DrawVertices();
     DrawThings();
 
     // Debug, show click rect.

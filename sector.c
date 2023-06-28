@@ -10,6 +10,35 @@
 #include "doomdata.h"
 #include <errno.h>
 
+#define BLOCK_MAP_RESOLUTION 4 // How much the block map is scaled down by.
+#define VISITED 0x8000 // Visited during flood fill.
+
+// Flood Fill Direction
+typedef enum {
+    NO_DIRECTION, // Just used for the initial click point.
+    NORTH,
+    EAST,
+    SOUTH,
+    WEST
+} Direction;
+
+// Highly tweaked and simplified version of DoomEd's sector flood fill.
+// --------------------------------------------------------------------
+// - All lines (their indices) are drawn to the block map (Bresenham).
+// - The problem of multiple lines sharing a single vertex is solved by
+//   simply skipping them.
+// - To determine which side to select, track the direction of travel during
+//   flood fill then simply compare points' coordinates:
+//      x1 < x2 ? The south-facing side is the front
+//      y1 < y2 ? The west-facing side is the front
+
+static SDL_Rect mapBounds;
+static u16 * blockMap;
+static int blockMapWidth;
+static int blockMapHeight;
+static size_t allocated;
+
+
 #ifdef DRAW_BLOCK_MAP
 SDL_Window * bmapWindow;
 SDL_Renderer * bmapRenderer;
@@ -41,31 +70,6 @@ static void Refresh(void)
 #endif
 
 
-#define BLOCK_MAP_RESOLUTION 8
-#define BACK_SIDE_FLAG 0x8000
-#define BLOCK(x, y) (blockMap + y * blockMapWidth + x)
-
-typedef enum { NO_DIRECTION, NORTH, EAST, SOUTH, WEST } Direction;
-
-// Block Flags
-#define SOUTH_FRONT     1 // north-facing side is the front
-#define WEST_FRONT      2 // west-facing side is the front
-#define VISITED         4 // visited during flood fill
-#define SKIP            8 // ignore this block (vertexes)
-
-typedef struct
-{
-    u16 lineIndex;
-    u8 flags;
-} Block;
-
-static SDL_Rect mapBounds;
-static Block * blockMap;
-static int blockMapWidth;
-static int blockMapHeight;
-static size_t allocated;
-
-
 static void DrawBlockMapLine(int lineIndex)
 {
     Line * line = Get(map.lines, lineIndex);
@@ -75,14 +79,6 @@ static void DrawBlockMapLine(int lineIndex)
     int y1 = (vertices[line->v1].origin.y - mapBounds.y) / BLOCK_MAP_RESOLUTION;
     int x2 = (vertices[line->v2].origin.x - mapBounds.x) / BLOCK_MAP_RESOLUTION;
     int y2 = (vertices[line->v2].origin.y - mapBounds.y) / BLOCK_MAP_RESOLUTION;
-
-    u8 frontFlags = 0;
-
-    if ( x1 < x2 )
-        frontFlags |= SOUTH_FRONT;
-
-    if ( y1 < y2 )
-        frontFlags |= WEST_FRONT;
 
     int dx = abs(x2 - x1);
     int dy = -abs(y2 - y1);
@@ -94,26 +90,18 @@ static void DrawBlockMapLine(int lineIndex)
     int x = x1;
     int y = y1;
 
-    // The starting block is a vertex, flag as skip.
-    BLOCK(x1, y1)->flags |= SKIP;
-
     while ( x != x2 || y != y2 )
     {
-        Block * block = BLOCK((int)x, (int)y);
-        block->lineIndex = lineIndex + 1;
-        block->flags |= frontFlags;
+        // Add one to the index so that blocks with '0' can indicate
+        // no line is present.
+        blockMap[y * blockMapWidth + x] = lineIndex + 1;
 
 #ifdef DRAW_BLOCK_MAP
-        if ( block->flags & SKIP )
-            SDL_SetRenderDrawColor(bmapRenderer, 255, 0, 255, 255);
-        else
-        {
-            SDL_SetRenderDrawColor(bmapRenderer,
-                                   0,
-                                   (frontFlags & WEST_FRONT) ? 255 : 0,
-                                   (frontFlags & SOUTH_FRONT) ? 255 : 0,
-                                   255);
-        }
+        SDL_SetRenderDrawColor(bmapRenderer,
+                               0,
+                               y1 < y2 ? 255 : 0, // west-facing front
+                               x1 < x2 ? 255 : 0, // south-facing front
+                               255);
         SDL_RenderDrawPoint(bmapRenderer, x, y);
 #endif
 
@@ -132,15 +120,17 @@ static void DrawBlockMapLine(int lineIndex)
         }
     }
 
-    // The ending block is a vertex, flag as skip.
-    BLOCK(x2, y2)->flags |= SKIP;
+    // Skip all vertices.
+    blockMap[y1 * blockMapWidth + x1] |= VISITED;
+    blockMap[y2 * blockMapWidth + x2] |= VISITED;
 
 #ifdef DRAW_BLOCK_MAP
+    DrawPixel(x1, y1, magenta);
     DrawPixel(x2, y2, magenta);
 #endif
 }
 
-#if DRAW_BLOCK_MAP
+#ifdef DRAW_BLOCK_MAP
 static void InitBlockMapWindow(void)
 {
     if ( bmapWindow == NULL )
@@ -219,6 +209,8 @@ static void CreateBlockMap(void)
     }
 }
 
+bool didSelect; // Track whether any lines were selected during fill.
+
 static void SelectLine(int index, int selectedSide)
 {
     Line * lines = map.lines->data;
@@ -228,13 +220,19 @@ static void SelectLine(int index, int selectedSide)
     if ( selectedSide == BACK_SELECTED && !(lines[index].flags & ML_TWOSIDED) )
         return;
 
+    didSelect = true;
     lines[index].selected = selectedSide;
 }
 
+// Early exit, if trying to fill outside map bounds (someone tried to select
+// outside of all sectors).
 bool cancelFill;
 
 static void FloodFill(int x, int y, Direction direction)
 {
+    if ( cancelFill )
+        return;
+
     if ( x < 0 || x >= blockMapWidth || y < 0 || y >= blockMapHeight )
     {
         fprintf(stderr, "Fill point out of bounds! (%d, %d)\n", x, y);
@@ -243,16 +241,18 @@ static void FloodFill(int x, int y, Direction direction)
         return;
     }
 
-    Block * block = BLOCK(x, y);
-
-    if ( cancelFill || block->flags & SKIP || block->flags & VISITED )
+    u16 * block = &blockMap[y * blockMapWidth + x];
+    if ( *block & VISITED )
         return;
 
-    if ( block->lineIndex && direction != NO_DIRECTION )
+    int index = *block & ~VISITED;
+
+    if ( index && direction != NO_DIRECTION )
     {
-        bool westFront = block->flags & WEST_FRONT;
-        bool southFront = block->flags & SOUTH_FRONT;
-        int index = block->lineIndex;
+        SDL_Point p1, p2;
+        GetLinePoints(index - 1, &p1, &p2);
+        bool westFront = p1.y < p2.y;
+        bool southFront = p1.x < p2.x;
 
         if ( direction == EAST )
             SelectLine(index, westFront ? FRONT_SELECTED : BACK_SELECTED);
@@ -266,7 +266,7 @@ static void FloodFill(int x, int y, Direction direction)
         return;
     }
 
-    block->flags |= VISITED;
+    *block |= VISITED;
 
 #ifdef DRAW_BLOCK_MAP
     DrawPixel(x, y, red);
@@ -279,7 +279,8 @@ static void FloodFill(int x, int y, Direction direction)
     FloodFill(x, y + 1, SOUTH);
 }
 
-void SelectSector(const SDL_Point * point)
+// Returns true if at least one line was selected.
+bool SelectSector(const SDL_Point * point)
 {
     CreateBlockMap();
     DeselectAllObjects();
@@ -288,10 +289,11 @@ void SelectSector(const SDL_Point * point)
     int x = (point->x - mapBounds.x) / BLOCK_MAP_RESOLUTION;
     int y = (point->y - mapBounds.y) / BLOCK_MAP_RESOLUTION;
 
-#ifdef DRAW_BLOCK_MAP
-    SDL_SetRenderTarget(bmapRenderer, bmapTexture);
-#endif
-
     cancelFill = false;
+    didSelect = false;
     FloodFill(x, y, NO_DIRECTION);
+
+    return didSelect;
 }
+
+

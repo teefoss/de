@@ -37,7 +37,7 @@ typedef struct
 
 extern Array * resourceTextures;
 
-void InitPlayPalette(const Wad * wad);
+void GetPlayPalette(const Wad * wad, SDL_Color out[256]);
 Patch LoadPatch(const Wad * wad, int lumpIndex);
 void LoadAllPatches(const Wad * wad);
 void LoadAllTextures(const Wad * wad);

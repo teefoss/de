@@ -39,4 +39,25 @@ SDL_Rect FitAndCenterRect(const SDL_Rect * rect,
                           const SDL_Rect * container,
                           int margin);
 
+/// Clip line.
+bool LiangBarsky(double edgeLeft,
+                 double edgeRight,
+                 double edgeBottom,
+                 double edgeTop,
+                 double x0src,
+                 double y0src,
+                 double x1src,
+                 double y1src,
+                 double * x0clip,
+                 double * y0clip,
+                 double * x1clip,
+                 double * y1clip);
+
+bool CohenSutherlandLineClip(const SDL_Rect * rect,
+                             double * x0,
+                             double * y0,
+                             double * x1,
+                             double * y1);
+
+
 #endif /* geometry_h */

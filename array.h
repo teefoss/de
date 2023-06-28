@@ -9,6 +9,16 @@
 
 #include <stdlib.h>
 
+//
+// Declare the iterator just prior to use. e.g.:
+// Point * point
+// FOR_EACH(point, points) { ... }
+//
+#define FOR_EACH(it, arr) \
+for(it = arr->data; \
+    it < ((typeof(it))arr->data) + arr->count; \
+    it++)
+
 #define ARRAY_DOUBLE (-1)
 
 /// Dynamic Array.

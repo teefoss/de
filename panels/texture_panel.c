@@ -12,7 +12,6 @@
 #include "text.h"
 
 #define PALETTE_WIDTH 272
-#define PALETTE_MARGIN 16
 #define SCROLL_BAR_COL 40
 #define SCROLL_BAR_TOP 2
 #define SCROLL_BAR_BOTTOM 36
@@ -21,7 +20,7 @@ Panel texturePanel;
 SDL_Rect paletteRect; // In window space.
 int paletteTopY = 0;
 int maxPaletteTopY; // Calculated during init.
-int cx, cy;
+int cx, cy; // TODO: move to panel
 bool draggingScrollHandle;
 char * currentTexture;
 
@@ -63,7 +62,7 @@ static void ScrollToSelected(void)
         for ( int i = 0; i < resourceTextures->count; i++, texture++ )
         {
             if ( strcmp(texture->name, currentTexture) == 0 )
-                paletteTopY = texture->rect.y - PALETTE_MARGIN;
+                paletteTopY = texture->rect.y - PALETTE_ITEM_MARGIN;
         }
     }
 }
@@ -93,8 +92,8 @@ static bool IsFilteredOut(Texture * texture)
 static void UpdatePaletteTextureLocations(void)
 {
     Texture * texture = resourceTextures->data;
-    int x = PALETTE_MARGIN;
-    int y = PALETTE_MARGIN;
+    int x = PALETTE_ITEM_MARGIN;
+    int y = PALETTE_ITEM_MARGIN;
     int maxRowHeight = 0;
     int maxTextureY = 0;
 
@@ -103,10 +102,10 @@ static void UpdatePaletteTextureLocations(void)
         if ( IsFilteredOut(texture) )
             continue;
 
-        if ( x + texture->rect.w > paletteRect.w - PALETTE_MARGIN )
+        if ( x + texture->rect.w > paletteRect.w - PALETTE_ITEM_MARGIN )
         {
-            x = PALETTE_MARGIN;
-            y += maxRowHeight + PALETTE_MARGIN;
+            x = PALETTE_ITEM_MARGIN;
+            y += maxRowHeight + PALETTE_ITEM_MARGIN;
             maxRowHeight = 0;
         }
 
@@ -116,12 +115,12 @@ static void UpdatePaletteTextureLocations(void)
         texture->rect.x = x;
         texture->rect.y = y;
 
-        x += texture->rect.w + PALETTE_MARGIN;
+        x += texture->rect.w + PALETTE_ITEM_MARGIN;
 
         maxTextureY = texture->rect.y + maxRowHeight;
     }
 
-    maxPaletteTopY = maxTextureY + PALETTE_MARGIN - paletteRect.h;
+    maxPaletteTopY = maxTextureY + PALETTE_ITEM_MARGIN - paletteRect.h;
 //    printf("max palette top y: %d\n", maxPaletteTopY);
 }
 
@@ -302,11 +301,6 @@ void RenderTexturePanel(void)
 
     SDL_RenderSetViewport(renderer, &texturePanel.location);
 
-    if ( texturePanel.isTextEditing )
-        RenderPanelTextInput(&texturePanel);
-    else
-        RenderPanelSelection(&texturePanel);
-
     if ( !texturePanel.isTextEditing || (texturePanel.isTextEditing && texturePanel.textItem != TP_WIDTH) )
     {
         if ( filter.width <= 0 )
@@ -341,14 +335,13 @@ void RenderTexturePanel(void)
         PANEL_RENDER_STRING(items[TP_NAME].x, items[TP_NAME].y, "%s", filter.name);
     }
 
-    SetPanelRenderColor(15);
-
     // Scroll bar control
 
     int x = SCROLL_BAR_COL * FONT_WIDTH;
     float percent = (float)paletteTopY / maxPaletteTopY;
     int barHeight = (SCROLL_BAR_BOTTOM - SCROLL_BAR_TOP) * FONT_HEIGHT;
     int y = (SCROLL_BAR_TOP * FONT_HEIGHT) + barHeight * percent;
+    SetPanelRenderColor(15);
     RenderChar(x, y, 8);
 
     // The border around the texture palette (in window space)
