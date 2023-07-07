@@ -95,153 +95,6 @@ char * GetLumpNameFromArg(char ** arg)
     return lumpName;
 }
 
-#if 0 // Abandon and redo!
-int DoSubprogramWad(int argc, char ** argv)
-{
-    if ( argc < 2 )
-    {
-        // TODO: error message
-        return EXIT_FAILURE;
-    }
-
-    char * command = argv[1];
-
-    if ( STRNEQ(command, "list", 4) )
-    {
-        if ( argc != 3 )
-        {
-            fprintf(stderr, "usage: de wad list [WAD file](:[lump name])");
-            return EXIT_FAILURE;
-        }
-
-        char * wadPath = argv[2];
-        char * lumpName = GetLumpNameFromArg(&wadPath);
-
-        Wad * wad = OpenWad(wadPath);
-        if ( wad == NULL )
-        {
-            fprintf(stderr, "Error: could not open `%s`\n", wadPath);
-            exit(EXIT_FAILURE);
-        }
-
-        printf("%s\n", wadPath);
-        printf("type: %s\n", GetWadType(wad));
-        printf("lump count: %d\n", wad->directory->count);
-
-        if ( lumpName )
-            printf("lumps named '%s':\n", lumpName);
-        else
-            printf("lumps:\n");
-
-        for ( int i = 0; i < wad->directory->count; i++ )
-        {
-            LumpInfo * info = Get(wad->directory, i);
-            char name[9] = { 0 };
-            strncpy(name, info->name, 8);
-
-            if ( lumpName && !STRNEQ(lumpName, name, 8) )
-                continue;
-
-            printf(" %d: %s (%d bytes)\n", i, name, info->size);
-        }
-
-        exit(EXIT_SUCCESS);
-    }
-    else if ( STRNEQ(command, "copy", 4) )
-    {
-        // de wad   copy (--map) [source WAD]:[lump name] [destination WAD]
-
-        bool copyMap;
-        char * sourcePath;
-        char * destinationPath;
-
-        if ( STRNEQ(argv[2], "--map", 5) ) {
-            copyMap = true;
-            sourcePath = argv[3];
-            destinationPath = argv[4];
-        } else {
-            copyMap = false;
-            sourcePath = argv[2];
-            destinationPath = argv[3];
-        }
-
-        char * lumpName = GetLumpNameFromArg(&sourcePath);
-        if ( lumpName == NULL ) {
-            fprintf(stderr, "Error: expected lump name to copy\n"
-                    "usage: de wad copy [source wad file]:[lump name] [destination wad file]\n");
-            exit(EXIT_FAILURE);
-        }
-
-        Wad * source = OpenWad(sourcePath);
-        if ( source == NULL )
-        {
-            fprintf(stderr, "Error: could not open source WAD '%s'\n", sourcePath);
-            exit(EXIT_FAILURE);
-        }
-
-        Wad * destination = OpenWad(destinationPath);
-        if ( destination == NULL )
-        {
-            printf("Creating copy destination '%s'\n", destinationPath);
-
-            destination = CreateWad(destinationPath);
-            if ( destination == NULL )
-            {
-                fprintf(stderr, "Error: could not create '%s'\n", destinationPath);
-                exit(EXIT_FAILURE);
-            }
-        }
-
-        if ( copyMap )
-        {
-            int lumpIndex = GetLumpIndexFromName(source, lumpName);
-
-            for ( int i = lumpIndex; i < lumpIndex + ML_COUNT; i++ )
-            {
-                void * lump = GetLumpWithIndex(source, i);
-                u32 size = GetLumpSize(source, i);
-                const char * name = GetLumpName(source, i);
-
-                AddLump(destination, name, lump, size);
-
-                free(lump);
-            }
-        }
-        else
-        {
-            int i = GetLumpIndexFromName(source, lumpName);
-            void * lump = GetLumpWithName(source, lumpName);
-            AddLump(destination, lumpName, lump, GetLumpSize(source, i));
-            free(lump);
-        }
-
-        printf(copyMap
-               ? "Copied map '%s' lumps from '%s' to '%s'\n"
-               : "Copied lump '%s' from '%s' to '%s'\n",
-               lumpName,
-               sourcePath,
-               destinationPath);
-
-        exit(EXIT_SUCCESS);
-    } else if ( STRNEQ(command, "remove", 6) ) {
-        char * lumpName = GetLumpNameFromArg(&argv[2]);
-
-        Wad * wad = OpenWad(argv[2]);
-        if ( wad == NULL ) {
-            fprintf(stderr, "Error: could not open '%s'\n", argv[2]);
-            exit(EXIT_FAILURE);
-        }
-
-        RemoveLump(wad, lumpName);
-        printf("Removed lump '%s' from '%s'.\n", lumpName, argv[2]);
-
-        FreeWad(wad);
-
-        return EXIT_SUCCESS;
-    }
-}
-#endif
-
 /// Set `editor.game` according to the name of the IWAD.
 void DetermineGame(char * iwadName)
 {
@@ -400,10 +253,8 @@ int RunEditor(const char * wadPath, const char * mapName)
     {
         printf("Creating %s...\n", wadPath);
         editor.pwad = CreateWad(wadPath);
-        if ( editor.pwad == NULL ) {
-            fprintf(stderr, "Error: could not create '%s'\n", wadPath);
+        if ( editor.pwad == NULL )
             return EXIT_FAILURE;
-        }
     }
 
     char * iwadPath = GetOptionArg("--iwad");
@@ -437,14 +288,11 @@ int RunEditor(const char * wadPath, const char * mapName)
     return EXIT_SUCCESS;
 }
 
-void CopyLump(const Wad * destination, const Wad * source, int lumpIndex)
+void CopyLump(Wad * destination, const Wad * source, int lumpIndex)
 {
-    void * data = GetLumpWithIndex(source, lumpIndex);
-    u32 size = GetLumpSize(source, lumpIndex);
-    const char * name = GetLumpName(source, lumpIndex);
-
-    AddLump(destination, name, data, size);
-    free(data);
+    Lump * lump = GetLump(source, lumpIndex);
+    AddLump(destination, lump->name, lump->data, lump->size);
+    SaveWAD(destination);
 }
 
 int main(int argc, char ** argv)
@@ -470,6 +318,7 @@ int main(int argc, char ** argv)
     {
         Wad * wad = OpenWad(wadPath);
         ListDirectory(wad);
+        FreeWad(wad);
     }
 
     char * lumpToRemove = GetOptionArg2("--remove-number", "-rm-num");
@@ -477,34 +326,35 @@ int main(int argc, char ** argv)
     {
         Wad * wad = OpenWad(wadPath);
         RemoveLumpNumber(wad, atoi(lumpToRemove));
+        SaveWAD(wad);
+        FreeWad(wad);
     }
 
     lumpToRemove = GetOptionArg("--remove");
     if ( lumpToRemove )
     {
         Wad * wad = OpenWad(wadPath);
+
         if ( GetArg("--map") != -1 )
             RemoveMap(wad, lumpToRemove);
         else
             RemoveLumpNamed(wad, lumpToRemove);
+
+        SaveWAD(wad);
+        FreeWad(wad);
     }
 
     char * copySource = GetOptionArg2("--copy", "-cp");
     if ( copySource )
     {
-        Wad * destinationWAD = OpenWad(wadPath);
-        if ( destinationWAD == NULL )
-            destinationWAD = CreateWad(wadPath);
+        Wad * destinationWAD = OpenOrCreateWad(wadPath);
 
         char * lumpName = GetLumpNameFromArg(&copySource);
         Wad * sourceWAD = OpenWad(copySource);
         if ( sourceWAD == NULL )
-        {
-            printf("Error: copy source WAD '%s' not found!\n", copySource);
             return EXIT_FAILURE;
-        }
 
-        int index = GetLumpIndexFromName(sourceWAD, lumpName);
+        int index = GetIndexOfLumpNamed(sourceWAD, lumpName);
 
         if ( GetArg2("--map", "-m") != -1 )
         {
@@ -519,7 +369,9 @@ int main(int argc, char ** argv)
             printf("Copied lump '%s' to '%s'\n", lumpName, wadPath);
         }
 
-        WriteDirectory(destinationWAD);
+        SaveWAD(destinationWAD);
+        FreeWad(sourceWAD);
+        FreeWad(destinationWAD);
     }
 
     char * mapName = GetOptionArg2("--edit", "-e");

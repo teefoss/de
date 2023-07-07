@@ -24,10 +24,9 @@ void LoadFlat(Wad * wad, int lumpIndex, SDL_Color * playpal)
     if ( flat.texture == NULL )
         fprintf(stderr, "Could not create flat texture! (%s)\n", SDL_GetError());
 
-    const char * name = GetLumpName(wad, lumpIndex);
-    strncpy(flat.name, name, 8);
-
-    u8 * flatData = GetLumpWithIndex(wad, lumpIndex);
+    Lump * lump = GetLump(wad, lumpIndex);
+    strncpy(flat.name, lump->name, 8);
+    u8 * flatData = lump->data;
 
     SDL_SetRenderTarget(renderer, flat.texture);
 
@@ -60,8 +59,8 @@ void LoadFlats(Wad * wad)
         sprintf(startLabel, "F%d_START", set + 1);
         sprintf(endLabel, "F%d_END", set + 1);
 
-        int startIndex = GetLumpIndexFromName(wad, startLabel);
-        int endIndex = GetLumpIndexFromName(wad, endLabel);
+        int startIndex = GetIndexOfLumpNamed(wad, startLabel);
+        int endIndex = GetIndexOfLumpNamed(wad, endLabel);
 
         if ( startIndex == -1 || endIndex == -1 )
         {

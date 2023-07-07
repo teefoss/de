@@ -9,14 +9,18 @@ bool draw;
 void DoomBSP(void)
 {
     draw = false; // TODO: use a key modifier to show the build process window.
+    bool replace;
 
-    int index = GetLumpIndexFromName(editor.pwad, map.label);
-
-    // If this map already exists in the WAD, it will be replaced.
-    if ( index != -1 )
+    int index = GetIndexOfLumpNamed(editor.pwad, map.label);
+    if ( -index == -1 )
     {
-        // TODO: find and alternative to deleting the WAD, in case building fails!
-        RemoveMap(editor.pwad, map.label);
+        editor.pwad->position = editor.pwad->lumps->count;
+        replace = false;
+    }
+    else
+    {
+        editor.pwad->position = index;
+        replace = true;
     }
 
     AddLump(editor.pwad, map.label, map.label, 0);
@@ -29,7 +33,14 @@ void DoomBSP(void)
 
 	SaveDoomMap();
 	SaveBlocks();
-    WriteDirectory(editor.pwad);
+
+    if ( replace )
+    {
+        for ( int i = 0; i < ML_COUNT; i++ )
+            RemoveLumpNumber(editor.pwad, editor.pwad->position);
+    }
+
+    SaveWAD(editor.pwad);
 
     printf("Node building complete.\n");
 //    ListDirectory(editor.pwad);

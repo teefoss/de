@@ -64,29 +64,27 @@ SDL_Rect GetMapBounds(void)
     return map.bounds;
 }
 
-void * LoadMapData(const Wad * wad, const char * lumpName, int dataType, int * count)
+/// Don't free the memory returned here, the WAD owns it!
+void * GetMapData(const Wad * wad, int labelIndex, int offset, int * count)
 {
-    int labelIndex = GetLumpIndexFromName(wad, lumpName);
-    int dataIndex = labelIndex + dataType;
-
-    size_t dataSize = 0;
-    switch ( dataType )
-    {
-        case ML_THINGS:   dataSize = sizeof(mapthing_t); break;
-        case ML_LINEDEFS: dataSize = sizeof(maplinedef_t); break;
-        case ML_SIDEDEFS: dataSize = sizeof(mapsidedef_t); break;
-        case ML_VERTEXES: dataSize = sizeof(mapvertex_t); break;
-        case ML_SECTORS:  dataSize = sizeof(mapsector_t); break;
-        default:
-//            ASSERT("Bad map data type!");
-            if ( count ) *count = 0;
-            return NULL;
-    }
+    Lump * lump = GetLump(wad, labelIndex + offset);
 
     if ( count )
-        *count = GetLumpSize(wad, dataIndex) / dataSize;
+    {
+        size_t size = 0;
+        switch ( offset )
+        {
+            case ML_VERTEXES: size = sizeof(mapvertex_t); break;
+            case ML_LINEDEFS: size = sizeof(maplinedef_t); break;
+            case ML_SIDEDEFS: size = sizeof(mapsidedef_t); break;
+            case ML_SECTORS:  size = sizeof(mapsector_t); break;
+            case ML_THINGS:   size = sizeof(mapthing_t); break;
+        }
 
-    return GetLumpWithIndex(wad, dataIndex);
+        *count = lump->size / size;
+    }
+
+    return lump->data;
 }
 
 void CreateMap(const char * label)
@@ -105,8 +103,8 @@ void LoadMap(const Wad * wad, const char * lumpLabel)
 {
     strncpy(map.label, lumpLabel, sizeof(map.label));
 
-    int labelIndex = GetLumpIndexFromName(wad, lumpLabel);
-    if ( labelIndex == -1 )
+    int l = GetIndexOfLumpNamed(wad, lumpLabel);
+    if ( l == -1 )
     {
         fprintf(stderr, "Bad map label '%s'\n", lumpLabel);
         exit(EXIT_FAILURE);
@@ -116,11 +114,11 @@ void LoadMap(const Wad * wad, const char * lumpLabel)
     int numLines = 0;
     int numThings = 0;
 
-    mapvertex_t * vertexData = LoadMapData(wad, lumpLabel, ML_VERTEXES, &numVertices);
-    maplinedef_t * lineData = LoadMapData(wad, lumpLabel, ML_LINEDEFS, &numLines);
-    mapsidedef_t * sidedefData = LoadMapData(wad, lumpLabel, ML_SIDEDEFS, NULL);
-    mapsector_t * sectordefData = LoadMapData(wad, lumpLabel, ML_SECTORS, NULL);
-    mapthing_t * thingData = LoadMapData(wad, lumpLabel, ML_THINGS, &numThings);
+    mapvertex_t * vertexData    = GetMapData(wad, l, ML_VERTEXES, &numVertices);
+    maplinedef_t * lineData     = GetMapData(wad, l, ML_LINEDEFS, &numLines);
+    mapsidedef_t * sidedefData  = GetMapData(wad, l, ML_SIDEDEFS, NULL);
+    mapsector_t * sectordefData = GetMapData(wad, l, ML_SECTORS, NULL);
+    mapthing_t * thingData      = GetMapData(wad, l, ML_THINGS, &numThings);
 
     map.vertices = NewArray(numVertices, sizeof(Vertex), 16);
     map.lines = NewArray(numLines, sizeof(Line), 16);
@@ -216,12 +214,6 @@ void LoadMap(const Wad * wad, const char * lumpLabel)
 
     map.boundsDirty = true;
     GetMapBounds();
-
-    free(sectordefData);
-    free(vertexData);
-    free(lineData);
-    free(sidedefData);
-    free(thingData);
 }
 
 bool ReadLine(FILE * dwd, SDL_Point * p1, SDL_Point *p2, Line * line)

@@ -31,7 +31,7 @@ void FreePatchesAndTextures(void)
 
 void GetPlayPalette(const Wad * wad, SDL_Color out[256])
 {
-    u8 * palLBM = GetLumpWithName(wad, "playpal");
+    u8 * palLBM = GetLumpNamed(wad, "playpal")->data;
 
     if ( palLBM == NULL )
     {
@@ -48,14 +48,14 @@ void GetPlayPalette(const Wad * wad, SDL_Color out[256])
         out[i].b = *component++;
         out[i].a = 255;
     }
-
-    free(palLBM);
 }
 
+// TODO: param should be Lump *
 Patch LoadPatch(const Wad * wad, int lumpIndex)
 {
-    patch_t * patchData = GetLumpWithIndex(wad, lumpIndex);
-    const char * name = GetLumpName(wad, lumpIndex);
+    Lump * lump = GetLump(wad, lumpIndex);
+    patch_t * patchData = lump->data;
+    const char * name = lump->name;
 
     Patch patch;
     patch.rect.w = patchData->width;
@@ -72,7 +72,6 @@ Patch LoadPatch(const Wad * wad, int lumpIndex)
     if ( patch.texture == NULL )
     {
         fprintf(stderr, "Could not create texture for patch '%s'!\n", patch.name);
-        free(patchData);
         return patch;
     }
 
@@ -107,8 +106,6 @@ Patch LoadPatch(const Wad * wad, int lumpIndex)
 
     SDL_SetRenderTarget(renderer, NULL);
 
-    free(patchData);
-
     return patch;
 }
 
@@ -130,8 +127,8 @@ void LoadAllPatches(const Wad * wad)
         snprintf(startLabel, 10, "P%d_START", section);
         snprintf(endLabel, 10, "P%d_END", section);
 
-        int start = GetLumpIndexFromName(wad, startLabel);
-        int end = GetLumpIndexFromName(wad, endLabel);
+        int start = GetIndexOfLumpNamed(wad, startLabel);
+        int end = GetIndexOfLumpNamed(wad, endLabel);
 
         if ( start == -1 || end == -1 )
         {
@@ -166,7 +163,7 @@ void RenderPatch(const Patch * patch, int x, int y, float scale)
 
 void LoadAllTextures(const Wad * wad)
 {
-    char * pnames = GetLumpWithName(wad, "PNAMES") + 4;
+    char * pnames = GetLumpNamed(wad, "PNAMES")->data + 4;
 
     resourceTextures = NewArray(0, sizeof(Texture), 1);
 
@@ -179,7 +176,14 @@ void LoadAllTextures(const Wad * wad)
     {
         char lumpLabel[10] = { 0 };
         snprintf(lumpLabel, sizeof(lumpLabel), "TEXTURE%d", section);
-        void * data = GetLumpWithName(wad, lumpLabel);
+        Lump * lump = GetLumpNamed(wad, lumpLabel);
+        if ( lump == NULL )
+        {
+            printf("Error: could not find lump named '%s'!\n", lumpLabel);
+            return;
+        }
+
+        void * data = GetLumpNamed(wad, lumpLabel)->data;
 
         if ( data == NULL )
         {

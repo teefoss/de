@@ -452,6 +452,13 @@ void ProcessEditEvent(const SDL_Event * event)
         case SDL_KEYDOWN:
             switch ( event->key.keysym.sym )
             {
+                case SDLK_1:
+                    if ( mods & KMOD_GUI )
+                    {
+                        DoomBSP();
+                        system("./1.sh");
+                    }
+                    break;
                 case SDLK_s:
                     if ( mods & KMOD_GUI )
                         DoomBSP();

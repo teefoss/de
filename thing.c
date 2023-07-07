@@ -164,7 +164,7 @@ void LoadThingDefinitions(void)
         if ( len > maxLen )
             maxLen = len;
 
-        int lumpIndex = GetLumpIndexFromName(editor.iwad, sprite);
+        int lumpIndex = GetIndexOfLumpNamed(editor.iwad, sprite);
         def->patch = LoadPatch(editor.iwad, lumpIndex);
 
         // Set palette rect
