@@ -152,14 +152,14 @@ void OutputSideDefs (void)
 
 void OutputNodes (void)
 {
-	int		i, j, count;
+	int		i, count;
 	mapnode_t		*p;
 
 	count = nodestore_i->count;
 	p = Get(nodestore_i, 0);
 	for (i=0 ; i<count ; i++, p++)
 	{
-		for ( j = 0; j < sizeof(mapnode_t) / 2; j++ )
+		for ( size_t j = 0; j < sizeof(mapnode_t) / 2; j++ )
         {
             // TODO: confirm this is a sane thing to do.
             ((short *)p)[j] = SWAP16(((short *)p)[j]);
@@ -253,7 +253,6 @@ void ProcessLines (Array *store_i)
 int ProcessSubsector(Array * wmaplinestore_i) // A node's lines (line_t[])
 {
 	int				count;
-	line_t			*wline;
 	mapsubsector_t	sub;
 	
 	memset (&sub,0,sizeof(sub));
@@ -261,8 +260,6 @@ int ProcessSubsector(Array * wmaplinestore_i) // A node's lines (line_t[])
 	count = wmaplinestore_i->count; // The number of this node's lines.
 	if (count < 1)
 		Error ("ProcessSubsector: count = %i",count);
-		
-	wline = Get(wmaplinestore_i, 0);
 
 	sub.numsegs = count;
 	sub.firstseg = maplinestore_i->count;

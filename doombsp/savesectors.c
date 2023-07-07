@@ -141,7 +141,7 @@ void ProcessSectors (void)
 	int				numss;
 	mapsubsector_t	*ss;	
 	mapsector_t		sec;
-	mapseg_t		*seg;
+	mapseg_t		*seg = NULL;
 	maplinedef_t	*ml;
 	mapsidedef_t	*ms;
 	

@@ -200,9 +200,7 @@ int EvaluateSplit(Array * lines_i, line_t * spliton, int bestgrade)
 	divline_t		divline;
 	int				frontcount, backcount, max, new;
 	int				grade;
-	Line		    *wl;
 
-    wl = Get(linestore_i, spliton->linedef);
 	DivlineFromWorldline(&divline, spliton);
 	
 	frontcount = backcount = 0;
@@ -225,7 +223,6 @@ int EvaluateSplit(Array * lines_i, line_t * spliton, int bestgrade)
 			backcount++;
 			break;
 		case -2:
-			wl = Get(linestore_i, line_p->linedef);
 			frontcount++;
 			backcount++;
 			break;

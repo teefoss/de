@@ -96,7 +96,7 @@ void AutoScrollToPoint(SDL_Point worldPoint)
     editorState = ES_AUTO_SCROLL;
 }
 
-void UpdateAutoscroll(float dt)
+void UpdateAutoscroll(void)
 {
     float epsilon = 1.0f;
     float factor = 0.1f;
@@ -247,7 +247,7 @@ void UpdateSelectionBox(float dt)
 
 #pragma mark - DRAG VIEW
 
-void UpdateDragView(float dt)
+void UpdateDragView(void)
 {
     visibleRect.x -= windowMouse.x - previousMouseX;
     visibleRect.y -= windowMouse.y - previousMouseY;
@@ -595,6 +595,8 @@ SDL_Point oldVisibleOrigin;
 
 int WindowResizeEventFilter(void * data, SDL_Event * event)
 {
+    (void)data;
+    
     if (   event->type == SDL_WINDOWEVENT
         && (event->window.event == SDL_WINDOWEVENT_RESIZED
             || event->window.event == SDL_WINDOWEVENT_RESIZED) )
@@ -643,13 +645,18 @@ void InitEditor(void)
 
     InitLineCross();
     InitMapView();
+    printf("LoadProgressPanel (%d)\n", topPanel);
     LoadProgressPanel();
     LoadAllPatches(editor.iwad);
     LoadAllTextures(editor.iwad);
+    printf("LoadTexturePanel (%d)\n", topPanel);
     LoadTexturePanel();
+    printf("LoadThingPanel (%d)\n", topPanel);
     LoadThingPanel();
     LoadThingDefinitions(); // Needs thing palette to be loaded first.
     LoadFlats(editor.iwad);
+    printf("LoadSectorPanel (%d)\n", topPanel);
+
     LoadSectorPanel();
 
     keys = SDL_GetKeyboardState(NULL);
@@ -771,6 +778,8 @@ void EditorLoop(void)
 
 void CleanupEditor(void)
 {
+    FreeWad(editor.pwad);
+    FreeWad(editor.iwad);
     FreePanel(&texturePanel);
     FreeLinePanels();
     FreePatchesAndTextures();

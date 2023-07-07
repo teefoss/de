@@ -32,4 +32,5 @@ void DoomBSP(void)
     WriteDirectory(editor.pwad);
 
     printf("Node building complete.\n");
+//    ListDirectory(editor.pwad);
 }

@@ -59,7 +59,7 @@ Wad * OpenWad(const char * path)
         fseek(wad->stream, wadInfo.directoryOffset, SEEK_SET);
         wad->directory = NewArray(wadInfo.lumpCount, sizeof(LumpInfo), 1);
 
-        for ( int i = 0; i < wadInfo.lumpCount; i++ )
+        for ( u32 i = 0; i < wadInfo.lumpCount; i++ )
         {
             LumpInfo lumpInfo;
             fread(&lumpInfo, sizeof(lumpInfo), 1, wad->stream);
@@ -191,6 +191,9 @@ void RemoveMap(const Wad * wad, const char * mapLabel)
         RemoveLumpNumber(wad, index);
 
     WriteDirectory(wad);
+
+//    printf("post-RemoveMap directory:\n");
+//    ListDirectory(wad);
 }
 
 /// Write the WAD's directory after the last lump and update the header.
@@ -199,7 +202,7 @@ void WriteDirectory(const Wad * wad)
     LumpInfo * directory = wad->directory->data;
     u32 count = wad->directory->count;
 
-    for ( int i = 0; i < count; i++ )
+    for ( u32 i = 0; i < count; i++ )
     {
         directory[i].offset = SWAP32(directory[i].offset);
         directory[i].size = SWAP32(directory[i].size);
@@ -212,7 +215,7 @@ void WriteDirectory(const Wad * wad)
     fseek(wad->stream, directoryStart, SEEK_SET);
     fwrite(directory, sizeof(LumpInfo), count, wad->stream);
 
-    for ( int i = 0; i < count; i++ )
+    for ( u32 i = 0; i < count; i++ )
     {
         directory[i].offset = SWAP32(directory[i].offset);
         directory[i].size = SWAP32(directory[i].size);

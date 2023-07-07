@@ -564,13 +564,13 @@ void LoadSectorPanel(void)
     if ( editor.game == GAME_DOOM1 )
     {
         sectorSpecialsPanel = LoadPanel(PANEL_DATA_DIRECTORY "sector_specials.panel");
-        sectorSpecialsPanel.numItems = 17;
+        sectorSpecialsPanel.numItems = SDL_arraysize(specialItems);
         sectorSpecialsPanel.items = specialItems;
     }
     else
     {
         sectorSpecialsPanel = LoadPanel(PANEL_DATA_DIRECTORY "sector_specials2.panel");
-        sectorSpecialsPanel.numItems = 18;
+        sectorSpecialsPanel.numItems = SDL_arraysize(specialItems2);
         sectorSpecialsPanel.items = specialItems2;
     }
 

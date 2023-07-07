@@ -111,7 +111,7 @@ void * Insert(Array * arr, void * element, int i)
 
 void Remove(Array * arr, int i)
 {
-    ASSERT((unsigned)i < arr->count);
+    ASSERT((unsigned)i < (unsigned)arr->count);
 
     // move the latter part of the array left
     memmove((u8 *)arr->data + arr->esize * i,
@@ -122,7 +122,7 @@ void Remove(Array * arr, int i)
 
 void FastRemove(Array * arr, int i)
 {
-    ASSERT((unsigned)i < arr->count)
+    ASSERT((unsigned)i < (unsigned)arr->count)
 
     // move the last element to i
     memmove((u8 *)arr->data + arr->esize * i,
@@ -134,7 +134,7 @@ void FastRemove(Array * arr, int i)
 
 void Replace(Array * arr, void * element, int i)
 {
-    ASSERT((unsigned)i < arr->count);
+    ASSERT((unsigned)i < (unsigned)arr->count);
 
     memmove((u8 *)arr->data + arr->esize * i, element, arr->esize);
 }

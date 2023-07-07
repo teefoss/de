@@ -160,8 +160,9 @@ void LoadThingDefinitions(void)
                 *c = ' ';
         }
 
-        if ( strlen(def->name) > maxLen )
-            maxLen = (int)strlen(def->name);
+        int len = (int)strlen(def->name);
+        if ( len > maxLen )
+            maxLen = len;
 
         int lumpIndex = GetLumpIndexFromName(editor.iwad, sprite);
         def->patch = LoadPatch(editor.iwad, lumpIndex);

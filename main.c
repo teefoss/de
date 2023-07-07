@@ -76,10 +76,10 @@
 
 
 
-void ListWadFile(const char * path)
-{
-//    WadFile wad;
-}
+//void ListWadFile(const char * path)
+//{
+////    WadFile wad;
+//}
 
 // Get the lump name from an arg of the format 'file.wad:LUMPNAME'
 // The lump name is returned and also stripped from `arg`.
@@ -389,76 +389,6 @@ void CreateProject(void)
 
     printf("Created a new project.\n"
            "Please set up the project parameters in 'project.de'\n");
-}
-
-// TODO: scrap this but keep dwd loading functionality.
-void DoSubprogramEdit2(int argc, char ** argv)
-{
-    // de edit
-    // -------
-    // edit
-    // - project exists? error: specify map!
-    // - project dne? create and return
-    // edit --map e1m1
-
-    FILE * project = fopen("project.de", "r");
-
-    if ( argc == 1 )
-    {
-        if ( project == NULL )
-        {
-            CreateProject();
-        }
-        else
-        {
-            printf("error: please specify the map you wish edit!\n");
-            printf("usage: de edit --map-m e1m1 (--extract)");
-            printf("       de edit -m e1m1 (-e)");
-        }
-
-        return;
-    }
-
-    if ( argc >= 3 ) // 'edit --map e1m1' or ditto + --extract
-    {
-        char * mapName = GetOptionArg2("-m", "--map");
-        if ( mapName == NULL )
-        {
-            printf("error: bad arguments!");
-            printf("usage: de edit --map [map name] (--extract)");
-            printf("       de edit -m    [map name] (-e)");
-            return;
-        }
-
-        bool extract = GetArg2("-e", "--extract") != -1;
-
-        FILE * dwd = fopen(mapName, "r");
-
-        if ( dwd == NULL ) // Create a new map.
-        {
-            if ( extract ) // Create a dwd from the map in resource wad.
-            {
-//                LoadMap(resourceWad, mapName);
-                SaveDWD();
-            }
-            else // New blank map.
-            {
-                CreateMap(mapName);
-            }
-        }
-        else // Load a prexisting map.
-        {
-            if ( extract )
-            {
-                printf("Error: cannot extract map, %s.dwd already exists!\n", mapName);
-                printf("Please remove %s.dwd first if you want to do this.\n", mapName);
-            }
-            else
-            {
-                LoadDWD(mapName);
-            }
-        }
-    }
 }
 
 int RunEditor(const char * wadPath, const char * mapName)

@@ -195,7 +195,7 @@ void LoadAllTextures(const Wad * wad)
         u32 numTextures = *(u32 *)data;
         u32 * offsets = (u32 *)(data + 4);
 
-        for ( int i = 0; i < numTextures; i++ )
+        for ( u32 i = 0; i < numTextures; i++ )
         {
             maptexture_t * mtexture = (maptexture_t *)(data + offsets[i]);
             Texture texture;
