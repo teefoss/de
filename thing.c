@@ -104,7 +104,7 @@ void LoadThingDefinitions(void)
     int x = margin;
     int y = margin;
     int maxRowHeight = 0;
-    int paletteWidth = thingPaletteRect.w;
+    int paletteWidth = thingPaletteRectOffsets.w;
     numThings = 0;
 
     for ( int i = 0; i < totalNumThings; i++ )
@@ -124,7 +124,7 @@ void LoadThingDefinitions(void)
             break;
         }
 
-        if ( def->game > gameType )
+        if ( def->game > editor.game )
             continue;
 
         // Set category number.
@@ -163,8 +163,8 @@ void LoadThingDefinitions(void)
         if ( strlen(def->name) > maxLen )
             maxLen = (int)strlen(def->name);
 
-        int lumpIndex = GetLumpIndex(resourceWad, sprite);
-        def->patch = LoadPatch(resourceWad, lumpIndex);
+        int lumpIndex = GetLumpIndexFromName(editor.iwad, sprite);
+        def->patch = LoadPatch(editor.iwad, lumpIndex);
 
         // Set palette rect
 

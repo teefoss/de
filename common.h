@@ -54,8 +54,18 @@ float LerpEpsilon(float a, float b, float w, float epsilon);
 SDL_Texture * GetScreen(void);
 void draw_line_antialias(int x1, int y1, int x2, int y2);
 void Capitalize(char * string);
-void DrawRect(const SDL_Rect * rect, int thinkness);
+void DrawRect(const SDL_FRect * rect, int thinkness);
 void SetRenderDrawColor(const SDL_Color * c);
 SDL_Color Int24ToSDL(int integer);
+SDL_Rect GetWindowFrame(void);
+void GuptaSprollDrawLine(float x1, float x2, float y1, float y2);
+//double Map(double input,
+//           double input_start,
+//           double input_end,
+//           double output_start,
+//           double output_end);
+void WuDrawLine(double x0, double y0, double x1, double y1);
+void FosterDrawLineAA(int x1, int y1, int x2, int y2);
+void Refresh(SDL_Renderer * _renderer, SDL_Texture * _texture);
 
 #endif /* defines_h */

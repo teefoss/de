@@ -130,8 +130,8 @@ void LoadAllPatches(const Wad * wad)
         snprintf(startLabel, 10, "P%d_START", section);
         snprintf(endLabel, 10, "P%d_END", section);
 
-        int start = GetLumpIndex(wad, startLabel);
-        int end = GetLumpIndex(wad, endLabel);
+        int start = GetLumpIndexFromName(wad, startLabel);
+        int end = GetLumpIndexFromName(wad, endLabel);
 
         if ( start == -1 || end == -1 )
         {
@@ -296,6 +296,9 @@ void CreateTextureSDLTexture(Texture * texture)
 
 void RenderTextureInRect(const char * name, const SDL_Rect * rect)
 {
+    ASSERT(name != NULL);
+    ASSERT(name[0] != '-');
+    
     Texture * texture = FindTexture(name);
 
     if ( texture->texture == NULL )

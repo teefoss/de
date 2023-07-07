@@ -26,10 +26,6 @@
 #include <stdbool.h>
 
 // Bugs List
-// FIXME: Clicking on a panel, outside an item rect should not close panel
-// FIXME: Opening specials panel closes specials category panel
-// FIXME: When getting the mouse item for panels, stop at the first one hit.
-// FIXME: Clicking on a panel lower in the stack should close all upper panels.
 // FIXME: closing texture pal should clear filters.
 // FIXME: texture palette items location messed up.
 
@@ -64,18 +60,23 @@
 // de edit  [WAD file] --iwad [WAD file]
 
 
+// TODO: change to:
+// de [WAD path] (options)
+//
+// de [WAD path] --edit e1m1 --iwad [WAD path]
+// de [WAD path] --list-maps
+// de [WAD path] --list-all
+// ... etc
+// de [WAD path] --copy/-cp [source WAD]:[lump name]
+// de [WAD path] --remove/-rm [lump name]
+// de [WAD path] --set-type [iwad or pwad]
+
+
+
+
 void ListWadFile(const char * path)
 {
 //    WadFile wad;
-}
-
-void PrintUsageAndExit(void)
-{
-    fprintf(stderr,
-            "usage:\n"
-            "  de edit [WAD path] --map [map name*] --iwad [resource WAD path]\n"
-            "  *map name: e[1-4]m[1-9] or map[01-32]");
-    exit(EXIT_FAILURE);
 }
 
 // Get the lump name from an arg of the format 'file.wad:LUMPNAME'
@@ -92,10 +93,14 @@ char * GetLumpNameFromArg(char ** arg)
     return lumpName;
 }
 
-void DoSubprogramWad(int argc, char ** argv)
+#if 0 // Abandon and redo!
+int DoSubprogramWad(int argc, char ** argv)
 {
     if ( argc < 2 )
-        PrintUsageAndExit();
+    {
+        // TODO: error message
+        return EXIT_FAILURE;
+    }
 
     char * command = argv[1];
 
@@ -104,7 +109,7 @@ void DoSubprogramWad(int argc, char ** argv)
         if ( argc != 3 )
         {
             fprintf(stderr, "usage: de wad list [WAD file](:[lump name])");
-            exit(EXIT_FAILURE);
+            return EXIT_FAILURE;
         }
 
         char * wadPath = argv[2];
@@ -187,7 +192,7 @@ void DoSubprogramWad(int argc, char ** argv)
 
         if ( copyMap )
         {
-            int lumpIndex = GetLumpIndex(source, lumpName);
+            int lumpIndex = GetLumpIndexFromName(source, lumpName);
 
             for ( int i = lumpIndex; i < lumpIndex + ML_COUNT; i++ )
             {
@@ -202,7 +207,7 @@ void DoSubprogramWad(int argc, char ** argv)
         }
         else
         {
-            int i = GetLumpIndex(source, lumpName);
+            int i = GetLumpIndexFromName(source, lumpName);
             void * lump = GetLumpWithName(source, lumpName);
             AddLump(destination, lumpName, lump, GetLumpSize(source, i));
             free(lump);
@@ -230,137 +235,367 @@ void DoSubprogramWad(int argc, char ** argv)
 
         FreeWad(wad);
 
-        return exit(EXIT_SUCCESS);
+        return EXIT_SUCCESS;
     }
+}
+#endif
+
+/// Set `editor.game` according to the name of the IWAD.
+void DetermineGame(char * iwadName)
+{
+    char * gameParam = GetOptionArg2("--game", "-g");
+    Capitalize(gameParam);
+
+    if ( gameParam != NULL )
+    {
+        printf("Game: %s\n", gameParam);
+
+        if ( strcmp(gameParam, "DOOM") == 0 )
+            editor.game = GAME_DOOM1;
+        else if ( strcmp(gameParam, "DOOMSE") )
+            editor.game = GAME_DOOM1SE;
+        else if ( strcmp(gameParam, "DOOM2") )
+            editor.game = GAME_DOOM2;
+        else
+        {
+            printf("Error: bad game argument. Should be"
+                    "'doom', 'doomse', or 'doom2'\n");
+            exit(EXIT_FAILURE);
+        }
+    } else {
+        // -g or --game was not specified, determine which game from the IWAD name.
+        Capitalize(iwadName); // TODO: write CaseCompare!
+
+        if ( strcmp(iwadName, "DOOM1.WAD") == 0 )
+        {
+            editor.game = GAME_DOOM1;
+            printf("Game: Doom\n");
+        }
+        else if ( strcmp(iwadName, "DOOM.WAD") == 0 )
+        {
+            editor.game = GAME_DOOM1SE;
+            printf("Game: The Ultimate Doom SE\n");
+        }
+        else if ( strcmp(iwadName, "DOOM2.WAD") == 0 )
+        {
+            editor.game = GAME_DOOM2;
+            printf("Game: Doom 2\n");
+        }
+        else
+        {
+            printf("Unable to determine game, using Doom 2.\n"
+                   "If this is not what you want, please specify which game"
+                   "with --game (options 'doom', 'doomse', 'doom2')\n");
+            editor.game = GAME_DOOM2;
+        }
+    }
+
+}
+
+int DoSubprogramEdit(int argc, char ** argv)
+{
+    // de edit [WAD file] --map [map label]
+    // optional args:
+    //      --iwad (if not present, try to read from project config)
+    //      -g, --game (if not present, try to read from project config,
+    //                  or if project config not present, try to guess)
+
+    LoadDefaults("de.config");
+
+    // At the very least, we should have 'edit [wad] --map [name]]'
+    if ( argc < 4 )
+    {
+        printf("Error: bad arguments!\n");
+        return EXIT_FAILURE;
+    }
+
+    // Open or create the specified PWAD.
+
+    // TODO: if it's an IWAD and the name is doom.wad, etc. warn and quit.
+    // This is a failsafe to prevent editing the original wads.
+    // (User can rename the wad if they really want to do this.)
+
+    char * fileToEdit = argv[1];
+
+    editor.pwad = OpenWad(fileToEdit);
+    if ( editor.pwad == NULL )
+    {
+        printf("Creating %s...\n", fileToEdit);
+        editor.pwad = CreateWad(fileToEdit);
+        if ( editor.pwad == NULL ) {
+            fprintf(stderr, "Error: could not create '%s'\n", fileToEdit);
+            return EXIT_FAILURE;
+        }
+    }
+
+    // Get the map label (required).
+
+    char * mapLabel = GetOptionArg("--map");
+    if ( mapLabel == NULL ) {
+        fprintf(stderr, "Error: missing --map option");
+        goto print_usage;
+    }
+
+    // Get the specified iwad name (optional)
+
+    char * iwadName = GetOptionArg("--iwad");
+    if ( iwadName == NULL ) {
+        // TODO: make optional, read project file when not present.
+        fprintf(stderr, "Error: missing --iwad option");
+        goto print_usage;
+    }
+
+    editor.iwad = OpenWad(iwadName);
+    if ( editor.iwad == NULL ) {
+        fprintf(stderr, "Error: could not load IWAD '%s'\n", iwadName);
+        return EXIT_FAILURE;
+    }
+
+    LoadMap(editor.pwad, mapLabel);
+    InitWindow(800, 800); // TODO: save user's favorite window size and position.
+
+    DetermineGame(iwadName);
+
+    InitEditor();
+    EditorLoop();
+
+    CleanupEditor();
+    return EXIT_SUCCESS;
+
+print_usage:
+    printf("Usage: de edit [WAD path] --map [name] (--iwad [path])");
+    return EXIT_FAILURE;
+}
+
+void CreateProject(void)
+{
+    FILE * project = fopen("project.de", "w");
+    if ( project == NULL )
+    {
+        printf("Error: could not create project file!\n");
+        return;
+    }
+
+    fprintf(project, "de project file version 1\n\n");
+    fprintf(project, "iwad: doom2.wad\n");
+    fprintf(project, "pwad: mywad.wad");
+    fprintf(project, "node_builder: \n");
+    fprintf(project, "run: \n");
+    fprintf(project, "maps: \n");
+
+    fclose(project);
+
+    printf("Created a new project.\n"
+           "Please set up the project parameters in 'project.de'\n");
+}
+
+// TODO: scrap this but keep dwd loading functionality.
+void DoSubprogramEdit2(int argc, char ** argv)
+{
+    // de edit
+    // -------
+    // edit
+    // - project exists? error: specify map!
+    // - project dne? create and return
+    // edit --map e1m1
+
+    FILE * project = fopen("project.de", "r");
+
+    if ( argc == 1 )
+    {
+        if ( project == NULL )
+        {
+            CreateProject();
+        }
+        else
+        {
+            printf("error: please specify the map you wish edit!\n");
+            printf("usage: de edit --map-m e1m1 (--extract)");
+            printf("       de edit -m e1m1 (-e)");
+        }
+
+        return;
+    }
+
+    if ( argc >= 3 ) // 'edit --map e1m1' or ditto + --extract
+    {
+        char * mapName = GetOptionArg2("-m", "--map");
+        if ( mapName == NULL )
+        {
+            printf("error: bad arguments!");
+            printf("usage: de edit --map [map name] (--extract)");
+            printf("       de edit -m    [map name] (-e)");
+            return;
+        }
+
+        bool extract = GetArg2("-e", "--extract") != -1;
+
+        FILE * dwd = fopen(mapName, "r");
+
+        if ( dwd == NULL ) // Create a new map.
+        {
+            if ( extract ) // Create a dwd from the map in resource wad.
+            {
+//                LoadMap(resourceWad, mapName);
+                SaveDWD();
+            }
+            else // New blank map.
+            {
+                CreateMap(mapName);
+            }
+        }
+        else // Load a prexisting map.
+        {
+            if ( extract )
+            {
+                printf("Error: cannot extract map, %s.dwd already exists!\n", mapName);
+                printf("Please remove %s.dwd first if you want to do this.\n", mapName);
+            }
+            else
+            {
+                LoadDWD(mapName);
+            }
+        }
+    }
+}
+
+int RunEditor(const char * wadPath, const char * mapName)
+{
+    LoadDefaults("de.config");
+
+    editor.pwad = OpenWad(wadPath);
+    if ( editor.pwad == NULL )
+    {
+        printf("Creating %s...\n", wadPath);
+        editor.pwad = CreateWad(wadPath);
+        if ( editor.pwad == NULL ) {
+            fprintf(stderr, "Error: could not create '%s'\n", wadPath);
+            return EXIT_FAILURE;
+        }
+    }
+
+    char * iwadPath = GetOptionArg("--iwad");
+    if ( iwadPath == NULL )
+    {
+        // TODO: make optional, read project file when not present.
+        fprintf(stderr, "Error: missing --iwad option\n");
+        return EXIT_FAILURE;
+    }
+
+    editor.iwad = OpenWad(iwadPath);
+    if ( editor.iwad == NULL )
+    {
+        fprintf(stderr, "Error: could not load IWAD '%s'\n", iwadPath);
+        return EXIT_FAILURE;
+    }
+    printf("Using IWAD '%s'.\n", iwadPath);
+
+    LoadMap(editor.pwad, mapName);
+
+    InitWindow(800, 800); // TODO: save user's favorite window size and position.
+
+    DetermineGame(iwadPath);
+
+    printf("Editing %s in '%s'\n\n", mapName, wadPath);
+
+    InitEditor();
+    EditorLoop();
+    CleanupEditor();
+
+    return EXIT_SUCCESS;
+}
+
+void CopyLump(const Wad * destination, const Wad * source, int lumpIndex)
+{
+    void * data = GetLumpWithIndex(source, lumpIndex);
+    u32 size = GetLumpSize(source, lumpIndex);
+    const char * name = GetLumpName(source, lumpIndex);
+
+    AddLump(destination, name, data, size);
+    free(data);
 }
 
 int main(int argc, char ** argv)
 {
-    printf("de\n"
-           "[d]oom [e]ditor\n"
+    printf("[d]oom [e]ditor\n"
            "v. 0.1 Copyright (C) 2023 Thomas Foster\n\n");
+
+    if ( argc == 1 )
+        goto error;
 
     InitArgs(--argc, ++argv);
 
-    if ( argc < 2 )
-        PrintUsageAndExit();
-
-    Wad * editWad = NULL;
-
-    char * subprogram = argv[0];
-
-    // Parse arguments for subprograms.
-    if ( STRNEQ(subprogram, "wad", 3) )
+    if ( GetArg2("--help", "-h") != -1 )
     {
-        DoSubprogramWad(argc, argv);
-    }
-    else if ( STRNEQ(subprogram, "edit", 4 ) )
-    {
-        // de edit [WAD file] --map [map label] --iwad [WAD file]
-        LoadDefaults("de.config");
-
-        if ( argc < 6 )
-            PrintUsageAndExit();
-
-        char * fileToEdit = argv[1];
-
-        editWad = OpenWad(fileToEdit);
-        if ( editWad == NULL )
-        {
-            printf("Creating %s...\n", fileToEdit);
-            editWad = CreateWad(fileToEdit);
-            if ( editWad == NULL ) {
-                fprintf(stderr, "Error: could not create '%s'\n", fileToEdit);
-                return EXIT_FAILURE;
-            }
-        }
-
-        char * mapLabel = GetOptionArg("--map");
-        if ( mapLabel == NULL ) {
-            fprintf(stderr, "Error: missing --map option");
-            PrintUsageAndExit();
-        }
-
-        char * iwadName = GetOptionArg("--iwad");
-        if ( iwadName == NULL ) {
-            fprintf(stderr, "Error: missing --iwad option");
-            PrintUsageAndExit();
-        }
-
-        resourceWad = OpenWad(iwadName);
-        if ( resourceWad == NULL ) {
-            fprintf(stderr, "Error: could not load resource WAD '%s'\n", iwadName);
-            PrintUsageAndExit();
-        }
-
-        LoadMap(editWad, mapLabel);
-        InitWindow(800, 800);
-
-        // Determine game type.
-
-        char * gameTypeParam = GetOptionArg("--game");
-
-        Capitalize(gameTypeParam);
-
-        if ( gameTypeParam != NULL ) {
-            if ( strcmp(gameTypeParam, "DOOM") == 0 )
-                gameType = GAME_DOOM1;
-            else if ( strcmp(gameTypeParam, "DOOMSE") )
-                gameType = GAME_DOOM1SE;
-            else if ( strcmp(gameTypeParam, "DOOM2") )
-                gameType = GAME_DOOM2;
-            else
-            {
-                fprintf(stderr, "--game: bad argument. Should be"
-                        "'doom', 'doomse', or 'doom2'\n");
-                exit(EXIT_FAILURE);
-            }
-        } else {
-            // Determine the game type from the IWAD name.
-
-            Capitalize(iwadName);
-            if ( strcmp(iwadName, "DOOM1.WAD") == 0 )
-                gameType = GAME_DOOM1;
-            else if ( strcmp(iwadName, "DOOM.WAD") == 0 )
-                gameType = GAME_DOOM1SE;
-            else
-                gameType = GAME_DOOM2;
-        }
-
-        switch ( gameType )
-        {
-            case GAME_DOOM1:
-                LoadLinePanels(DOOM1_PATH"linespecials.dsp");
-                break;
-            case GAME_DOOM1SE:
-                LoadLinePanels(DOOMSE_PATH"linespecials.dsp");
-                break;
-            case GAME_DOOM2:
-                LoadLinePanels(DOOM2_PATH"linespecials.dsp");
-                break;
-            default:
-                break;
-        }
-
-        // TODO: Lots of thing can and should be in edit.c
-
-        InitLineCross();
-        InitMapView();
-        LoadProgressPanel();
-        LoadAllPatches(resourceWad);
-        LoadAllTextures(resourceWad);
-        LoadTexturePanel();
-        LoadThingPanel();
-        LoadThingDefinitions(); // Needs thing palette to be loaded first.
-        LoadFlats(resourceWad);
-        LoadSectorPanel();
-
-        EditorLoop();
+        // TODO: write help text!
+        printf("Help coming soon\n");
+        return EXIT_SUCCESS;
     }
 
-    FreePanel(&texturePanel);
-    FreeLinePanels();
-    FreePatchesAndTextures();
+    char * wadPath = argv[0];
 
-    return 0;
+    if ( GetArg2("--list", "-ls") != -1 )
+    {
+        Wad * wad = OpenWad(wadPath);
+        ListDirectory(wad);
+    }
+
+    char * lumpToRemove = GetOptionArg2("--remove-number", "-rm-num");
+    if ( lumpToRemove )
+    {
+        Wad * wad = OpenWad(wadPath);
+        RemoveLumpNumber(wad, atoi(lumpToRemove));
+    }
+
+    lumpToRemove = GetOptionArg("--remove");
+    if ( lumpToRemove )
+    {
+        Wad * wad = OpenWad(wadPath);
+        if ( GetArg("--map") != -1 )
+            RemoveMap(wad, lumpToRemove);
+        else
+            RemoveLumpNamed(wad, lumpToRemove);
+    }
+
+    char * copySource = GetOptionArg2("--copy", "-cp");
+    if ( copySource )
+    {
+        Wad * destinationWAD = OpenWad(wadPath);
+        if ( destinationWAD == NULL )
+            destinationWAD = CreateWad(wadPath);
+
+        char * lumpName = GetLumpNameFromArg(&copySource);
+        Wad * sourceWAD = OpenWad(copySource);
+        if ( sourceWAD == NULL )
+        {
+            printf("Error: copy source WAD '%s' not found!\n", copySource);
+            return EXIT_FAILURE;
+        }
+
+        int index = GetLumpIndexFromName(sourceWAD, lumpName);
+
+        if ( GetArg2("--map", "-m") != -1 )
+        {
+            for ( int i = index; i < index + ML_COUNT; i++ )
+                CopyLump(destinationWAD, sourceWAD, i);
+
+            printf("Copied '%s' map lumps to '%s'\n", lumpName, wadPath);
+        }
+        else
+        {
+            CopyLump(destinationWAD, sourceWAD, index);
+            printf("Copied lump '%s' to '%s'\n", lumpName, wadPath);
+        }
+
+        WriteDirectory(destinationWAD);
+    }
+
+    char * mapName = GetOptionArg2("--edit", "-e");
+    if ( mapName )
+        return RunEditor(wadPath, mapName);
+
+    return EXIT_SUCCESS;
+error:
+    printf("Error: bad arguments! Use 'de --help'\n");
+    return EXIT_FAILURE;
 }

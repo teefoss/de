@@ -76,21 +76,21 @@ static PanelItem linePanelItems[] =
 
 static PanelItem specialCategoryItems[] =
 {
-    { 2, 1, 11, -1, 0, -1, -1 }, // None
-    { 2, 3, 11, 0, 0, -1, -1 }, // Button
-    { 2, 4, 11, 0, 0, -1, -1 },
-    { 2, 5, 11, 0, 0, -1, -1 },
-    { 2, 6, 11, 0, 0, -1, -1 },
-    { 2, 7, 11, 0, 0, -1, -1 },
-    { 2, 8, 11, 0, 0, -1, -1 },
-    { 2, 9, 11, 0, -1, -1, -1 }
+    { 2, 2, 15, -1, 0, -1, -1 }, // None
+    { 2, 4, 15, 0, 0, -1, -1 }, // Button
+    { 2, 5, 15, 0, 0, -1, -1 },
+    { 2, 6, 15, 0, 0, -1, -1 },
+    { 2, 7, 15, 0, 0, -1, -1 },
+    { 2, 8, 15, 0, 0, -1, -1 },
+    { 2, 9, 15, 0, 0, -1, -1 },
+    { 2, 10, 15, 0, -1, -1, -1 }
 };
 
 static PanelItem specialItems[NUM_SPECIAL_ROWS]; // Inited in LoadLinePanels()
 
 Panel linePanel;
-Panel specialCategoriesPanel;
-Panel specialsPanel;
+Panel lineSpecialCategoryPanel;
+Panel lineSpecialPanel;
 
 LineSpecial * specials;
 int numSpecials;
@@ -218,16 +218,16 @@ void UpdateVisibleSpecials(void)
         PanelItem * item = &specialItems[i];
 
         for ( int x = item->x - 2; x < item->x + item->width; x++ )
-            PanelPrint(&specialsPanel, x, item->y, " "); // Clear line.
+            PanelPrint(&lineSpecialPanel, x, item->y, " "); // Clear line.
 
         if ( specialIndex <= last )
         {
             if ( ((Line *)linePanel.data)->special == specials[specialIndex].id )
-                UpdatePanelConsole(&specialsPanel,
+                UpdatePanelConsole(&lineSpecialPanel,
                             specialItems[i].x - 2,
                             specialItems[i].y, 7, true);
 
-            PanelPrint(&specialsPanel,
+            PanelPrint(&lineSpecialPanel,
                        specialItems[i].x,
                        specialItems[i].y,
                        specials[specialIndex].shortName);
@@ -283,7 +283,7 @@ static void LinePanelAction(int selection)
         case LP_BACK:   line->panelBackSelected = true; break;
 
         case LP_SPECIAL:
-            openPanels[++topPanel] = &specialCategoriesPanel;
+            OpenPanel(&lineSpecialCategoryPanel, NULL);
             break;
 
         case LP_TAG:
@@ -311,29 +311,16 @@ static bool ProcessLinePanelEvent(const SDL_Event * event)
 {
     switch ( event->type )
     {
-        case SDL_KEYDOWN:
-            switch ( event->key.keysym.sym )
-            {
-                case SDLK_RETURN:
-                    LinePanelAction(linePanel.selection);
-                    return true;
-
-                default:
-                    return false;
-            }
-            break;
-
         case SDL_MOUSEBUTTONDOWN:
             switch ( event->button.button )
             {
                 case SDL_BUTTON_LEFT:
-                    if ( linePanel.mouseItem != -1 )
-                    {
-                        LinePanelAction(linePanel.selection);
-                        return true;
-                    }
+                    if (   linePanel.mouseLocation.x == -1
+                        || linePanel.mouseLocation.y == -1 )
+                        return false; // Mouse click was outside panel
 
-                    return false;
+                    LinePanelAction(linePanel.selection);
+                    return true;
                 default:
                     return false;
             }
@@ -347,37 +334,34 @@ static bool ProcessLinePanelEvent(const SDL_Event * event)
 void OpenSpecialsPanel(void)
 {
     // TODO: don't remake entire panel, change to SetupPanel(&panel)
-    selectedCategory = specialCategoriesPanel.selection - 1;
+    selectedCategory = lineSpecialCategoryPanel.selection - 1;
     SpecialCategory * cat = &categories[selectedCategory];
 
-    FreePanel(&specialsPanel);
+    FreePanel(&lineSpecialPanel);
 
-    specialsPanel = NewPanel(specialCategoriesPanel.width,
-                             specialCategoriesPanel.selection + 2,
+    lineSpecialPanel = NewPanel(lineSpecialCategoryPanel.width,
+                             lineSpecialCategoryPanel.selection + 2,
                              cat->maxShortNameLength + 4,
                              cat->count + 2,
                              cat->count);
 
 
-    SDL_Rect rect = specialCategoriesPanel.location;
-
-    specialsPanel.location.x = rect.x + rect.w + 8;
-    specialsPanel.location.y = rect.y + rect.h - specialsPanel.location.h;
-    specialsPanel.items[0].up = -1;
-    specialsPanel.items[cat->count - 1].down = -1;
+    lineSpecialPanel.location.y = 0;
+    lineSpecialPanel.items[0].up = -1;
+    lineSpecialPanel.items[cat->count - 1].down = -1;
 
     SetPanelColor(10, 1);
-    for ( int y = 0; y < specialsPanel.height; y++ )
+    for ( int y = 0; y < lineSpecialPanel.height; y++ )
     {
-        for ( int x = 0; x < specialsPanel.width; x++ )
+        for ( int x = 0; x < lineSpecialPanel.width; x++ )
         {
-            PanelPrint(&specialsPanel, x, y, " ");
+            PanelPrint(&lineSpecialPanel, x, y, " ");
         }
     }
 
     for ( int i = 0; i < cat->count; i++ )
     {
-        PanelItem * item = &specialsPanel.items[i];
+        PanelItem * item = &lineSpecialPanel.items[i];
         item->x = 2;
         item->y = i + 1;
         item->width = cat->maxShortNameLength;
@@ -385,23 +369,23 @@ void OpenSpecialsPanel(void)
         item->right = -1;
 
         SetPanelColor(15, 1);
-        PanelPrint(&specialsPanel,
+        PanelPrint(&lineSpecialPanel,
                    item->x,
                    item->y,
                    specials[i + cat->startIndex].shortName);
     }
 
 //    specialsPanel.render = RenderSpecialsPanel;
-    specialsPanel.processEvent = ProcessSpecialPanelEvent;
+    lineSpecialPanel.processEvent = ProcessSpecialPanelEvent;
 
-    openPanels[++topPanel] = &specialsPanel;
+    rightPanels[++topPanel] = &lineSpecialPanel;
 }
 
 static bool ProcessSpecialCategoriesPanelEvent(const SDL_Event * event)
 {
-    if ( IsActionEvent(event, &specialCategoriesPanel) )
+    if ( IsActionEvent(event, &lineSpecialCategoryPanel) )
     {
-        if ( specialCategoriesPanel.selection == 0 )
+        if ( lineSpecialCategoryPanel.selection == 0 )
         {
             ((Line *)linePanel.data)->special = 0;
             topPanel--;
@@ -409,7 +393,7 @@ static bool ProcessSpecialCategoriesPanelEvent(const SDL_Event * event)
         else
         {
             // If the special panel is already open, close it first.
-            if ( GetPanelStackPosition(&specialsPanel) < topPanel )
+            if ( GetPanelStackPosition(&lineSpecialPanel) < topPanel )
                 topPanel--;
 
             OpenSpecialsPanel();
@@ -423,39 +407,15 @@ static bool ProcessSpecialCategoriesPanelEvent(const SDL_Event * event)
 
 static bool ProcessSpecialPanelEvent(const SDL_Event * event)
 {
-    if ( IsActionEvent(event, &specialsPanel) )
+    if ( IsActionEvent(event, &lineSpecialPanel) )
     {
         int i = categories[selectedCategory].startIndex;
         i += firstSpecial;
-        i += specialsPanel.selection;
+        i += lineSpecialPanel.selection;
 
         ((Line *)linePanel.data)->special = specials[i].id;
-        topPanel -= 2;
+        topPanel -= 1;
         return true;
-    }
-
-    if ( event->type == SDL_KEYDOWN )
-    {
-        SpecialCategory * cat = &categories[selectedCategory];
-
-        switch ( event->key.keysym.sym )
-        {
-            case SDLK_DOWN:
-                if ( specialsPanel.selection > NUM_SPECIAL_ROWS / 2
-                    && specialsPanel.selection + NUM_SPECIAL_ROWS < cat->count )
-                {
-                    firstSpecial++;
-                    UpdateVisibleSpecials();
-                }
-                else
-                {
-                    specialsPanel.selection++;
-                }
-
-                return true;
-            default:
-                return false;
-        }
     }
 
     return false;
@@ -624,8 +584,8 @@ static void RenderLinePanel(void)
 void LoadLinePanels(const char * dspPath)
 {
     linePanel = LoadPanel(PANEL_DATA_DIRECTORY "line.panel");
-    linePanel.location.x = PANEL_SCREEN_MARGIN;
-    linePanel.location.y = PANEL_SCREEN_MARGIN;
+//    linePanel.location.x = PANEL_SCREEN_MARGIN;
+    linePanel.location.y = 0;
     linePanel.items = linePanelItems;
     linePanel.numItems = LP_NUM_ITEMS;
     linePanel.render = RenderLinePanel;
@@ -635,14 +595,14 @@ void LoadLinePanels(const char * dspPath)
     printf("Loading line specials from %s...\n", dspPath);
     LoadSpecials(dspPath);
 
-    specialCategoriesPanel = LoadPanel(PANEL_DATA_DIRECTORY"special_categories.panel");
-    specialCategoriesPanel.items = specialCategoryItems;
-    specialCategoriesPanel.numItems = numCategories + 1;
+    lineSpecialCategoryPanel = LoadPanel(PANEL_DATA_DIRECTORY"special_categories.panel");
+    lineSpecialCategoryPanel.items = specialCategoryItems;
+    lineSpecialCategoryPanel.numItems = numCategories + 1;
 //    specialCategoriesPanel.parent = &linePanel;
-    specialCategoriesPanel.location.x = linePanel.location.x + linePanel.location.w + 8;
-    specialCategoriesPanel.location.y = linePanel.location.y + linePanel.location.h - specialCategoriesPanel.location.h;
-    specialCategoriesPanel.render = NULL;
-    specialCategoriesPanel.processEvent = ProcessSpecialCategoriesPanelEvent;
+//    specialCategoriesPanel.location.x = 0;
+    lineSpecialCategoryPanel.location.y = 0;
+    lineSpecialCategoryPanel.render = NULL;
+    lineSpecialCategoryPanel.processEvent = ProcessSpecialCategoriesPanelEvent;
 
     if ( numCategories != NUM_SPECIAL_CATEGORIES )
         printf("!!! warning: numCategories != NUM_SPECIAL_CATEGORIES\n");
@@ -651,6 +611,6 @@ void LoadLinePanels(const char * dspPath)
 void FreeLinePanels(void)
 {
     FreePanel(&linePanel);
-    FreePanel(&specialCategoriesPanel);
-    FreePanel(&specialsPanel);
+    FreePanel(&lineSpecialCategoryPanel);
+    FreePanel(&lineSpecialPanel);
 }

@@ -17,10 +17,9 @@
 #define SCROLL_BAR_BOTTOM 36
 
 Panel texturePanel;
-SDL_Rect paletteRect; // In window space.
+SDL_Rect paletteRectRelative;
 int paletteTopY = 0;
 int maxPaletteTopY; // Calculated during init.
-int cx, cy; // TODO: move to panel
 bool draggingScrollHandle;
 char * currentTexture;
 
@@ -52,6 +51,17 @@ static PanelItem items[] =
     [TP_HEIGHT] = { 37, 39, 4, -1, -1, TP_WIDTH, -1, true, 29, 39, 40, 39 },
 };
 
+SDL_Rect PaletteRect(void)
+{
+    SDL_Rect rect;
+    rect.x = texturePanel.location.x + paletteRectRelative.x;
+    rect.y = texturePanel.location.y + paletteRectRelative.y;
+    rect.w = paletteRectRelative.w;
+    rect.h = paletteRectRelative.h;
+
+    return rect;
+}
+
 static void ScrollToSelected(void)
 {
     if ( currentTexture[0] == '-' )
@@ -70,7 +80,7 @@ static void ScrollToSelected(void)
 void OpenTexturePanel(char * texture)
 {
     currentTexture = texture;
-    openPanels[++topPanel] = &texturePanel;
+    rightPanels[++topPanel] = &texturePanel;
 
     ScrollToSelected();
 }
@@ -102,7 +112,7 @@ static void UpdatePaletteTextureLocations(void)
         if ( IsFilteredOut(texture) )
             continue;
 
-        if ( x + texture->rect.w > paletteRect.w - PALETTE_ITEM_MARGIN )
+        if ( x + texture->rect.w > paletteRectRelative.w - PALETTE_ITEM_MARGIN )
         {
             x = PALETTE_ITEM_MARGIN;
             y += maxRowHeight + PALETTE_ITEM_MARGIN;
@@ -120,13 +130,13 @@ static void UpdatePaletteTextureLocations(void)
         maxTextureY = texture->rect.y + maxRowHeight;
     }
 
-    maxPaletteTopY = maxTextureY + PALETTE_ITEM_MARGIN - paletteRect.h;
+    maxPaletteTopY = maxTextureY + PALETTE_ITEM_MARGIN - paletteRectRelative.h;
 //    printf("max palette top y: %d\n", maxPaletteTopY);
 }
 
 void SetTopYFromScrollBar(void)
 {
-    float percent = (float)(cy - SCROLL_BAR_TOP) / (SCROLL_BAR_BOTTOM - SCROLL_BAR_TOP);
+    float percent = (float)(texturePanel.textLocation.y - SCROLL_BAR_TOP) / (SCROLL_BAR_BOTTOM - SCROLL_BAR_TOP);
     paletteTopY = maxPaletteTopY * percent;
 
     CLAMP(paletteTopY, 0, maxPaletteTopY);
@@ -200,8 +210,6 @@ bool ProcessTexturePanelEvent(const SDL_Event * event)
             return true;
 
         case SDL_MOUSEMOTION:
-            cx = (event->motion.x - texturePanel.location.x) / FONT_WIDTH;
-            cy = (event->motion.y - texturePanel.location.y) / FONT_HEIGHT;
             if ( draggingScrollHandle ) {
                 SetTopYFromScrollBar();
                 return true;
@@ -210,21 +218,23 @@ bool ProcessTexturePanelEvent(const SDL_Event * event)
 
         case SDL_MOUSEBUTTONDOWN:
         {
-            SDL_Point location = { event->button.x, event->button.y };
-
             if ( event->button.button == SDL_BUTTON_LEFT )
             {
-                if ( cx == SCROLL_BAR_COL
-                    && cy >= SCROLL_BAR_TOP && cy <= SCROLL_BAR_BOTTOM )
+                if (   texturePanel.textLocation.x == SCROLL_BAR_COL
+                    && texturePanel.textLocation.y >= SCROLL_BAR_TOP
+                    && texturePanel.textLocation.y <= SCROLL_BAR_BOTTOM )
                 {
                     draggingScrollHandle = true;
                     SetTopYFromScrollBar();
                 }
-                else if ( SDL_PointInRect(&location, &paletteRect) )
+                else if ( SDL_PointInRect(&texturePanel.mouseLocation,
+                                          &paletteRectRelative) )
                 {
+                    SDL_Point location = texturePanel.mouseLocation;
+
                     // Convert to paletteRect coordinate space.
-                    location.x -= paletteRect.x;
-                    location.y -= paletteRect.y;
+                    location.x -= paletteRectRelative.x;
+                    location.y -= paletteRectRelative.y;
                     location.y += paletteTopY;
 
                     Texture * t = resourceTextures->data;
@@ -263,6 +273,7 @@ void RenderTexturePanel(void)
 {
     // Texture palette
 
+    SDL_Rect paletteRect = PaletteRect();
     SDL_RenderSetViewport(renderer, &paletteRect);
 
     Texture * texture = resourceTextures->data;
@@ -294,13 +305,15 @@ void RenderTexturePanel(void)
                 box.h += margin * 2;
 
                 SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-                DrawRect(&box, SELECTION_BOX_THICKNESS);
+                DrawRect(&(SDL_FRect){ box.x, box.y, box.w, box.h },
+                         SELECTION_BOX_THICKNESS);
             }
         }
     }
 
     SDL_RenderSetViewport(renderer, &texturePanel.location);
 
+    // TODO: clean this up
     if ( !texturePanel.isTextEditing || (texturePanel.isTextEditing && texturePanel.textItem != TP_WIDTH) )
     {
         if ( filter.width <= 0 )
@@ -354,19 +367,20 @@ void RenderTexturePanel(void)
 void LoadTexturePanel(void)
 {
     texturePanel = LoadPanel(PANEL_DATA_DIRECTORY"texture.panel");
-    texturePanel.location.x = linePanel.location.x + linePanel.location.w + 8;
-    texturePanel.location.y = linePanel.location.y;
+    texturePanel.location.y = 0;
     texturePanel.render = RenderTexturePanel;
     texturePanel.processEvent = ProcessTexturePanelEvent;
     texturePanel.textEditingCompletionHandler = FinishTextEditing;
     texturePanel.items = items;
     texturePanel.numItems = TP_COUNT;
 
-    paletteRect = texturePanel.location;
-    paletteRect.x += 2 * FONT_WIDTH;
-    paletteRect.y += 1 * FONT_HEIGHT;
-    paletteRect.w -= 5 * FONT_WIDTH;
-    paletteRect.h -= 4 * FONT_HEIGHT;
+    paletteRectRelative = (SDL_Rect)
+    {
+        .x = 2 * FONT_WIDTH,
+        .y = 1 * FONT_HEIGHT,
+        .w = 38 * FONT_WIDTH,
+        .h = 37 * FONT_HEIGHT
+    };
 
     UpdatePaletteTextureLocations();
 }

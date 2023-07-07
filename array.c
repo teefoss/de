@@ -14,7 +14,8 @@ void * Push(Array * arr, void * element) {
 }
 
 void * Get(Array * arr, int i) {
-    ASSERT((unsigned)i < arr->count);
+    if ( i >= arr->count )
+        return NULL;
 
     return (u8 *)arr->data + arr->esize * i;
 }

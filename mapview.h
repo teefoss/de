@@ -10,9 +10,9 @@
 
 #include <SDL2/SDL.h>
 
-#define VERTEX_DRAW_SIZE 4
+#define VERTEX_DRAW_SIZE 4.0f
 #define SELECTION_SIZE 12 // Box width/height around click point
-#define THING_DRAW_SIZE 32
+#define THING_DRAW_SIZE 32.0f
 
 extern SDL_FRect visibleRect;
 extern int gridSize;
@@ -24,7 +24,7 @@ void DrawMap(void);
 void DrawSelectionBox(const SDL_Rect * box);
 
 SDL_Point WindowToWorld(const SDL_Point * point);
-SDL_Point WorldToWindow(const SDL_Point * point);
+SDL_FPoint WorldToWindow(const SDL_FPoint * point);
 
 void ZoomIn(void);
 void ZoomOut(void);

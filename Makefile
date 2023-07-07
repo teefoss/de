@@ -1,2 +1,5 @@
+INCL = -Ipanels -Idoombsp
+SRC = *.c panels/*.c doombsp/*.c
+
 all:
-	cc *.c panels/*.c -Ipanels -lSDL2 -o de
+	cc -g $(SRC) $(INCL) -lSDL2 -o de

@@ -145,34 +145,52 @@ bool LiangBarsky (double edgeLeft,
                   double * y1clip)
 {
 
-    double t0 = 0.0;    double t1 = 1.0;
-    double xdelta = x1src-x0src;
-    double ydelta = y1src-y0src;
-    double p = 0.0, q = 0.0, r;
+    double t0 = 0.0;
+    double t1 = 1.0;
 
-    for(int edge=0; edge<4; edge++) {   // Traverse through left, right, bottom, top edges.
-        if (edge==0) {  p = -xdelta;    q = -(edgeLeft-x0src);  }
-        if (edge==1) {  p = xdelta;     q =  (edgeRight-x0src); }
-        if (edge==2) {  p = -ydelta;    q = -(edgeBottom-y0src);}
-        if (edge==3) {  p = ydelta;     q =  (edgeTop-y0src);   }
-        r = q/p;
-        if(p==0 && q<0) return false;   // Don't draw line at all. (parallel line outside)
+    double xdelta = x1src - x0src;
+    double ydelta = y1src - y0src;
 
-        if(p<0) {
-            if(r>t1) return false;         // Don't draw line at all.
-            else if(r>t0) t0=r;            // Line is clipped!
-        } else if(p>0) {
-            if(r<t0) return false;      // Don't draw line at all.
-            else if(r<t1) t1=r;         // Line is clipped!
+    double p = 0.0;
+    double q = 0.0;
+    double r;
+
+    // Traverse through left, right, bottom, top edges.
+    for ( int edge = 0; edge < 4; edge++ )
+    {
+        if ( edge == 0 ) { p = -xdelta;  q = -(edgeLeft - x0src);   }
+        if ( edge == 1 ) { p =  xdelta;  q =  (edgeRight - x0src);  }
+        if ( edge == 2 ) { p =  ydelta;  q =  (edgeBottom - y0src); }
+        if ( edge == 3 ) { p = -ydelta;  q = - (edgeTop - y0src);    }
+
+        r = q / p;
+
+
+        if ( p == 0 && q < 0 )
+            return false;   // Don't draw line at all. (parallel line outside)
+
+        if ( p < 0 )
+        {
+            if ( r > t1 )
+                 return false;      // Don't draw line at all.
+            else if ( r > t0 )
+                t0 = r;             // Line is clipped!
+        }
+        else if ( p > 0 )
+        {
+            if ( r < t0 )
+                return false;       // Don't draw line at all.
+            else if ( r < t1 )
+                t1 = r;             // Line is clipped!
         }
     }
 
-    *x0clip = x0src + t0*xdelta;
-    *y0clip = y0src + t0*ydelta;
-    *x1clip = x0src + t1*xdelta;
-    *y1clip = y0src + t1*ydelta;
+    *x0clip = x0src + t0 * xdelta;
+    *y0clip = y0src + t0 * ydelta;
+    *x1clip = x0src + t1 * xdelta;
+    *y1clip = y0src + t1 * ydelta;
 
-    return true;        // (clipped) line is drawn
+    return true; // (clipped) line is drawn
 }
 
 

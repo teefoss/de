@@ -13,9 +13,12 @@
 
 #include <string.h>
 
-Panel * openPanels[MAX_PANELS];
+Panel * rightPanels[MAX_PANELS];
 int topPanel = -1;
 int mousePanel = -1; // Panel mouse is currently over.
+
+float rightTrayX;
+bool rightTrayIsOpen;
 
 int textColor = 15;
 int backgroundColor = 1;
@@ -43,10 +46,44 @@ void SetPanelRenderColor(int index)
     SDL_SetRenderDrawColor(renderer, c.r, c.g, c.b, 255);
 }
 
+void InitRightTray(void)
+{
+    SDL_Rect frame = GetWindowFrame();
+
+    rightTrayX = frame.w;
+}
+
+void UpdateRightTray(void)
+{
+    if ( topPanel == -1 )
+        return;
+    
+    SDL_Rect frame = GetWindowFrame();
+
+    float target;
+    if ( rightTrayIsOpen )
+        target = frame.w - rightPanels[topPanel]->location.w;
+    else
+        target = frame.w;
+
+    rightTrayX = LerpEpsilon(rightTrayX, target, 0.2f, 1.0f);
+    rightPanels[topPanel]->location.x = rightTrayX;
+
+    if ( rightTrayX == frame.w )
+        topPanel = -1;
+}
+
 void OpenPanel(Panel * panel, void * data)
 {
-    openPanels[++topPanel] = panel;
+    rightPanels[++topPanel] = panel;
+    rightTrayIsOpen = true;
+
     panel->data = data;
+}
+
+void ClosePanel(void)
+{
+    rightTrayIsOpen = false;
 }
 
 void UpdatePanelConsole(const Panel * panel, int x, int y, u8 ch, bool setTarget)
@@ -202,19 +239,23 @@ void RenderPanelTexture(const Panel * panel)
 {
     SDL_Rect dest = PanelRenderLocation(panel);
 
-    // Shadow
-    SDL_Rect shadow = dest;
-    shadow.x += 16;
-    shadow.y += 16;
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 128);
-    SDL_RenderFillRect(renderer, &shadow);
-
     // Texture
     SDL_RenderCopy(renderer, panel->texture, NULL, &dest);
 
     // Outline
-    SetPanelRenderColor(11);
-    SDL_RenderDrawRect(renderer, &dest);
+
+    SDL_Rect frame = GetWindowFrame();
+
+    SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
+    SDL_RenderDrawLine(renderer,
+                       panel->location.x - 1, 0,
+                       panel->location.x - 1, frame.h);
+
+    SDL_SetRenderDrawColor(renderer, 64, 64, 64, 255);
+    for ( int i = 0; i < 1; i++ )
+        SDL_RenderDrawLine(renderer,
+                           panel->location.x + i, 0,
+                           panel->location.x + i, frame.h);
 }
 
 /// Render a colored horizontal bar at panel item by extracting the console
@@ -252,9 +293,8 @@ void RenderPanelSelection(const Panel * panel)
     SDL_Rect renderLocation = PanelRenderLocation(panel);
     SDL_RenderSetViewport(renderer, &renderLocation);
 
-    // Always render current selection is using keyboard.
-    // If using mouse, only render if the mouse is actually over an item
-    if ( !usingMouse || (usingMouse && panel->mouseItem != -1 ) )
+    // Only render selection if the mouse is actually over an item.
+    if ( panel->selection != -1 )
         RenderBar(panel, &panel->items[panel->selection], 7);
 
     SDL_RenderSetViewport(renderer, &oldViewport); // Restore viewport.
@@ -278,7 +318,24 @@ bool ShouldRenderInactiveTextField(const Panel * panel, int itemIndex)
 
 void RenderPanel(const Panel * panel)
 {
+    // Fill entire tray area.
+
+    SDL_Rect frame = GetWindowFrame();
+    SDL_Rect trayRect = {
+        .x = rightPanels[topPanel]->location.x,
+        .y = 0,
+        .w = (frame.w - rightTrayX) + 1,
+        .h = frame.h
+    };
+
+    SetPanelRenderColor(1);
+    SDL_RenderFillRect(renderer, &trayRect);
+
+    // Texture
+
     RenderPanelTexture(panel);
+
+    // Text input / selection / etc.
 
     SDL_RenderSetViewport(renderer, &panel->location);
 
@@ -287,9 +344,10 @@ void RenderPanel(const Panel * panel)
     else if ( panel->selection != -1 )
         RenderPanelSelection(panel);
 
+    // Per-panel rendering?
+
     if ( panel->render )
         panel->render();
-
 
     SDL_RenderSetViewport(renderer, NULL);
 }
@@ -460,7 +518,7 @@ bool ProcessPanelEvent(Panel * panel, const SDL_Event * event)
 int GetPanelStackPosition(const Panel * panel)
 {
     for ( int i = 0; i <= topPanel; i++ )
-        if ( openPanels[i] == panel )
+        if ( rightPanels[i] == panel )
             return i;
 
     return -1;
@@ -470,16 +528,12 @@ bool IsMouseActionEvent(const SDL_Event * event, const Panel * panel)
 {
     return event->type == SDL_MOUSEBUTTONDOWN
     && event->button.button == SDL_BUTTON_LEFT
-    && panel->mouseItem != -1;
+    && panel->selection != -1;
 }
 
 bool IsActionEvent(const SDL_Event * event, const Panel * panel)
 {
-    bool isKeyAction
-        =  event->type == SDL_KEYDOWN
-        && event->key.keysym.sym == SDLK_RETURN;
-
-    return isKeyAction || IsMouseActionEvent(event, panel);
+    return IsMouseActionEvent(event, panel);
 }
 
 /// Update the mouse's panel location and which item it's hovering over.
@@ -487,9 +541,9 @@ void UpdatePanelMouse(const SDL_Point * windowMouse)
 {
     for ( int panelIndex = topPanel; panelIndex >= 0; panelIndex-- )
     {
-        Panel * panel = openPanels[panelIndex];
+        Panel * panel = rightPanels[panelIndex];
         SDL_Rect rect = PanelRenderLocation(panel);
-        panel->mouseItem = -1;
+        panel->selection = -1;
         mousePanel = -1;
         panel->mouseLocation = (SDL_Point){ -1, -1 };
 
@@ -512,7 +566,6 @@ void UpdatePanelMouse(const SDL_Point * windowMouse)
                     && panel->textLocation.x >= item->x
                     && panel->textLocation.x < item->x + item->width )
                 {
-                    panel->mouseItem = i;
                     panel->selection = i;
                 }
 
@@ -522,7 +575,6 @@ void UpdatePanelMouse(const SDL_Point * windowMouse)
                     && panel->textLocation.y >= item->mouseY1
                     && panel->textLocation.y <= item->mouseY2 )
                 {
-                    panel->mouseItem = i;
                     panel->selection = i;
                 }
             }

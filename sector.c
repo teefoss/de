@@ -58,14 +58,15 @@ static void DrawPixel(int x, int y, SDL_Color c)
 }
 
 // Force immediate render of the block map texture
-static void Refresh(void)
+static void RefreshBlockmap(void)
 {
-    SDL_SetRenderTarget(bmapRenderer, NULL);
-    SDL_RenderClear(bmapRenderer);
-    SDL_RenderCopy(bmapRenderer, bmapTexture, NULL, NULL);
-    SDL_RenderPresent(bmapRenderer);
-    SDL_SetRenderTarget(bmapRenderer, bmapTexture);
-    SDL_PumpEvents();
+    Refresh(bmapRenderer, bmapTexture);
+//    SDL_SetRenderTarget(bmapRenderer, NULL);
+//    SDL_RenderClear(bmapRenderer);
+//    SDL_RenderCopy(bmapRenderer, bmapTexture, NULL, NULL);
+//    SDL_RenderPresent(bmapRenderer);
+//    SDL_SetRenderTarget(bmapRenderer, bmapTexture);
+//    SDL_PumpEvents();
 }
 #endif
 
@@ -204,7 +205,7 @@ static void CreateBlockMap(void)
     Line * line = map.lines->data;
     for ( int i = 0; i < map.lines->count; i++, line++ )
     {
-        if ( line->selected != DELETED )
+        if ( !line->deleted )
             DrawBlockMapLine(i);
     }
 }
@@ -270,7 +271,7 @@ static void FloodFill(int x, int y, Direction direction)
 
 #ifdef DRAW_BLOCK_MAP
     DrawPixel(x, y, red);
-    Refresh();
+    RefreshBlockmap();
 #endif
 
     FloodFill(x + 1, y, EAST);

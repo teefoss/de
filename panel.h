@@ -46,8 +46,7 @@ typedef struct
     int mouseY2;
 } PanelItem;
 
-// TODO: mouse motion: set panel using mouse = true
-// TODO: key down: set panel using mouse = false
+
 // TODO: if text input, WASD shouldn't scroll map
 typedef struct panel
 {
@@ -70,9 +69,6 @@ typedef struct panel
 
     int selection; // Index into `items`
 
-    // Index of item the mouse is over. Used to track whether mouse is actually
-    // over an item when clicking.
-    int mouseItem;
     SDL_Point mouseLocation; // Relative to the panel origin.
     SDL_Point textLocation; // Mouse location in text console coordinates.
 
@@ -95,7 +91,7 @@ typedef struct panel
     void (* textEditingCompletionHandler)(void);
 } Panel;
 
-extern Panel * openPanels[MAX_PANELS];
+extern Panel * rightPanels[MAX_PANELS];
 extern int topPanel;
 extern int mousePanel;
 
@@ -131,11 +127,15 @@ bool ShouldRenderInactiveTextField(const Panel * panel, int itemIndex);
 void StartTextEditing(Panel * panel, int itemIndex, void * value, int type);
 
 void OpenPanel(Panel * panel, void * data);
+void ClosePanel(void);
 int GetPanelStackPosition(const Panel * panel);
 
 bool IsMouseActionEvent(const SDL_Event * event, const Panel * panel);
 bool IsActionEvent(const SDL_Event * event, const Panel * panel);
 void UpdatePanelMouse(const SDL_Point * windowMouse);
+
+void UpdateRightTray(void);
+void InitRightTray(void);
 
 #pragma mark - SCROLLBAR
 

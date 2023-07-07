@@ -31,7 +31,19 @@ typedef struct
 
 extern Map map;
 
+/// Create a new, blank map.
+void CreateMap(const char * label);
+
+/// Load map from WAD lump.
 void LoadMap(const Wad * wad, const char * lumpLabel);
+
+/// Load map from .dwd file.
+void LoadDWD(const char * mapName);
+
+/// Save the currently loaded map to .dwd
+void SaveDWD(void);
+
 SDL_Rect GetMapBounds(void);
+void TranslateCoord(int * y, const SDL_Rect * bounds);
 
 #endif /* Map_h */

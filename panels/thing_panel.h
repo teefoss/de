@@ -15,7 +15,7 @@
 
 extern Panel thingPanel;
 extern Panel thingPalette;
-extern SDL_Rect thingPaletteRect;
+extern SDL_Rect thingPaletteRectOffsets;
 
 void LoadThingPanel(void);
 

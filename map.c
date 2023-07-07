@@ -15,21 +15,6 @@
 Map map;
 
 
-/// Translate all vertices from NeXTSTEP to SDL coordinate system or vice versa.
-static void TranslateAllPoints(void)
-{
-    SDL_Rect bounds = GetMapBounds();
-    int maxY = bounds.h - bounds.y;
-
-    Vertex * vertex = map.vertices->data;
-    for ( int i = 0; i < map.vertices->count; i++, vertex++ )
-        vertex->origin.y = maxY - vertex->origin.y;
-
-    Thing * thing = map.things->data;
-    for ( int i = 0; i < map.things->count; i++, thing++ )
-        thing->origin.y = maxY - thing->origin.y;
-}
-
 #define BOUNDS_BORDER 128
 
 SDL_Rect GetMapBounds(void)
@@ -68,12 +53,20 @@ SDL_Rect GetMapBounds(void)
         map.boundsDirty = false;
     }
 
+    if ( map.bounds.w < 0 )
+    {
+        map.bounds.x = 0;
+        map.bounds.y = 0;
+        map.bounds.w = 0;
+        map.bounds.h = 0;
+    }
+
     return map.bounds;
 }
 
 void * LoadMapData(const Wad * wad, const char * lumpName, int dataType, int * count)
 {
-    int labelIndex = GetLumpIndex(wad, lumpName);
+    int labelIndex = GetLumpIndexFromName(wad, lumpName);
     int dataIndex = labelIndex + dataType;
 
     size_t dataSize = 0;
@@ -96,11 +89,23 @@ void * LoadMapData(const Wad * wad, const char * lumpName, int dataType, int * c
     return GetLumpWithIndex(wad, dataIndex);
 }
 
+void CreateMap(const char * label)
+{
+    strncpy(map.label, label, sizeof(map.label));
+
+    map.vertices = NewArray(0, sizeof(Vertex), 16);
+    map.lines = NewArray(0, sizeof(Line), 16);
+    map.things = NewArray(0, sizeof(Thing), 16);
+
+    map.boundsDirty = true;
+    GetMapBounds();
+}
+
 void LoadMap(const Wad * wad, const char * lumpLabel)
 {
     strncpy(map.label, lumpLabel, sizeof(map.label));
 
-    int labelIndex = GetLumpIndex(wad, lumpLabel);
+    int labelIndex = GetLumpIndexFromName(wad, lumpLabel);
     if ( labelIndex == -1 )
     {
         fprintf(stderr, "Bad map label '%s'\n", lumpLabel);
@@ -111,11 +116,11 @@ void LoadMap(const Wad * wad, const char * lumpLabel)
     int numLines = 0;
     int numThings = 0;
 
-    mapvertex_t * mapVertices = LoadMapData(wad, lumpLabel, ML_VERTEXES, &numVertices);
-    maplinedef_t * lines = LoadMapData(wad, lumpLabel, ML_LINEDEFS, &numLines);
-    mapsidedef_t * sidedefs = LoadMapData(wad, lumpLabel, ML_SIDEDEFS, NULL);
-    mapsector_t * sectordefs = LoadMapData(wad, lumpLabel, ML_SECTORS, NULL);
-    mapthing_t * things = LoadMapData(wad, lumpLabel, ML_THINGS, &numThings);
+    mapvertex_t * vertexData = LoadMapData(wad, lumpLabel, ML_VERTEXES, &numVertices);
+    maplinedef_t * lineData = LoadMapData(wad, lumpLabel, ML_LINEDEFS, &numLines);
+    mapsidedef_t * sidedefData = LoadMapData(wad, lumpLabel, ML_SIDEDEFS, NULL);
+    mapsector_t * sectordefData = LoadMapData(wad, lumpLabel, ML_SECTORS, NULL);
+    mapthing_t * thingData = LoadMapData(wad, lumpLabel, ML_THINGS, &numThings);
 
     map.vertices = NewArray(numVertices, sizeof(Vertex), 16);
     map.lines = NewArray(numLines, sizeof(Line), 16);
@@ -128,14 +133,30 @@ void LoadMap(const Wad * wad, const char * lumpLabel)
     {
         Vertex vertex =
         {
-            .origin.x = mapVertices[i].x,
-            .origin.y = mapVertices[i].y,
+            .origin = { vertexData[i].x, -vertexData[i].y },
             .referenceCount = 0,
             .removed = true, // This will be updated once a line uses this vert.
         };
 
         Push(map.vertices, &vertex);
     }
+
+
+    // Load things
+
+    for ( int i = 0; i < numThings; i++ )
+    {
+        Thing thing =
+        {
+            .origin = { thingData[i].x, -thingData[i].y },
+            .options = thingData[i].options,
+            .angle = thingData[i].angle,
+            .type = thingData[i].type
+        };
+
+        Push(map.things, &thing);
+    }
+
 
     // Load Lines
 
@@ -145,76 +166,286 @@ void LoadMap(const Wad * wad, const char * lumpLabel)
     {
         Line line = { 0 };
 
-        line.v1 = lines[i].v1;
+        line.v1 = lineData[i].v1;
         vertices[line.v1].referenceCount++;
         vertices[line.v1].removed = false;
 
-        line.v2 = lines[i].v2;
+        line.v2 = lineData[i].v2;
         vertices[line.v2].referenceCount++;
         vertices[line.v2].removed = false;
 
-        line.flags = lines[i].flags;
-        line.tag = lines[i].tag;
-        line.special = lines[i].special;
+        line.flags = lineData[i].flags;
+        line.tag = lineData[i].tag;
+        line.special = lineData[i].special;
+
+        // Load side(s)
 
         for ( int s = 0; s < 2; s++ )
         {
-            // Load side
+            if ( lineData[i].sidenum[s] == -1 )
+                continue;
 
             Side * side = &line.sides[s];
-            mapsidedef_t * mside = &sidedefs[lines[i].sidenum[s]];
+            memset(side, 0, sizeof(*side));
 
+            mapsidedef_t * mside = &sidedefData[lineData[i].sidenum[s]];
             side->offsetX = mside->textureoffset;
             side->offsetY = mside->rowoffset;
             strncpy(side->bottom, mside->bottomtexture, 8);
-            side->bottom[8] = '\0';
             strncpy(side->middle, mside->midtexture, 8);
-            side->middle[8] = '\0';
             strncpy(side->top, mside->toptexture, 8);
-            side->top[8] = '\0';
 
             // Load side's sector
 
-            mapsector_t * msec = &sectordefs[mside->sector];
-            side->sector.floorHeight = msec->floorheight;
-            side->sector.ceilingHeight = msec->ceilingheight;
+            mapsector_t * msec = &sectordefData[mside->sector];
+            SectorDef * def = &side->sectorDef;
+            memset(def, 0, sizeof(*def));
 
-            strncpy(side->sector.floorFlat, msec->floorpic, 8);
-            side->sector.floorFlat[8] = '\0';
-
-            strncpy(side->sector.ceilingFlat, msec->ceilingpic, 8);
-            side->sector.ceilingFlat[8] = '\0';
-
-            side->sector.lightLevel = msec->lightlevel;
-            side->sector.special = msec->special;
-            side->sector.tag = msec->tag;
+            def->floorHeight = msec->floorheight;
+            def->ceilingHeight = msec->ceilingheight;
+            strncpy(def->floorFlat, msec->floorpic, 8);
+            strncpy(def->ceilingFlat, msec->ceilingpic, 8);
+            def->lightLevel = msec->lightlevel;
+            def->special = msec->special;
+            def->tag = msec->tag;
         }
 
         Push(map.lines, &line);
 //        printf("loaded line %3d: %3d, %3d\n", i, line.v1, line.v2);
     }
 
-    // Load things
-
-    for ( int i = 0; i < numThings; i++ ) {
-        Thing thing = { 0 };
-        thing.origin.x = things[i].x;
-        thing.origin.y = things[i].y;
-        thing.options = things[i].options;
-        thing.angle = things[i].angle;
-        thing.type = things[i].type;
-        
-        Push(map.things, &thing);
-    }
-
-    TranslateAllPoints();
-
     map.boundsDirty = true;
     GetMapBounds();
 
-    free(sectordefs);
-    free(mapVertices);
-    free(lines);
-    free(sidedefs);
-    free(things);
+    free(sectordefData);
+    free(vertexData);
+    free(lineData);
+    free(sidedefData);
+    free(thingData);
+}
+
+bool ReadLine(FILE * dwd, SDL_Point * p1, SDL_Point *p2, Line * line)
+{
+    if ( fscanf(dwd, "(%d,%d) to (%d,%d) : %d : %d : %d\n",
+                &p1->x, &p1->y, &p2->x, &p2->y,
+                &line->flags, &line->special, &line->tag) != 7 )
+    {
+        return false;
+    }
+
+    int numSides = line->flags & ML_TWOSIDED ? 2 : 1;
+
+    for ( int i = 0; i < numSides; i++ )
+    {
+        Side * side = &line->sides[i];
+
+        if ( fscanf(dwd, "    %d (%d : %s / %s / %s )\n",
+                    &side->offsetY,
+                    &side->offsetX,
+                    side->top,
+                    side->bottom,
+                    side->middle) != 5 )
+        {
+            return false;
+        }
+
+        SectorDef * e = &side->sectorDef;
+
+        if ( fscanf(dwd, "    %d : %s %d : %s %d %d %d\n",
+                    &e->floorHeight,
+                    e->floorFlat,
+                    &e->ceilingHeight,
+                    e->ceilingFlat,
+                    &e->lightLevel,
+                    &e->special,
+                    &e->tag) != 7 )
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+void WriteLine(FILE * dwd, Line * line)
+{
+    Vertex * vertices = map.vertices->data;
+    SDL_Point p1 = vertices[line->v1].origin;
+    SDL_Point p2 = vertices[line->v2].origin;
+
+    fprintf(dwd, "(%d,%d) to (%d,%d) : %d : %d : %d\n",
+            p1.x, p1.y, p2.x, p2.y, line->flags, line->special, line->tag);
+
+    int numSides = line->flags & ML_TWOSIDED ? 2 : 1;
+
+    for ( int i = 0; i < numSides; i++ )
+    {
+        Side * side = &line->sides[i];
+
+        if ( strlen(side->top) == 0 )
+            strcpy(side->top, "-");
+
+        if ( strlen(side->middle) == 0 )
+            strcpy(side->middle, "-");
+
+        if ( strlen(side->bottom) == 0 )
+            strcpy(side->bottom, "-");
+
+        if ( strlen(side->sectorDef.floorFlat) == 0 )
+            strcpy(side->sectorDef.floorFlat, "-");
+
+        if ( strlen(side->sectorDef.ceilingFlat) == 0 )
+            strcpy(side->sectorDef.ceilingFlat, "-");
+
+        fprintf(dwd, "    %d (%d : %s / %s / %s )\n",
+                side->offsetY,
+                side->offsetX,
+                side->top,
+                side->bottom,
+                side->middle);
+
+        SectorDef * e = &side->sectorDef;
+
+        fprintf(dwd, "    %d : %s %d : %s %d %d %d\n",
+                e->floorHeight,
+                e->floorFlat,
+                e->ceilingHeight,
+                e->ceilingFlat,
+                e->lightLevel,
+                e->special,
+                e->tag);
+
+    }
+}
+
+bool ReadThing(FILE * dwd, Thing * thing)
+{
+    if ( fscanf(dwd, "(%i,%i, %d) :%d, %d\n",
+                &thing->origin.x,
+                &thing->origin.y,
+                &thing->angle,
+                &thing->type,
+                &thing->options) != 5 )
+    {
+        return false;
+    }
+
+    thing->origin.x &= -16; // TODO: DoomEd rounds this. Why?
+    thing->origin.y &= -16;
+
+    return true;
+}
+
+void WriteThing(FILE * dwd, Thing * thing)
+{
+    fprintf(dwd, "(%d,%d, %d) :%d, %d\n",
+            thing->origin.x,
+            thing->origin.y,
+            thing->angle,
+            thing->type,
+            thing->options);
+}
+
+void LoadDWD(const char * mapName)
+{
+    char fileName[256] = { 0 };
+    strncpy(fileName, mapName, sizeof(fileName) - 1);
+
+    const char * extension = ".dwd";
+    strncat(fileName, extension, sizeof(fileName) - strlen(extension) - 1);
+
+    FILE * dwd = fopen(fileName, "r");
+    if ( dwd == NULL )
+    {
+        printf("Error: '%s' not found!\n", fileName);
+        return;
+    }
+
+    // Check header.
+
+    int version = -1;
+    if ( fscanf(dwd, "WorldServer version %d\n", &version) != 1 || version != 4 )
+        goto error;
+
+    // Read lines.
+
+    int numLines;
+    if ( fscanf(dwd, "\nlines:%d\n", &numLines) != 1 )
+        goto error;
+
+    for ( int i = 0; i < numLines; i++ )
+    {
+        SDL_Point p1, p2;
+        Line line = { 0 };
+
+        if ( !ReadLine(dwd, &p1, &p2, &line) )
+            goto error;
+
+//        NewLine(&p1, &p2, &line);
+    }
+    printf("Loaded %d lines.\n", numLines);
+
+    // Read things.
+
+    int numThings;
+    if ( fscanf(dwd, "/nthings:%d\n", &numThings) != 1 )
+        goto error;
+
+    for ( int i = 0; i < numThings; i++ )
+    {
+        Thing thing = { 0 };
+        if ( !ReadThing(dwd, &thing) )
+            goto error;
+
+//        NewThing(&thing);
+    }
+    printf("Loaded %d things.\n", numThings);
+
+    return;
+error:
+    printf("Error reading %s!\n", fileName);
+}
+
+void SaveDWD(void)
+{
+    char fileName[80] = { 0 };
+    strcpy(fileName, map.label);
+    strcat(fileName, ".dwd");
+
+    FILE * dwd = fopen(fileName, "w");
+    if ( dwd == NULL )
+    {
+        printf("Error: failed to create %s!\n", fileName);
+        return;
+    }
+
+    fprintf(dwd, "WorldServer version 4\n");
+
+    // Lines
+
+    int numLines = 0;
+    Line * lines = map.lines->data;
+    for ( int i = 0; i < map.lines->count; i++ )
+        if ( !lines[i].deleted )
+            numLines++;
+
+    fprintf(dwd, "\nlines:%d\n", numLines);
+
+    for ( int i = 0; i < map.lines->count; i++ )
+        if ( !lines[i].deleted )
+            WriteLine(dwd, &lines[i]);
+
+    // Things
+
+    int numThings = 0;
+    Thing * things = map.things->data;
+    for ( int i = 0; i < map.things->count; i++ )
+        if ( !things[i].deleted )
+            numThings++;
+
+    fprintf(dwd, "\nthings:%d\n", numThings);
+
+    for ( int i = 0; i < map.things->count; i++ )
+        if ( !things[i].deleted )
+            WriteThing(dwd, &things[i]);
 }

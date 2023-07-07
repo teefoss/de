@@ -20,13 +20,20 @@ typedef enum
     GAME_DOOM1,
     GAME_DOOM1SE,
     GAME_DOOM2
-} GameType;
+} Game;
 
-extern GameType gameType;
-extern Wad * resourceWad;
-extern bool usingMouse;
+typedef struct
+{
+    Game game;  // which game the level is for.
+    Wad * iwad; // aka "resource" WAD.
+    Wad * pwad; // user-created WAD being edited.
+} Editor;
 
+extern Editor editor;
+
+void InitEditor(void);
 void EditorLoop(void);
+void CleanupEditor(void);
 void RenderEditor(void);
 void DeselectAllObjects(void);
 

@@ -16,26 +16,25 @@
 #include "panel.h"
 #include "line_panel.h"
 #include "thing_panel.h"
+#include "texture_panel.h"
+#include "progress_panel.h"
 #include "patch.h"
 #include "defaults.h"
 #include "sector.h"
 #include "sector_panel.h"
 #include "flat.h"
+#include "doombsp.h"
 
 #include <stdbool.h>
 #include <limits.h>
 
 #define SHIFT_DOWN (mods & KMOD_SHIFT)
 
-bool running = true;
+Editor editor;
 
-GameType gameType;
-
-Wad * resourceWad;
+static bool running = true;
 
 // Input
-
-bool usingMouse;
 
 static const u8 * keys;
 static SDL_Keymod mods;
@@ -82,7 +81,10 @@ void DeselectAllObjects(void)
         things[i].selected = false;
     }
 
-    topPanel = -1; // Close all panels.
+//    while ( topPanel )
+//        ClosePanel();
+    ClosePanel();
+//    topPanel = -1; // Close all panels.
 }
 
 #pragma mark - AUTOSCROLL
@@ -144,6 +146,7 @@ void DragSelectedObjects(float dt)
         {
             vertices[i].origin.x += dx;
             vertices[i].origin.y += dy;
+            map.boundsDirty = true;
         }
     }
 
@@ -153,6 +156,7 @@ void DragSelectedObjects(float dt)
         if ( things[i].selected ) {
             things[i].origin.x += dx;
             things[i].origin.y += dy;
+            map.boundsDirty = true;
         }
     }
 
@@ -424,7 +428,7 @@ void CenterSelectedObjects(void)
     AutoScrollToPoint(focus);
 }
 
-void HandleEditEvent(const SDL_Event * event)
+void ProcessEditEvent(const SDL_Event * event)
 {
     switch ( event->type )
     {
@@ -448,6 +452,10 @@ void HandleEditEvent(const SDL_Event * event)
         case SDL_KEYDOWN:
             switch ( event->key.keysym.sym )
             {
+                case SDLK_s:
+                    if ( mods & KMOD_GUI )
+                        DoomBSP();
+                    break;
 #ifdef DRAW_BLOCK_MAP
                 case SDLK_o:
                     bmapScale /= 2.0f;
@@ -522,9 +530,11 @@ void HandleEditEvent(const SDL_Event * event)
     }
 }
 
+// TODO: Move this to PollEvent, so scrolling doesn't happen on, e.g., CTRL-S
 void ManualScrollView(float dt)
 {
     static float scrollSpeed = 0.0f;
+    bool moved = false;
 
     if (   keys[SDL_SCANCODE_W]
         || keys[SDL_SCANCODE_A]
@@ -535,6 +545,7 @@ void ManualScrollView(float dt)
         float max = (600.0f / scale) * dt;
         if ( scrollSpeed > max )
             scrollSpeed = max;
+        moved = true;
     }
     else
     {
@@ -552,6 +563,23 @@ void ManualScrollView(float dt)
 
     if ( keys[SDL_SCANCODE_D] )
         visibleRect.x += scrollSpeed;
+
+    if ( moved )
+    {
+        SDL_Rect bounds = GetMapBounds();
+
+        // TODO: only clamp when moving toward the edge.
+        // This way, a user who has reduced the world bounds the vis rect
+        // don't snap back when subsequently scrolling.
+
+        // Don't let the user scroll off into infinity!
+        visibleRect.x = SDL_clamp(visibleRect.x,
+                                  bounds.x,
+                                  bounds.x + bounds.w - visibleRect.w);
+        visibleRect.y = SDL_clamp(visibleRect.y,
+                                  bounds.y,
+                                  bounds.y + bounds.h - visibleRect.h);
+    }
 }
 
 void UpdateEdit(float dt)
@@ -560,6 +588,82 @@ void UpdateEdit(float dt)
 }
 
 #pragma mark -
+
+bool isResizing;
+SDL_Point oldWindowOrigin;
+SDL_Point oldVisibleOrigin;
+
+int WindowResizeEventFilter(void * data, SDL_Event * event)
+{
+    if (   event->type == SDL_WINDOWEVENT
+        && (event->window.event == SDL_WINDOWEVENT_RESIZED
+            || event->window.event == SDL_WINDOWEVENT_RESIZED) )
+    {
+        SDL_Rect frame = GetWindowFrame();
+
+        if ( !isResizing )
+        {
+            isResizing = true;
+            oldWindowOrigin.x = frame.x;
+            oldWindowOrigin.y = frame.y;
+            oldVisibleOrigin.x = visibleRect.x;
+            oldVisibleOrigin.y = visibleRect.y;
+        }
+
+        if ( event->window.event == SDL_WINDOWEVENT_SIZE_CHANGED )
+        {
+            isResizing = false;
+        }
+
+        frame = GetWindowFrame();
+
+        int dx = frame.x - oldWindowOrigin.x;
+        int dy = frame.y - oldWindowOrigin.y;
+
+        visibleRect.x = oldVisibleOrigin.x + dx;
+        visibleRect.y = oldVisibleOrigin.y + dy;
+        visibleRect.w = event->window.data1;
+        visibleRect.h = event->window.data2;
+
+        RenderEditor();
+    }
+
+    return 1;
+}
+
+void InitEditor(void)
+{
+    switch ( editor.game )
+    {
+        case GAME_DOOM1:   LoadLinePanels(DOOM1_PATH"linespecials.dsp"); break;
+        case GAME_DOOM1SE: LoadLinePanels(DOOMSE_PATH"linespecials.dsp"); break;
+        case GAME_DOOM2:   LoadLinePanels(DOOM2_PATH"linespecials.dsp"); break;
+        default: break;
+    }
+
+    InitLineCross();
+    InitMapView();
+    LoadProgressPanel();
+    LoadAllPatches(editor.iwad);
+    LoadAllTextures(editor.iwad);
+    LoadTexturePanel();
+    LoadThingPanel();
+    LoadThingDefinitions(); // Needs thing palette to be loaded first.
+    LoadFlats(editor.iwad);
+    LoadSectorPanel();
+
+    keys = SDL_GetKeyboardState(NULL);
+
+    visibleRectTarget.x = visibleRect.x;
+    visibleRectTarget.y = visibleRect.y;
+
+    InitRightTray();
+
+    // TODO: add some test that VSYNC is working, otherwise limit framerate.
+    // FIXME: get smooth scrolling and non-laggy mouse movement
+
+    SDL_SetEventFilter(WindowResizeEventFilter, NULL);
+}
 
 void RenderEditor(void)
 {
@@ -572,115 +676,102 @@ void RenderEditor(void)
     if ( editorState == ES_DRAG_BOX )
         DrawSelectionBox(&selectionBox);
 
-    for ( int i = 0; i <= topPanel; i++ )
-        RenderPanel(openPanels[i]);
+    if ( topPanel != -1 )
+        RenderPanel(rightPanels[topPanel]);
 
     SDL_RenderPresent(renderer);
 }
 
+void EditorFrame(float dt)
+{
+    mods = SDL_GetModState();
+    mouseButtons = SDL_GetMouseState(&windowMouse.x, &windowMouse.y);
+    worldMouse = WindowToWorld(&windowMouse);
+
+    bmapDY = 0;
+    bmapDX = 0;
+
+    SDL_Event event;
+    while ( SDL_PollEvent(&event) )
+    {
+        for ( int i = topPanel; i >= 0; i-- )
+        {
+            //            if ( topPanel >= 0 )
+            if ( ProcessPanelEvent(rightPanels[i], &event) )
+                goto nextEvent;
+        }
+
+        StateHandleEvent(&event);
+
+        // TODO: handle quit separately here.
+    nextEvent:
+        ;
+    }
+
+    UpdatePanelMouse(&windowMouse);
+
+    // Block map texture scrolling.
+#ifdef DRAW_BLOCK_MAP
+    if ( keys[SDL_SCANCODE_RIGHT] )
+        bmapLocation.x -= 2 * bmapScale;
+    if ( keys[SDL_SCANCODE_LEFT] )
+        bmapLocation.x += 2 * bmapScale;
+    if ( keys[SDL_SCANCODE_UP] )
+        bmapLocation.y += 2 * bmapScale;
+    if ( keys[SDL_SCANCODE_DOWN] )
+        bmapLocation.y -= 2 * bmapScale;
+#endif
+
+    StateUpdate(dt);
+    UpdateRightTray();
+
+    RenderEditor();
+
+#ifdef DRAW_BLOCK_MAP
+    // TODO: refactor and move to sector.c
+    if ( bmapRenderer )
+    {
+        SDL_SetRenderTarget(bmapRenderer, NULL);
+        SDL_SetRenderDrawColor(bmapRenderer, 128, 128, 128, 255);
+        SDL_RenderClear(bmapRenderer);
+
+        SDL_QueryTexture(bmapTexture,
+                         NULL,
+                         NULL,
+                         &bmapLocation.w,
+                         &bmapLocation.h);
+
+        bmapLocation.w *= bmapScale;
+        bmapLocation.h *= bmapScale;
+
+        SDL_RenderCopy(bmapRenderer, bmapTexture, NULL, &bmapLocation);
+        SDL_RenderPresent(bmapRenderer);
+    }
+#endif
+
+    if ( nbRenderer )
+    {
+//        SDL_SetRenderTarget(nbRenderer, NULL);
+//        SDL_SetRenderDrawColor(nbRenderer, 0, 0, 64, 255);
+//        SDL_RenderClear(nbRenderer);
+        SDL_RenderCopy(nbRenderer, nbTexture, NULL, NULL);
+        SDL_RenderPresent(nbRenderer);
+    }
+}
+
 void EditorLoop(void)
 {
-    keys = SDL_GetKeyboardState(NULL);
-    mods = SDL_GetModState();
-
     int refreshRate = GetRefreshRate();
     printf("refresh rate: %d Hz\n", refreshRate);
     const float dt = 1.0f / refreshRate;
 
-    visibleRectTarget.x = visibleRect.x;
-    visibleRectTarget.y = visibleRect.y;
-
-    // TODO: add some test that VSYNC is working, otherwise limit framerate.
-
-    // FIXME: get smooth scrolling and non-laggy mouse movement
-//#define LIMIT_FRAME_RATE
-#ifdef LIMIT_FRAME_RATE
-    int current = SDL_GetTicks();
-    int last = current;
-    int frameMsec = 1000.0f / refreshRate;
-#endif
-
     while ( running )
-    {
-#ifdef LIMIT_FRAME_RATE
-        current = SDL_GetTicks();
-        int elapsed = current - last;
+        EditorFrame(dt);
+}
 
-        if ( elapsed < frameMsec )
-        {
-            SDL_Delay(frameMsec - elapsed);
-//            continue;
-        }
-
-        last = current;
-#endif
-        mouseButtons = SDL_GetMouseState(&windowMouse.x, &windowMouse.y);
-        worldMouse = WindowToWorld(&windowMouse);
-
-        bmapDY = 0;
-        bmapDX = 0;
-
-        SDL_Event event;
-        while ( SDL_PollEvent(&event) )
-        {
-            if ( event.type == SDL_KEYDOWN )
-                usingMouse = false;
-            else if (   event.type == SDL_MOUSEMOTION
-                     || event.type == SDL_MOUSEBUTTONDOWN )
-                usingMouse = true;
-
-            for ( int i = topPanel; i >= 0; i-- )
-            {
-                //            if ( topPanel >= 0 )
-                if ( ProcessPanelEvent(openPanels[i], &event) )
-                    goto nextEvent;
-            }
-
-            StateHandleEvent(&event);
-
-            // TODO: handle quit separately here.
-        nextEvent:
-            ;
-        }
-
-        if ( usingMouse )
-            UpdatePanelMouse(&windowMouse);
-
-        // Block map texture scrolling.
-#ifdef DRAW_BLOCK_MAP
-        if ( keys[SDL_SCANCODE_RIGHT] )
-            bmapLocation.x -= 2 * bmapScale;
-        if ( keys[SDL_SCANCODE_LEFT] )
-            bmapLocation.x += 2 * bmapScale;
-        if ( keys[SDL_SCANCODE_UP] )
-            bmapLocation.y += 2 * bmapScale;
-        if ( keys[SDL_SCANCODE_DOWN] )
-            bmapLocation.y -= 2 * bmapScale;
-#endif
-
-        StateUpdate(dt);
-
-        RenderEditor();
-
-#ifdef DRAW_BLOCK_MAP
-        if ( bmapRenderer )
-        {
-            SDL_SetRenderTarget(bmapRenderer, NULL);
-            SDL_SetRenderDrawColor(bmapRenderer, 128, 128, 128, 255);
-            SDL_RenderClear(bmapRenderer);
-
-            SDL_QueryTexture(bmapTexture,
-                             NULL,
-                             NULL,
-                             &bmapLocation.w,
-                             &bmapLocation.h);
-
-            bmapLocation.w *= bmapScale;
-            bmapLocation.h *= bmapScale;
-
-            SDL_RenderCopy(bmapRenderer, bmapTexture, NULL, &bmapLocation);
-            SDL_RenderPresent(bmapRenderer);
-        }
-#endif
-    }
+void CleanupEditor(void)
+{
+    FreePanel(&texturePanel);
+    FreeLinePanels();
+    FreePatchesAndTextures();
 }

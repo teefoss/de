@@ -60,8 +60,8 @@ void LoadFlats(Wad * wad)
         sprintf(startLabel, "F%d_START", set + 1);
         sprintf(endLabel, "F%d_END", set + 1);
 
-        int startIndex = GetLumpIndex(wad, startLabel);
-        int endIndex = GetLumpIndex(wad, endLabel);
+        int startIndex = GetLumpIndexFromName(wad, startLabel);
+        int endIndex = GetLumpIndexFromName(wad, endLabel);
 
         if ( startIndex == -1 || endIndex == -1 )
         {

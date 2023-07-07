@@ -15,7 +15,7 @@ Panel thingCategoryPanel;
 Panel thingPalette;
 
 static int category; // Selected category index.
-SDL_Rect thingPaletteRect; // The rect where things are displayed.
+SDL_Rect thingPaletteRectOffsets; // The rect where things are displayed.
 
 enum
 {
@@ -53,23 +53,33 @@ static PanelItem items[THP_COUNT] =
 {
     [0] = { 0 },
     [THP_TYPE] = { 2, 10, 25, THP_SW, THP_EASY, -1, -1, true, 2, 3, 13, 8 },
-    [THP_NW] = { 16, 4, 2, -1, THP_W, THP_TYPE, THP_N },
-    [THP_N] = { 20, 4, 2, -1, THP_S, THP_NW, THP_NE },
-    [THP_NE] = { 24, 4, 2, -1, THP_E, THP_N, -1 },
-    [THP_W] = { 16, 6, 2, THP_NW, THP_SW, THP_TYPE, THP_E },
-    [THP_E] = { 24, 6, 2, THP_NE, THP_SE, THP_W, -1 },
-    [THP_SW] = { 16, 8, 2, THP_W, THP_TYPE, -1, THP_S },
-    [THP_S] = { 20, 8, 2, THP_N, THP_TYPE, THP_SW, THP_SE },
-    [THP_SE] = { 24, 8, 2, THP_E, THP_TYPE, THP_S, -1 },
 
-    [THP_EASY] = { 6, 12, 7, THP_TYPE, THP_NORMAL, -1, THP_AMBUSH },
-    [THP_NORMAL] = { 6, 13, 7, THP_EASY, THP_HARD, -1, THP_NETWORK },
-    [THP_HARD] = { 6, 14, 7, THP_NORMAL, -1, -1, THP_NETWORK },
-    [THP_AMBUSH] = { 18, 12, 7, THP_TYPE, THP_NETWORK, THP_EASY, -1 },
-    [THP_NETWORK] = { 18, 13, 7, THP_AMBUSH, -1, THP_NORMAL, -1 },
+    [THP_NW] = { 2, 13, 2, -1, THP_W, THP_TYPE, THP_N },
+    [THP_N] = { 6, 13, 2, -1, THP_S, THP_NW, THP_NE },
+    [THP_NE] = { 10, 13, 2, -1, THP_E, THP_N, -1 },
+    [THP_W] = { 2, 15, 2, THP_NW, THP_SW, THP_TYPE, THP_E },
+    [THP_E] = { 10, 15, 2, THP_NE, THP_SE, THP_W, -1 },
+    [THP_SW] = { 2, 17, 2, THP_W, THP_TYPE, -1, THP_S },
+    [THP_S] = { 6, 17, 2, THP_N, THP_TYPE, THP_SW, THP_SE },
+    [THP_SE] = { 10, 17, 2, THP_E, THP_TYPE, THP_S, -1 },
+
+    [THP_EASY] = { 6, 20, 7, THP_TYPE, THP_NORMAL, -1, THP_AMBUSH },
+    [THP_NORMAL] = { 6, 21, 7, THP_EASY, THP_HARD, -1, THP_NETWORK },
+    [THP_HARD] = { 6, 22, 7, THP_NORMAL, -1, -1, THP_NETWORK },
+    [THP_AMBUSH] = { 6, 23, 7, THP_TYPE, THP_NETWORK, THP_EASY, -1 },
+    [THP_NETWORK] = { 6, 24, 7, THP_AMBUSH, -1, THP_NORMAL, -1 },
 };
 
 static PanelItem categoryItems[THING_CATEGORY_COUNT];
+
+SDL_Rect ThingPaletteRect(void)
+{
+    SDL_Rect rect = thingPaletteRectOffsets;
+    rect.x += thingPalette.location.x;
+    rect.y += thingPalette.location.y;
+
+    return rect;
+}
 
 bool ProcessThingPanelEvent(const SDL_Event * event)
 {
@@ -130,7 +140,7 @@ void RenderAngle(int itemIndex)
     RenderChar((item->x + 1) * FONT_WIDTH, item->y * FONT_HEIGHT, 219);
 
     SetPanelRenderColor(15);
-    PANEL_RENDER_STRING(16, 3, "%s", directionNames[itemIndex]);
+    PANEL_RENDER_STRING(14, 13, "%s", directionNames[itemIndex]);
 }
 
 void RenderThingPanel(void)
@@ -184,6 +194,8 @@ void RenderThingPalette(void)
 {
     SetPanelRenderColor(8);
     SDL_RenderSetViewport(renderer, NULL);
+
+    SDL_Rect thingPaletteRect = ThingPaletteRect();
     SDL_RenderDrawRect(renderer, &thingPaletteRect); // DEBUG
     SDL_RenderSetViewport(renderer, &thingPaletteRect);
 
@@ -221,7 +233,8 @@ void RenderThingPalette(void)
             else
                 SetPanelRenderColor(8);
 
-            DrawRect(&box, SELECTION_BOX_THICKNESS);
+            DrawRect(&(SDL_FRect){ box.x, box.y, box.w, box.h },
+                     SELECTION_BOX_THICKNESS);
         }
 
         if ( mouseIsOver )
@@ -252,10 +265,7 @@ void LoadThingPanel(void)
     thingPanel.selection = 1;
 
     thingCategoryPanel = LoadPanel(PANEL_DATA_DIRECTORY"thing_category.panel");
-    thingCategoryPanel.location.x
-        = thingPanel.location.x + items[THP_TYPE].x * FONT_WIDTH;
-    thingCategoryPanel.location.y
-        = thingPanel.location.y + (items[THP_TYPE].y + 1) * FONT_HEIGHT;
+    thingCategoryPanel.location.y = 0;
     thingCategoryPanel.processEvent = ProcessThingCategoryPanelEvent;
     thingCategoryPanel.numItems = THING_CATEGORY_COUNT;
     thingCategoryPanel.items = categoryItems;
@@ -264,8 +274,8 @@ void LoadThingPanel(void)
     for ( int i = 0; i < THING_CATEGORY_COUNT; i++ )
     {
         categoryItems[i].x = 2;
-        categoryItems[i].y = i + 1;
-        categoryItems[i].width = 17;
+        categoryItems[i].y = i + 2;
+        categoryItems[i].width = 20;
         categoryItems[i].left = -1;
         categoryItems[i].right = -1;
         categoryItems[i].up = i - 1;
@@ -276,14 +286,13 @@ void LoadThingPanel(void)
     categoryItems[THING_CATEGORY_COUNT - 1].down = 0;
 
     thingPalette = LoadPanel(PANEL_DATA_DIRECTORY "thing_palette.panel");
-    thingPalette.location.x = 100;
-    thingPalette.location.y = 100;
+    thingPalette.location.y = 0;
     thingPalette.selection = -1; // No items in the thing palette
     thingPalette.render = RenderThingPalette;
     thingPalette.selection = -1;
 
-    thingPaletteRect.x = thingPalette.location.x + 16;
-    thingPaletteRect.y = thingPalette.location.y + 32;
-    thingPaletteRect.w = (thingPalette.location.w - 32);
-    thingPaletteRect.h = thingPalette.location.h - 48;
+    thingPaletteRectOffsets.x = 16;
+    thingPaletteRectOffsets.y = 32;
+    thingPaletteRectOffsets.w = thingPalette.location.w - 32;
+    thingPaletteRectOffsets.h = thingPalette.location.h - 48;
 }

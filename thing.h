@@ -29,7 +29,7 @@ typedef struct
 {
     ThingCategory category;
     int doomedType;
-    GameType game;
+    Game game;
     int radius;
     Patch patch;
     char name[64];
@@ -37,11 +37,12 @@ typedef struct
 
 typedef struct {
     SDL_Point origin;
-    s16 angle;
-    s16 type;
-    s16 options;
+    int angle;
+    int type;
+    int options;
 
     bool selected;
+    bool deleted;
 } Thing;
 
 typedef struct

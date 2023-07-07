@@ -13,7 +13,7 @@ void UpdateSelectionBox(float dt);
 void UpdateDragView(float dt);
 void DragSelectedObjects(float dt);
 
-void HandleEditEvent(const SDL_Event * event);
+void ProcessEditEvent(const SDL_Event * event);
 void HandleDragBoxEvent(const SDL_Event * event);
 void HandleDragViewEvent(const SDL_Event * event);
 void HandleDragObjectsEvent(const SDL_Event * event);
@@ -22,7 +22,7 @@ void HandleDragObjectsEvent(const SDL_Event * event);
 EditorStateID editorState;
 
 EditorState states[] = {
-    [ES_EDIT] = { HandleEditEvent, UpdateEdit },
+    [ES_EDIT] = { ProcessEditEvent, UpdateEdit },
     [ES_AUTO_SCROLL] = { NULL, UpdateAutoscroll },
     [ES_DRAG_BOX] = { HandleDragBoxEvent, UpdateSelectionBox },
     [ES_DRAG_VIEW] = { HandleDragViewEvent, UpdateDragView },

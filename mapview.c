@@ -21,11 +21,11 @@ SDL_FRect visibleRect;
 float scale = 1.0f;
 int gridSize = 8;
 
-SDL_Point WorldToWindow(const SDL_Point * point)
+SDL_FPoint WorldToWindow(const SDL_FPoint * point)
 {
-    SDL_Point converted = {
-        .x = (point->x - visibleRect.x) * scale,
-        .y = (point->y - visibleRect.y) * scale
+    SDL_FPoint converted = {
+        .x = (point->x - (float)visibleRect.x) * scale,
+        .y = (point->y - (float)visibleRect.y) * scale
     };
 
     return converted;
@@ -91,22 +91,25 @@ void InitMapView(void)
     visibleRect.y = bounds.y + (bounds.h / 2) - visibleRect.h / 2;
 }
 
-static void WorldDrawLine(const SDL_Point * p1, const SDL_Point * p2)
+static void WorldDrawLine(const SDL_FPoint * p1, const SDL_FPoint * p2)
 {
-    SDL_Point c1 = WorldToWindow(p1);
-    SDL_Point c2 = WorldToWindow(p2);
+    SDL_FPoint c1 = WorldToWindow(p1);
+    SDL_FPoint c2 = WorldToWindow(p2);
 
-//    draw_line_antialias(c1.x, c1.y, c2.x, c2.y);
-    SDL_RenderDrawLine(renderer, c1.x, c1.y, c2.x, c2.y);
+//    FosterDrawLineAA(c1.x, c1.y, c2.x, c2.y);
+    draw_line_antialias(c1.x, c1.y, c2.x, c2.y);
+//    SDL_RenderDrawLine(renderer, c1.x, c1.y, c2.x, c2.y);
+//    GuptaSprollDrawLine(c1.x, c1.y, c2.x, c2.y);
+//    WuDrawLine(c1.x, c1.y, c2.x, c2.y);
 }
 
 /// Draw a filled rect, accounting for view origin and scale.
-static void WorldDrawRect(const SDL_Rect * rect, int thinkness)
+static void WorldDrawRect(const SDL_FRect * rect, int thinkness)
 {
-    SDL_Point rectOrigin = { rect->x, rect->y };
+    SDL_FPoint rectOrigin = { rect->x, rect->y };
     rectOrigin = WorldToWindow(&rectOrigin);
 
-    SDL_Rect translatedRect =
+    SDL_FRect translatedRect =
     {
         .x = rectOrigin.x,
         .y = rectOrigin.y,
@@ -115,7 +118,7 @@ static void WorldDrawRect(const SDL_Rect * rect, int thinkness)
     };
 
     if ( thinkness == FILLED ) {
-        SDL_RenderFillRect(renderer, &translatedRect);
+        SDL_RenderFillRectF(renderer, &translatedRect);
     } else {
         DrawRect(&translatedRect, thinkness);
     }
@@ -145,7 +148,8 @@ static void DrawGrid(void)
         {
             if ( x % 64 == 0 )
                 continue;
-            WorldDrawLine(&(SDL_Point){ x, top }, &(SDL_Point){ x, bottom });
+            WorldDrawLine(&(SDL_FPoint){ x, top },
+                          &(SDL_FPoint){ x, bottom });
         }
 
         gridStartY = top;
@@ -156,7 +160,8 @@ static void DrawGrid(void)
         {
             if ( y % 64 == 0 )
                 continue;
-            WorldDrawLine(&(SDL_Point){ left, y }, &(SDL_Point){ right, y });
+            WorldDrawLine(&(SDL_FPoint){ left, y },
+                          &(SDL_FPoint){ right, y });
 
         }
     }
@@ -174,7 +179,8 @@ static void DrawGrid(void)
 
         for ( int x = gridStartX; x <= right; x += 64 )
         {
-            WorldDrawLine(&(SDL_Point){ x, top }, &(SDL_Point){ x, bottom });
+            WorldDrawLine(&(SDL_FPoint){ x, top },
+                          &(SDL_FPoint){ x, bottom });
         }
 
         gridStartY = top;
@@ -183,21 +189,22 @@ static void DrawGrid(void)
 
         for ( int y = gridStartY; y <= bottom; y += 64 )
         {
-            WorldDrawLine(&(SDL_Point){ left, y }, &(SDL_Point){ right, y });
+            WorldDrawLine(&(SDL_FPoint){ left, y },
+                          &(SDL_FPoint){ right, y });
         }
     }
 }
 
 static void DrawVertices(void)
 {
-    const int pointSize = VERTEX_DRAW_SIZE;
+    const float pointSize = VERTEX_DRAW_SIZE / scale;
 
-    int left = visibleRect.x - pointSize;
-    int right = visibleRect.x + visibleRect.w + pointSize;
-    int top = visibleRect.y - pointSize;
-    int bottom = visibleRect.y + visibleRect.h + pointSize;
+    float left = visibleRect.x - pointSize;
+    float right = visibleRect.x + visibleRect.w + pointSize;
+    float top = visibleRect.y - pointSize;
+    float bottom = visibleRect.y + visibleRect.h + pointSize;
 
-    SDL_Rect pointRect = {
+    SDL_FRect pointRect = {
         .w = pointSize,
         .h = pointSize
     };
@@ -213,8 +220,8 @@ static void DrawVertices(void)
             || v->origin.y > bottom )
             continue;
 
-        pointRect.x = v->origin.x - VERTEX_DRAW_SIZE / 2;
-        pointRect.y = v->origin.y - VERTEX_DRAW_SIZE / 2;
+        pointRect.x = (float)v->origin.x - pointSize / 2.0f;
+        pointRect.y = (float)v->origin.y - pointSize / 2.0f;
 
         SDL_Color color;
 
@@ -229,26 +236,49 @@ static void DrawVertices(void)
     }
 }
 
-// TODO: culling
 static void DrawLines(void)
 {
     Vertex * vertices = map.vertices->data;
     Line * l = map.lines->data;
-    for ( int i = 0; i < map.lines->count; i++, l++ ) {
 
+    for ( int i = 0; i < map.lines->count; i++, l++ )
+    {
         SDL_Point p1 = vertices[l->v1].origin;
         SDL_Point p2 = vertices[l->v2].origin;
 
-        SDL_Point clipped1 = p1;
-        SDL_Point clipped2 = p2;
+        SDL_FPoint clipped1 = { p1.x, p1.y };
+        SDL_FPoint clipped2 = { p2.x, p2.y };
 
         Visibility visibility = LineVisibility(i);
 
         if ( visibility == VISIBILITY_NONE )
             continue;
 
+#if 0
         if ( visibility == VISIBILITY_PARTIAL )
-            ClipLine(i, &clipped1, &clipped2);
+        {
+//            ClipLine(i, &clipped1, &clipped2);
+            SDL_Rect bounds = GetMapBounds();
+            double x0clip = p1.x;
+            double y0clip = p1.y;
+            double x1clip = p2.x;
+            double y1clip = p2.y;
+#if 1
+            LiangBarsky(bounds.x,
+                        bounds.x + bounds.w,
+                        bounds.y + bounds.h,
+                        bounds.y,
+                        p1.x, p1.y, p2.x, p2.y,
+                        &x0clip, &y0clip, &x1clip, &y1clip);
+#else
+            CohenSutherlandLineClip(&bounds, &x0clip, &y0clip, &x1clip, &y1clip);
+#endif
+            clipped1.x = x0clip;
+            clipped1.y = y0clip;
+            clipped2.x = x1clip;
+            clipped2.y = y1clip;
+        }
+#endif
 
         SDL_Color color;
 
@@ -262,24 +292,26 @@ static void DrawLines(void)
             color = DefaultColor(LINE_ONE_SIDED);
 
         SetRenderDrawColor(&color);
-        WorldDrawLine(&clipped1, &clipped2);
+        WorldDrawLine(&(SDL_FPoint){ clipped1.x, clipped1.y },
+                      &(SDL_FPoint){ clipped2.x, clipped2.y });
 
-        SDL_Point mid = LineMidpoint(l);
-        SDL_Point normal = LineNormal(l, 6.0f);
+        SDL_FPoint mid = LineMidpoint(l);
+        SDL_FPoint normal = LineNormal(l, 6.0f);
         WorldDrawLine(&mid, &normal);
 
         // DEBUG: draw an 'F' or 'B' to show which side is selected.
 #ifdef DRAW_BLOCK_MAP
         if ( l->selected > 0 ) {
             SDL_SetRenderDrawColor(renderer, 0, 128, 0, 255);
-            SDL_Point p = WorldToWindow(&normal);
+            SDL_FPoint p = WorldToWindow(&normal);
             RenderChar(p.x - 4, p.y - 8, l->selected == FRONT_SELECTED ? 'F' : 'B' );
         }
 #endif
     }
 }
 
-static void DrawThings(void) // TODO: sort selected and draw on top
+static void
+DrawThings(void) // TODO: sort selected and draw on top
 {
     const int thingSize = THING_DRAW_SIZE;
 
@@ -288,7 +320,7 @@ static void DrawThings(void) // TODO: sort selected and draw on top
     int top = visibleRect.y - thingSize;
     int bottom = visibleRect.y + visibleRect.h + thingSize;
 
-    SDL_Rect thingRect = {
+    SDL_FRect thingRect = {
         .w = thingSize,
         .h = thingSize
     };
@@ -302,8 +334,8 @@ static void DrawThings(void) // TODO: sort selected and draw on top
             || thing->origin.y > bottom )
             continue;
 
-        thingRect.x = thing->origin.x - THING_DRAW_SIZE / 2;
-        thingRect.y = thing->origin.y - THING_DRAW_SIZE / 2;
+        thingRect.x = (float)thing->origin.x - THING_DRAW_SIZE / 2.0f;
+        thingRect.y = (float)thing->origin.y - THING_DRAW_SIZE / 2.0f;
 
         ThingDef * def = GetThingDef(thing->type);
         SDL_Color color;
@@ -347,5 +379,5 @@ void DrawSelectionBox(const SDL_Rect * box)
         return;
 
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 128);
-    WorldDrawRect(box, 4);
+    WorldDrawRect(&(SDL_FRect){ box->x, box->y, box->w, box->h }, 4);
 }

@@ -41,7 +41,7 @@ static int cy = -1;
 
 static Scrollbar lightMeter = {
     .type = SCROLLBAR_HORIZONTAL,
-    .location = 14,
+    .location = 20,
     .min = 2,
     .max = 33,
 };
@@ -135,39 +135,39 @@ static PanelItem items[SP_NUM_ITEMS] =
 {
     [0] = { 0 },
     [SP_FLOOR_HEIGHT]   = {
-        10, 10, 5,
-        -1, SP_LIGHT, -1, SP_CEILING_HEIGHT,
+        10, 12, 5,
+        SP_CEILING_FLAT, SP_FLOOR_FLAT, -1, SP_FLOOR_FLAT,
     },
     [SP_CEILING_HEIGHT] = {
-        29, 10, 5,
-        -1, SP_HEADROOM, SP_FLOOR_HEIGHT, -1,
+        10, 4, 5,
+        -1, SP_HEADROOM, -1, SP_CEILING_FLAT,
     },
     [SP_HEADROOM] = {
-        29, 11, 5,
-        SP_CEILING_HEIGHT, SP_LIGHT, SP_FLOOR_HEIGHT, -1,
+        10, 6, 5,
+        SP_CEILING_HEIGHT, SP_CEILING_FLAT, -1, SP_CEILING_FLAT,
     },
     [SP_SPECIAL] = {
-        2, 17, 32,
+        2, 24, 32,
         SP_LIGHT, SP_TAG, -1, SP_SUGGEST,
     },
     [SP_TAG] = {
-        7, 18, 4,
+        7, 25, 4,
         SP_SPECIAL, -1, -1, SP_SUGGEST,
     },
     [SP_SUGGEST] = {
-        13, 18, 7,
+        13, 25, 7,
         SP_SPECIAL, -1, SP_TAG, -1,
     },
     [SP_LIGHT] = {
-        2, 13, 4,
-        SP_FLOOR_HEIGHT, SP_SPECIAL, -1, -1,
+        2, 19, 4,
+        SP_FLOOR_FLAT, SP_SPECIAL, -1, -1,
     },
     [SP_FLOOR_FLAT] = {
-        4, 9, 8,
-        -1, SP_FLOOR_HEIGHT, -1, SP_CEILING_FLAT,
+        8, 16, 8,
+        SP_FLOOR_HEIGHT, SP_LIGHT, -1, -1,
     },
     [SP_CEILING_FLAT] = {
-        23, 9, 8,
+        8, 8, 8,
         -1, SP_HEADROOM, SP_FLOOR_FLAT, -1,
     }
 };
@@ -182,7 +182,7 @@ void OpenSectorPanel(void)
     {
         Side * side = SelectedSide(line);
         if ( side )
-            selectedSectorDefs[numSelectedSectorDefs++] = &side->sector;
+            selectedSectorDefs[numSelectedSectorDefs++] = &side->sectorDef;
     }
 }
 
@@ -308,8 +308,8 @@ bool ProcessSectorPanelEvent(const SDL_Event * event)
                     int numSides = line->flags & ML_TWOSIDED ? 2 : 1;
                     for ( int s = 0; s < numSides; s++ )
                     {
-                        if ( line->sides[s].sector.tag > maxTag )
-                            maxTag = line->sides[s].sector.tag;
+                        if ( line->sides[s].sectorDef.tag > maxTag )
+                            maxTag = line->sides[s].sectorDef.tag;
                     }
                 }
                 def->tag = maxTag + 1;
@@ -450,8 +450,8 @@ void RenderSectorPanel(void)
 {
     SectorDef * sector = selectedSectorDefs[0];
 
-    RenderFlat(sector->floorFlat, 2 * FONT_WIDTH, 3 * FONT_HEIGHT, 1.5f);
-    RenderFlat(sector->ceilingFlat, 21 * FONT_WIDTH, 3 * FONT_HEIGHT, 1.5f);
+    RenderFlat(sector->floorFlat, 22 * FONT_WIDTH, 11 * FONT_HEIGHT, 1.5f);
+    RenderFlat(sector->ceilingFlat, 22 * FONT_WIDTH, 3 * FONT_HEIGHT, 1.5f);
 
     SetPanelRenderColor(15);
 
@@ -561,7 +561,7 @@ void LoadSectorPanel(void)
     sectorPanel.selection = 1;
     sectorPanel.textEditingCompletionHandler = TextInputCompletionHandler;
 
-    if ( gameType == GAME_DOOM1 )
+    if ( editor.game == GAME_DOOM1 )
     {
         sectorSpecialsPanel = LoadPanel(PANEL_DATA_DIRECTORY "sector_specials.panel");
         sectorSpecialsPanel.numItems = 17;

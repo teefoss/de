@@ -30,6 +30,15 @@ int GetArg(const char * string)
     return -1;
 }
 
+int GetArg2(const char * string, const char * alternative)
+{
+    int index = GetArg(string);
+    if ( index == -1 )
+        index = GetArg(alternative);
+
+    return index;
+}
+
 char * GetOptionArg(const char * option)
 {
     int index = GetArg(option);
@@ -38,4 +47,13 @@ char * GetOptionArg(const char * option)
     }
 
     return _argv[index + 1];
+}
+
+char * GetOptionArg2(const char * option, const char * alternative)
+{
+    char * arg = GetOptionArg(option);
+    if ( arg == NULL )
+        arg = GetOptionArg(alternative);
+
+    return arg;
 }

@@ -20,7 +20,7 @@ typedef struct
 
 typedef struct
 {
-    u8 identifer[4]; // "IWAD" or "PWAD"
+    char identifer[4]; // "IWAD" or "PWAD"
     u32 lumpCount;
     u32 directoryOffset;
 } WadInfo; // aka WAD Header
@@ -33,21 +33,26 @@ typedef struct
 } LumpInfo; // aka directory (aka info table) entry
 
 typedef struct {
+    enum { PWAD, IWAD, UNKNOWN_WAD } type;
     FILE * stream;
     Array * directory;
 } Wad;
 
-Wad * CreateWad(const char * path);
-Wad * OpenWad(const char * path);
+Wad * CreateWad(const char * path); // TODO: create with 'PWAD' id
+Wad * OpenWad(const char * path); // TODO: set .type member
 void FreeWad(Wad * wad);
 
 void ListDirectory(const Wad * wad);
-void WriteDirectory(const Wad * wad, u32 offset);
-void AddLump(Wad * wad, const char * name, void * data, u32 size);
-void RemoveLump(const Wad * wad, const char * name);
+void WriteDirectory(const Wad * wad); // TODO: use .type
+
+void AddLump(const Wad * wad, const char * name, void * data, u32 size);
+void RemoveLumpNumber(const Wad * wad, int index);
+void RemoveLumpNamed(const Wad * wad, const char * name);
+void RemoveMap(const Wad * wad, const char * mapLabel);
+
 WadInfo GetWadInfo(const Wad * wad);
-const char * GetWadType(const Wad * wad);
-int GetLumpIndex(const Wad * wad, const char * name);
+const char * GetWadType(const Wad * wad); // TODO: remove
+int GetLumpIndexFromName(const Wad * wad, const char * name);
 void * GetLumpWithIndex(const Wad * wad, int index);
 void * GetLumpWithName(const Wad * wad, const char * name);
 u32 GetLumpSize(const Wad * wad, int index);

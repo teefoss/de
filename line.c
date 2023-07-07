@@ -37,16 +37,16 @@ void InitLineCross(void)
     }
 }
 
-SDL_Point LineMidpoint(const Line * line)
+SDL_FPoint LineMidpoint(const Line * line)
 {
     Vertex * vertices = map.vertices->data;
-    SDL_Point p1 = vertices[line->v1].origin;
-    SDL_Point p2 = vertices[line->v2].origin;
+    SDL_FPoint p1 = { vertices[line->v1].origin.x, vertices[line->v1].origin.y };
+    SDL_FPoint p2 = { vertices[line->v2].origin.x, vertices[line->v2].origin.y };
 
     float dx = p2.x - p1.x;
     float dy = p2.y - p1.y;
 
-    return (SDL_Point){ p1.x + dx / 2.0f, p1.y + dy / 2.0f };
+    return (SDL_FPoint){ p1.x + dx / 2.0f, p1.y + dy / 2.0f };
 }
 
 float LineLength(const Line * line)
@@ -61,18 +61,21 @@ float LineLength(const Line * line)
     return sqrtf(dx * dx + dy * dy);
 }
 
-SDL_Point LineNormal(const Line * line, float length)
+SDL_FPoint LineNormal(const Line * line, float length)
 {
     Vertex * vertices = map.vertices->data;
-    SDL_Point p1 = vertices[line->v1].origin;
-    SDL_Point p2 = vertices[line->v2].origin;
+    SDL_FPoint p1 = { vertices[line->v1].origin.x, vertices[line->v1].origin.y };
+    SDL_FPoint p2 = { vertices[line->v2].origin.x, vertices[line->v2].origin.y };
 
     float dx = p2.x - p1.x;
     float dy = p2.y - p1.y;
 
     float length1 = LineLength(line) / length;
-    SDL_Point mid = LineMidpoint(line);
-    SDL_Point normal = { mid.x - dy / length1 , mid.y + dx / length1 };
+    SDL_FPoint mid = LineMidpoint(line);
+    SDL_FPoint normal = {
+        mid.x - dy / length1,
+        mid.y + dx / length1
+    };
 
     return normal;
 }
@@ -126,7 +129,7 @@ static int PointRegion(const SDL_Point * point)
 
     if ( point->y < visibleRect.y )
         y = 0;
-    else if ( point->y > visibleRect.y + visibleRect.w )
+    else if ( point->y > visibleRect.y + visibleRect.h )
         y = 2;
     else
         y = 1;
