@@ -18,14 +18,6 @@ int			subsectornum[MAXSUBSECTORS];
 int			buildsector;
 
 
-/*
-==========================
-=
-= RecursiveGroupSubsector
-=
-==========================
-*/
-
 void RecursiveGroupSubsector (int ssnum)
 {
 	int				i, l, count;
@@ -76,15 +68,7 @@ void RecursiveGroupSubsector (int ssnum)
 	}
 }
 
-/*
-=================
-=
-= UniqueSector
-=
-= Returns the sector number, adding a new sector if needed 
-=================
-*/
-
+/// - Returns: the sector number, adding a new sector if needed.
 int UniqueSector(SectorDef * def)
 {
 	int		i, count;
@@ -105,7 +89,6 @@ int UniqueSector(SectorDef * def)
     {
         msp = Get(secdefstore_i, i);
         if ( memcmp(msp, &ms, sizeof(ms)) == 0 )
-//             if (!bcmp(msp, &ms, sizeof(ms)))
             return i;
     }
 
@@ -113,9 +96,6 @@ int UniqueSector(SectorDef * def)
 	
 	return count;	
 }
-
-
-
 
 void AddSubsectorToVertex (int subnum, int vertex)
 {
@@ -129,15 +109,7 @@ void AddSubsectorToVertex (int subnum, int vertex)
 }
 
 
-/*
-================
-=
-= BuildSectordefs
-=
-= Call before ProcessNodes
-================
-*/
-
+/// - note: Call before ProcessNodes
 void BuildSectordefs (void)
 {
 	int				i;
@@ -161,16 +133,8 @@ void BuildSectordefs (void)
 	}
 }
 
-
-/*
-================
-=
-= ProcessSectors
-=
-= Must be called after ProcessNodes, because it references the subsector list
-================
-*/
-
+/// - note: Must be called after ProcessNodes, because it references the
+/// subsector list.
 void ProcessSectors (void)
 {
 	int				i,l;
@@ -181,10 +145,10 @@ void ProcessSectors (void)
 	maplinedef_t	*ml;
 	mapsidedef_t	*ms;
 	
-//
-// build a connection matrix that lists all the subsectors that touch
-// each vertex
-//
+    //
+    // build a connection matrix that lists all the subsectors that touch
+    // each vertex
+    //
 	memset (vertexsubcount, 0, sizeof(vertexsubcount));
 	memset (vertexsublist, 0, sizeof(vertexsublist));
 	numss = subsecstore_i->count;
@@ -212,7 +176,7 @@ void ProcessSectors (void)
 	buildsector = 0;
 	if (draw)
         SDL_SetRenderDrawColor(nbRenderer, 0, 0, 0, 255);
-//		PSsetgray (0); // TODO: nodebuilder draw
+
 	for (i=0 ; i<numss ; i++)
 	{
 		if (subsectornum[i] == -1)
@@ -226,5 +190,3 @@ void ProcessSectors (void)
 	}
 
 }
-
-

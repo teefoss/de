@@ -64,15 +64,7 @@ void AddToBBox (bbox_t *box, int x, int y)
 }
 
 
-/*
-==================
-=
-= BPointOnSide
-=
-= Returns side 0 (front), 1 (back), or -1 (colinear)
-==================
-*/
-
+/// - Returns: side 0 (front), 1 (back), or -1 (colinear)
 int	BPointOnSide (bpoint_t *pt, bdivline_t *l)
 {
 	int		dx,dy;
@@ -103,7 +95,6 @@ int	BPointOnSide (bpoint_t *pt, bdivline_t *l)
 	return 1;			// back side
 }
 
-
 void DrawBBox (bbox_t *box)
 {
     SDL_SetRenderDrawColor(nbRenderer, 0, 0, 255, 255);
@@ -116,25 +107,13 @@ void DrawBBox (bbox_t *box)
     NB_DrawLine(box->xl, box->yh,
                 box->xl, box->yl);
 
-    NB_Refresh(50);
-
-//	PSmoveto (box->xl,box->yl);
-//	PSlineto (box->xh,box->yl);
-//	PSlineto (box->xh,box->yh);
-//	PSlineto (box->xl,box->yh);
-//	PSlineto (box->xl,box->yl);
-//	PSstroke ();
-//	NXPing ();
+    NB_Refresh(0);
 }
 
 void DrawDivline (bdivline_t *li)
 {
     SDL_SetRenderDrawColor(nbRenderer, 0, 255, 255, 255);
     NB_DrawLine(li->x, li->y, li->x + li->dx, li->y + li->dy);
-//	PSmoveto (li->x,li->y);
-//	PSrlineto (li->dx,li->dy); // N.B. r = relative!
-//	PSstroke ();
-//	NXPing ();
 }
 
 void DrawBChain (bchain_t *ch)
@@ -152,12 +131,7 @@ void DrawBChain (bchain_t *ch)
         y = ch->points[i].y;
     }
 
-    NB_Refresh(50);
-//	PSmoveto (ch->points->x,ch->points->y);
-//	for (i=1 ; i<ch->numpoints ; i++)
-//		PSlineto (ch->points[i].x,ch->points[i].y);
-//	PSstroke ();
-//	NXPing ();
+    NB_Refresh(0);
 }
 
 
@@ -166,28 +140,16 @@ int			end0out, end1out, side0out, side1out;
 bbox_t		sweptarea;
 
 
-/*
-====================
-=
-= DoesChainBlock
-=
-====================
-*/
-
-boolean DoesChainBlock (bchain_t *chain)
+bool DoesChainBlock (bchain_t *chain)
 {
-/*
-
-if a solid line can be walked from one side to the other without going out
-an end, the path is blocked
-
-*/
+    // If a solid line can be walked from one side to the other without going
+    // out an end, the path is blocked.
 
 	bpoint_t		*pt;
 	int				side, startside;
 	int				p;
 	
-// don't check if bounds don't intersect
+    // don't check if bounds don't intersect
 
 	if (sweptarea.xl > chain->bounds.xh || sweptarea.xh < chain->bounds. xl ||
 	sweptarea.yl > chain->bounds. yh || sweptarea.yh < chain->bounds. yl)
@@ -225,28 +187,20 @@ if (p>0)
 		else
 			continue;		// in middle
 					
-	// point is on one side or the other
+        // point is on one side or the other
 		if (startside == -1 || startside == side)
 		{
 			startside = side;
 			continue;
 		}
 								
-	// opposite of startside
+        // opposite of startside
 		return true;		// totally crossed area
-			
 	}
 
 	return false;
 }
 
-/*
-====================
-=
-= BuildConnections
-=
-====================
-*/
 
 enum {si_north, si_east, si_south, si_west};
 
@@ -254,7 +208,7 @@ void BuildConnections (void)
 {
 	int			blockcount, passcount;
 	int			i,j, k, s, bn;
-	int			x,y;
+	int			x = 0, y = 0;
 	bbox_t		*bbox[2];
 	int			walls[4];
 	bpoint_t	points[2][2];
@@ -262,7 +216,7 @@ void BuildConnections (void)
     if ( draw )
         puts("BuildConnections");
 		
-// look for obscured sectors
+    // look for obscured sectors
 	blockcount = passcount = 0;
 	bbox[0] = secboxes;
 	for (i=0 ; i<numsectors-1 ; i++, bbox[0]++)
@@ -291,9 +245,10 @@ void BuildConnections (void)
 			sweptarea.yl = bbox[0]->yl < bbox[1]->yl ? bbox[0]->yl : bbox[1]->yl;
 			sweptarea.yh = bbox[0]->yh > bbox[1]->yh ? bbox[0]->yh : bbox[1]->yh;
 			
-//
-// calculate the swept area between the sectors
-//
+            //
+            // calculate the swept area between the sectors
+            //
+
 			for (bn=0 ; bn<2 ; bn++)
 			{
 				memset (walls,0,sizeof(walls));
@@ -360,9 +315,10 @@ void BuildConnections (void)
 			side0out = !BPointOnSide (&points[0][1], &sides[0]);
 			side1out = !BPointOnSide (&points[0][0], &sides[1]);
 
-//		
-// look for a line change that covers the swept area
-//
+            //
+            // look for a line change that covers the swept area
+            //
+
 			for (k=0 ; k<numbchains ; k++)
 			{
 				if (!DoesChainBlock (&bchains[k]))
@@ -384,26 +340,19 @@ void BuildConnections (void)
                 goto blocked;
 			}
 
-// nothing definately blocked the path
+            // nothing definately blocked the path
 			passcount++;				
-blocked:;
+        blocked:
+            ;
 		}
 	}
+
 	printf ("passcount: %i\nblockcount: %i\n",passcount, blockcount);
 }
 
-
-/*
-====================
-=
-= BuildBlockingChains
-=
-====================
-*/
-
 void BuildBlockingChains (void)
 {
-	boolean	*used;
+	bool *      used;
 	int			i,j;
 	bpoint_t	*temppoints, *pt_p;
 	bline_t	    *li1, *li2;
@@ -415,10 +364,6 @@ void BuildBlockingChains (void)
 	memset (used,0,numblines*sizeof (*used));
 	temppoints = alloca (numblines*sizeof (*temppoints));
 	
-//	chains_i = [[Storage alloc]
-//					initCount:		0
-//					elementSize:	sizeof(bchain_t)
-//					description:	NULL];
     chains_i = NewArray(0, sizeof(bchain_t), 1);
 
 	li1 = blines;
@@ -452,7 +397,7 @@ void BuildBlockingChains (void)
 			if (j==numblines)
 				break;		// no more lines in chain
 				
-		// add to chain
+            // add to chain
 			used[j] = true;
 			pt_p->x = cx = li2->p2.x;
 			pt_p->y = cy = li2->p2.y;
@@ -460,38 +405,29 @@ void BuildBlockingChains (void)
 			AddToBBox (&bch.bounds, cx, cy);
 		} while (1);
 		
-// save the block chain
-		bch.numpoints = (int)(pt_p - temppoints); // TF: cast to int
+        // save the block chain
+		bch.numpoints = (int)(pt_p - temppoints);
 		bch.points = malloc (bch.numpoints*sizeof(*bch.points));
 		memcpy (bch.points, temppoints, bch.numpoints*sizeof(*bch.points));
         Push(chains_i, &bch);
-//DrawBChain (&bch);
+        //DrawBChain (&bch);
 	}
 	
 	numbchains = chains_i->count;
 	bchains = Get(chains_i, 0);
 }
 
-
-/*
-====================
-=
-= ProcessConnections
-=
-====================
-*/
-
 void ProcessConnections (void)
 {
-	int					i, s, wlcount, count;
-	bbox_t				*secbox;
-	Array					*lines;
-	Line		*wl;
-	mapvertex_t		*vt;
-	maplinedef_t		*p;
-	mapsidedef_t		*sd;
-	bline_t			bline;
-	int					sec;
+	int		        i, s, wlcount, count;
+	bbox_t *        secbox;
+	Array *         lines;
+	Line *          wl;
+	mapvertex_t *   vt;
+	maplinedef_t *  p;
+	mapsidedef_t *  sd;
+	bline_t		    bline;
+	int			    sec;
 		
 	numsectors = secstore_i->count;
 	wlcount = linestore_i->count;
@@ -503,9 +439,9 @@ void ProcessConnections (void)
 	for (i=0 ; i<numsectors ; i++, secbox++)
 		ClearBBox (secbox);
 
-//			
-// calculate bounding boxes for all sectors
-//
+    //
+    // calculate bounding boxes for all sectors
+    //
 	count = ldefstore_i->count;
 	p = Get(ldefstore_i, 0);
 	vt = Get(mapvertexstore_i, 0);
@@ -523,9 +459,9 @@ void ProcessConnections (void)
 		}
 	}
 
-//	
-// make a list of only the solid lines
-//
+    //
+    // make a list of only the solid lines
+    //
     lines = NewArray(0, sizeof(bline), 1);
 	
 	wl = Get(linestore_i, 0);
@@ -544,25 +480,16 @@ void ProcessConnections (void)
 	blines = Get(lines, 0);
 	numblines = lines->count;
 	
-//
-// build blocking chains
-//
-	BuildBlockingChains ();
+    //
+    // build blocking chains
+    //
+    BuildBlockingChains ();
 
-//
-// build connection list
-//
+    //
+    // build connection list
+    //
 	BuildConnections ();
 }
-
-
-/*
-=================
-=
-= OutputConnections
-=
-=================
-*/
 
 void OutputConnections (void)
 {
@@ -571,7 +498,7 @@ void OutputConnections (void)
 	char	*cons;
 	char	*bits;
 	
-	cons = connections;
+	cons = (char *)connections;
 	bytes = (numsectors*numsectors+7)/8;
 	bits = malloc(bytes);
 	
@@ -580,8 +507,7 @@ void OutputConnections (void)
 		bits[i] = cons[0] + (cons[1]<<1) + (cons[2]<<2) + (cons[3]<<3) + (cons[4]<<4) + (cons[5]<<5) + (cons[6]<<6) + (cons[7]<<7);
 		cons +=8;
 	}
-	
-//	[wad_i addName: "reject" data:bits size:bytes];
-        AddLump(editor.pwad, "reject", bits, bytes);
-	printf ("reject: %i\n",bytes);	
+
+    AddLump(editor.pwad, "reject", bits, bytes);
+    printf ("reject: %i\n",bytes);
 }

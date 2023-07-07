@@ -8,44 +8,12 @@
 Array * secstore_i;
 Array * mapvertexstore_i;
 Array * subsecstore_i;
-
-// Array of mapseg_t.
-// - Initialized in ProcessNodes()
-// - Segs are added in ProcessLines()
-// - Used in ProcessSubsector() to define a subsector
-// - Written to WAD in OutputSegs()
 Array * maplinestore_i;
-
 Array * nodestore_i;
 Array * mapthingstore_i;
 Array * ldefstore_i;
 Array * sdefstore_i;
 
-
-// ProcessNodes
-// -    ProcessNode (R)         Convert bspnode_t to mapnode_t and store
-//                                  in nodestore_t.
-// -    -   ProcessSubsector    Create and add subsector to subsecstore_i.
-// -    -   -   ProcessLines    Add node's segments to maplinestore_t.
-// -    -   ProcessNode
-
-
-/*
-===============================================================================
-
-			the output functions byte swap and write lumps
-
-===============================================================================
-*/
-
-
-/*
-================
-=
-= WriteStorage
-=
-================
-*/
 
 void WriteStorage(char * name, Array * store, int esize)
 {
@@ -55,15 +23,6 @@ void WriteStorage(char * name, Array * store, int esize)
     AddLump(editor.pwad, name, store->data, len);
 	printf("%s (%i): %i\n", name, count, len);
 }
-
-
-/*
-=================
-=
-= OutputSectors
-=
-=================
-*/
 
 void OutputSectors (void)
 {
@@ -82,15 +41,6 @@ void OutputSectors (void)
 	}	
 	WriteStorage ("sectors", secstore_i, sizeof(mapsector_t));
 }
- 
- 
-/*
-=================
-=
-= OutputSegs
-=
-=================
-*/
 
 void OutputSegs (void)
 {
@@ -111,15 +61,6 @@ void OutputSegs (void)
 	WriteStorage ("segs",maplinestore_i, sizeof(mapseg_t));
 }
 
-
-/*
-=================
-=
-= OutputSubsectors
-=
-=================
-*/
-
 void OutputSubsectors (void)
 {
 	int		i, count;
@@ -135,15 +76,6 @@ void OutputSubsectors (void)
 	WriteStorage ("ssectors", subsecstore_i, sizeof(mapsubsector_t));
 }
 
-
-/*
-=================
-=
-= OutputVertexes
-=
-=================
-*/
-
 void OutputVertexes (void)
 {
 	int		i, count;
@@ -158,15 +90,6 @@ void OutputVertexes (void)
 	}	
 	WriteStorage ("vertexes",mapvertexstore_i, sizeof(mapvertex_t));
 }
-
-
-/*
-=================
-=
-= OutputThings
-=
-=================
-*/
 
 void OutputThings(void)
 {
@@ -187,15 +110,6 @@ void OutputThings(void)
 	WriteStorage ("things", mapthingstore_i, sizeof(mapthing_t));
 }
 
-
-/*
-=================
-=
-= OutputLineDefs
-=
-=================
-*/
-
 void OutputLineDefs (void)
 {
 	int		i, count;
@@ -207,7 +121,8 @@ void OutputLineDefs (void)
 	{
 		p->v1 = SWAP16(p->v1);
 		p->v2 = SWAP16(p->v2);
-        // some ancient version of DoomEd left ML_MAPPED flags in some of the levels
+        // some ancient version of DoomEd left ML_MAPPED flags in
+        // some of the levels
 		p->flags = SWAP16(p->flags&~ML_MAPPED);
 		p->special = SWAP16(p->special);
 		p->tag = SWAP16(p->tag);
@@ -217,15 +132,6 @@ void OutputLineDefs (void)
     
 	WriteStorage ("linedefs", ldefstore_i, sizeof(maplinedef_t));
 }
-
-
-/*
-=================
-=
-= OutputSideDefs
-=
-=================
-*/
 
 void OutputSideDefs (void)
 {
@@ -239,18 +145,10 @@ void OutputSideDefs (void)
 		p->textureoffset = SWAP16(p->textureoffset);
 		p->rowoffset = SWAP16(p->rowoffset);
 		p->sector = SWAP16(p->sector);
-	}	
+	}
+
 	WriteStorage ("sidedefs", sdefstore_i, sizeof(mapsidedef_t));
 }
-
-
-/*
-=================
-=
-= OutputNodes
-=
-=================
-*/
 
 void OutputNodes (void)
 {
@@ -262,30 +160,20 @@ void OutputNodes (void)
 	for (i=0 ; i<count ; i++, p++)
 	{
 		for ( j = 0; j < sizeof(mapnode_t) / 2; j++ )
-			((short *)p)[j] = SWAP16(((short *)p)[j]);
-	}	
+        {
+            // TODO: confirm this is a sane thing to do.
+            ((short *)p)[j] = SWAP16(((short *)p)[j]);
+        }
+	}
+
 	WriteStorage ("nodes", nodestore_i, sizeof(mapnode_t));
 }
 
 
-/*
-===============================================================================
+// -----------------------------------------------------------------------------
+// Processing
 
-							PROCESSING
-
-===============================================================================
-*/
-
-
-/*
-=================
-=
-= UniqueVertex
-=
-= Returns the vertex number, adding a new vertex if needed 
-=================
-*/
-
+/// Returns the vertex number, adding a new vertex if needed.
 int UniqueVertex (int x, int y)
 {
 	int				i, count;
@@ -309,18 +197,7 @@ int UniqueVertex (int x, int y)
 }
 
 
-//=============================================================================
-
-
 float	bbox[4];
-
-/*
-=================
-=
-= AddPointToBBox
-=
-=================
-*/
 
 void AddPointToBBox (NXPoint *pt)
 {
@@ -335,16 +212,7 @@ void AddPointToBBox (NXPoint *pt)
 		bbox[BOXBOTTOM] = pt->y;
 }
 
-
-/*
-=================
-=
-= ProcessLines
-=
-= Adds the lines in a subsector to the mapline storage
-=================
-*/
-
+///Adds the lines in a subsector to the mapline storage
 void ProcessLines (Array *store_i)
 {
 	int			i,count;
@@ -382,16 +250,7 @@ void ProcessLines (Array *store_i)
 	}
 }
 
-
-/*
-=================
-=
-= ProcessSubsector
-=
-=================
-*/
-
-int ProcessSubsector (Array *wmaplinestore_i) // A node's lines (line_t[])
+int ProcessSubsector(Array * wmaplinestore_i) // A node's lines (line_t[])
 {
 	int				count;
 	line_t			*wline;
@@ -409,20 +268,11 @@ int ProcessSubsector (Array *wmaplinestore_i) // A node's lines (line_t[])
 	sub.firstseg = maplinestore_i->count;
 	ProcessLines (wmaplinestore_i);
 	
-// add the new subsector
-//	[subsecstore_i addElement: &sub];
+    // add the new subsector
     Push(subsecstore_i, &sub);
 	
 	return subsecstore_i->count-1;
 }
-
-/*
-=================
-=
-= ProcessNode
-=
-=================
-*/
 
 int ProcessNode (bspnode_t *node, short *totalbox)
 {
@@ -464,17 +314,8 @@ int ProcessNode (bspnode_t *node, short *totalbox)
 	return nodestore_i->count - 1;
 }
 
-
-/*
-=================
-=
-= ProcessNodes
-=
-= Recursively builds the nodes, subsectors, and line lists,
-= then writes the lumps
-=================
-*/
-
+/// Recursively builds the nodes, subsectors, and line lists,
+/// then writes the lumps.
 void ProcessNodes (void)
 {
 	short	worldbounds_[4];
@@ -485,15 +326,6 @@ void ProcessNodes (void)
 
 	ProcessNode (startnode, worldbounds_);
 }
-
-
-/*
-=================
-=
-= ProcessThings
-=
-=================
-*/
 
 void ProcessThings (void)
 {
@@ -518,19 +350,7 @@ void ProcessThings (void)
         Push(mapthingstore_i, &mt);
 		wt++;
 	}
-	
 }
-
-//=============================================================================
-
-
-/*
-==================
-=
-= ProcessSidedef
-=
-==================
-*/
 
 int ProcessSidedef(Side * ws)
 {
@@ -547,15 +367,7 @@ int ProcessSidedef(Side * ws)
 	return sdefstore_i->count - 1;
 }
 
-/*
-==================
-=
-= ProcessLineSideDefs
-=
-= Must be called after BuildSectors
-==================
-*/
-
+/// - note: Must be called after `BuildSectors`.
 void ProcessLineSideDefs (void)
 {
 	int				i, count;
@@ -586,16 +398,6 @@ void ProcessLineSideDefs (void)
 	}
 	
 }
-
-//=============================================================================
-
-/*
-==================
-=
-= SaveDoomMap
-=
-==================
-*/
 
 void SaveDoomMap (void)
 {

@@ -12,7 +12,7 @@ float	orgx, orgy;
 float		xl, xh, yl, yh;
 
 
-boolean	LineContact(Line * wl)
+bool LineContact(Line * wl)
 {
 	NXPoint		*p1, *p2, pt1, pt2;
 	float		lxl, lxh, lyl, lyh;
@@ -188,26 +188,15 @@ void SaveBlocks (void)
 	for (y=0 ; y<blockheight ; y++)
 		for (x=0 ; x<blockwidth ; x++)
 		{
-			len = data_p - datalist;
+			len = (int)(data_p - datalist);
 			*pointer_p++ = SWAP16(len);
 			GenerateBlockList (x,y);
 		}
 	
-	len = 2*(data_p-datalist);
+	len = 2 * ((int)(data_p - datalist));
 	
 	printf ("blockmap: (%i, %i) = %i\n",blockwidth, blockheight, len);
 	 
-#if 0
-{
-	int	outhandle;
-	
-	outhandle = SafeOpenWrite ("blockmap.lmp");
-	SafeWrite (outhandle, datalist, len);
-	close (outhandle);
-}
-#endif
-//	[wad_i addName: "blockmap" data:datalist size:len];
     AddLump(editor.pwad, "blockmap", datalist, len);
-
 }
 

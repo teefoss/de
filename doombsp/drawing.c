@@ -1,28 +1,17 @@
-// drawing.m
 #include "doombsp.h"
 
-//id 			window_i, view_i;
 SDL_Window * nbWindow;
 SDL_Renderer * nbRenderer;
-SDL_Texture * nbTexture;
+SDL_Texture * nbTexture; // TODO: factor so these can be static
 
 static float	scale = 0.25;
 NXRect		    worldbounds;
 
 
-/*
-================
-=
-= IDRectFromPoints
-=
-= Makes the rectangle just touch the two points
-=
-================
-*/
-
+/// Makes the rectangle just touch the two points
 void IDRectFromPoints(NXRect *rect, NXPoint const *p1, NXPoint const *p2 )
 {
-// return a rectangle that encloses the two points
+    // return a rectangle that encloses the two points
 	if (p1->x < p2->x)
 	{
 		rect->origin.x = p1->x;
@@ -46,17 +35,7 @@ void IDRectFromPoints(NXRect *rect, NXPoint const *p1, NXPoint const *p2 )
 	}
 }
 
-
-/*
-==================
-=
-= IDEnclosePoint
-=
-= Make the rect enclose the point if it doesn't allready
-=
-==================
-*/
-
+/// Make the rect enclose the point if it doesn't allready
 void IDEnclosePoint (NXRect *rect, NXPoint const *point)
 {
 	float	right, top;
@@ -77,20 +56,11 @@ void IDEnclosePoint (NXRect *rect, NXPoint const *point)
 	rect->size.height = top - rect->origin.y + 1;
 }
 
-
 void NB_Refresh(int delayMS)
 {
     Refresh(nbRenderer, nbTexture);
     SDL_Delay(delayMS);
 }
-
-/*
-===========
-=
-= BoundLineStore
-=
-===========
-*/
 
 /// Find the world bounds given lines in array. Result in `r`.
 void BoundLineStore(Array * lines_i, NXRect * r)
@@ -113,6 +83,8 @@ void BoundLineStore(Array * lines_i, NXRect * r)
 	}	
 }
 
+/// Draw line in the node builder window, accounting for the world origin
+/// and scale. Assumes target is set to `nbTexture`
 void NB_DrawLine(float x1, float y1, float x2, float y2)
 {
     SDL_RenderDrawLineF(nbRenderer,
@@ -121,16 +93,6 @@ void NB_DrawLine(float x1, float y1, float x2, float y2)
                         (x2 - worldbounds.origin.x) * scale,
                         (y2 - worldbounds.origin.y) * scale);
 }
-
-/*
-===========
-=
-= DrawLineStore
-=
-= Draws all of the lines in the given storage object
-=
-===========
-*/
 
 void DrawLineStore(Array * lines_i)
 {
@@ -146,26 +108,12 @@ void DrawLineStore(Array * lines_i)
 	{
 		line_p = Get(lines_i, i);
         NB_DrawLine(line_p->p1.x, line_p->p1.y, line_p->p2.x, line_p->p2.y);
-
-//		PSmoveto (line_p->p1.x, line_p->p1.y);
-//		PSlineto (line_p->p2.x, line_p->p2.y);
-//		PSstroke ();
 	}
 
-    NB_Refresh(1000);
-//	NXPing ();
+    NB_Refresh(0);
 }
 
-/*
-===========
-=
-= DrawLine
-=
-= Draws all of the lines in the given storage object
-=
-===========
-*/
-
+/// Draws all of the lines in the given storage object
 void DrawLineDef (maplinedef_t *ld)
 {
 	mapvertex_t		*v1, *v2;
@@ -177,23 +125,10 @@ void DrawLineDef (maplinedef_t *ld)
 	v2 = Get(mapvertexstore_i, ld->v2);
 
     NB_DrawLine(v1->x, v1->y, v2->x, v2->y);
-    NB_Refresh(50);
-//	PSmoveto (v1->x, v1->y);
-//	PSlineto (v2->x, v2->y);
-//	PSstroke ();
-//	NXPing ();
+    NB_Refresh(0);
 }
 
-
-/*
-===========
-=
-= NB_DrawMap
-=
-===========
-*/
-
-void NodeBuilderDrawMap (void)
+void NB_DrawMap (void)
 {
 	NXRect	scaled;
 	
@@ -211,9 +146,11 @@ void NodeBuilderDrawMap (void)
 	scaled.size.width = worldbounds.size.width*scale;
 	scaled.size.height = worldbounds.size.height* scale;
 
-    nbWindow = SDL_CreateWindow("", 0, 0,
-                                scaled.size.width, scaled.size.height,
-//                                worldbounds.size.width, worldbounds.size.height,
+    nbWindow = SDL_CreateWindow("",
+                                0,
+                                0,
+                                scaled.size.width,
+                                scaled.size.height,
                                 0);
 
     if ( nbWindow == NULL )
@@ -236,7 +173,6 @@ void NodeBuilderDrawMap (void)
 
     SDL_PumpEvents();
 
-//	PSsetgray (NX_BLACK);
     SDL_SetRenderTarget(nbRenderer, nbTexture);
     SDL_SetRenderDrawColor(nbRenderer, 192, 192, 192, 255);
     SDL_RenderClear(nbRenderer);
@@ -244,15 +180,6 @@ void NodeBuilderDrawMap (void)
 
 	DrawLineStore(linestore_i);
 }
-
-
-/*
-===========
-=
-= EraseWindow
-=
-===========
-*/
 
 void EraseWindow (void)
 {
@@ -266,18 +193,7 @@ void EraseWindow (void)
     SDL_RenderClear(nbRenderer);
 
     SDL_SetRenderDrawColor(nbRenderer, r, g, b, a);
-//	NXEraseRect (&worldbounds);
-//	NXPing ();
 }
-
-
-/*
-============================
-=
-= DrawDivLine
-=
-============================
-*/
 
 void DrawDivLine (divline_t *div)
 {
@@ -286,7 +202,6 @@ void DrawDivLine (divline_t *div)
 	if (!draw)
 		return;
 		
-//	PSsetgray (NX_BLACK);
     SDL_SetRenderDrawColor(nbRenderer, 255, 0, 0, 255);
 	
 	dist = sqrt (pow(div->dx,2)+pow(div->dy,2));
@@ -296,13 +211,8 @@ void DrawDivLine (divline_t *div)
 	dist = MAX(worldbounds.size.width,worldbounds.size.height);
 
     NB_DrawLine(div->pt.x - vx * dist, div->pt.y - vy * dist,
-             div->pt.x + vx * dist, div->pt.y + vy * dist);
+                div->pt.x + vx * dist, div->pt.y + vy * dist);
 
-    NB_Refresh(100);
-
-//	PSmoveto (div->pt.x - vx*dist, div->pt.y - vy*dist);
-//	PSlineto (div->pt.x + vx*dist, div->pt.y + vy*dist);
-//	PSstroke ();
-//	NXPing ();
+    NB_Refresh(0);
 }
 

@@ -3,13 +3,12 @@
 #include "edit.h"
 #include "map.h"
 
+bool draw;
 
-boolean		draw;
-
-/// Build the currently loaded map and add to editor.pwad.
+/// Build the currently loaded map and add/replace in editor.pwad.
 void DoomBSP(void)
 {
-    draw = false;
+    draw = false; // TODO: use a key modifier to show the build process window.
 
     int index = GetLumpIndexFromName(editor.pwad, map.label);
 
@@ -22,20 +21,15 @@ void DoomBSP(void)
 
     AddLump(editor.pwad, map.label, map.label, 0);
 
-    NodeBuilderLoadMap();
-	NodeBuilderDrawMap();
-
+    NB_LoadMap();
+	NB_DrawMap();
 	BuildBSP();
 	
     printf ("segment cuts: %i\n", cuts);
 
 	SaveDoomMap();
 	SaveBlocks();
-
     WriteDirectory(editor.pwad);
-
-    printf("Post-building directory:\n");
-    ListDirectory(editor.pwad);
 
     printf("Node building complete.\n");
 }

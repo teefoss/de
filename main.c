@@ -42,6 +42,8 @@
 // TODO: texture palette wide enough for 4 x 64 width textures, and resize vert.
 // TODO: change image well to solid background
 // TODO: refactor scroll bar: add 'scroll amount' and 'max scroll'
+// TODO: find an replace toupper loops with SDL_strupr
+// TODO: stop using Error() in node builder
 
 // Nice-to-have TODO list
 // TODO: animated sprites?
