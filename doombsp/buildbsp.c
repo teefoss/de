@@ -113,9 +113,11 @@ float InterceptVector (divline_t *v2, divline_t *v1)
 {
 	float	frac, num, den;
 	
-	den = v1->dy*v2->dx - v1->dx*v2->dy;
+	den = v1->dy * v2->dx - v1->dx * v2->dy;
+
 	if (den == 0)
 		Error ("InterceptVector: parallel");
+
 	num = (v1->pt.x - v2->pt.x)*v1->dy + (v2->pt.y - v1->pt.y)*v1->dx;
 	frac = num / den;
 

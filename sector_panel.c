@@ -22,7 +22,7 @@ Panel sectorPanel;
 Panel sectorSpecialsPanel;
 Panel flatsPanel;
 
-static SDL_Rect paletteRect;
+static SDL_Rect paletteRectRelative;
 
 static Scrollbar scrollBar = {
     .type = SCROLLBAR_VERTICAL,
@@ -204,7 +204,7 @@ static void UpdateFlatLocations(void)
     {
         // TODO: if filtered out, continue
 
-        if ( x + 64 > paletteRect.w - PALETTE_ITEM_MARGIN )
+        if ( x + 64 > paletteRectRelative.w - PALETTE_ITEM_MARGIN )
         {
             // Start a new row.
             x = PALETTE_ITEM_MARGIN;
@@ -219,7 +219,7 @@ static void UpdateFlatLocations(void)
         maxY = flat->rect.y + 64;
     }
 
-    scrollBar.maxScrollPosition = maxY + PALETTE_ITEM_MARGIN - paletteRect.h;
+    scrollBar.maxScrollPosition = maxY + PALETTE_ITEM_MARGIN - paletteRectRelative.h;
 }
 
 #pragma mark -
@@ -515,20 +515,27 @@ void RenderSectorPanel(void)
 
 void RenderFlatsPanel(void)
 {
-    SDL_RenderSetViewport(renderer, NULL);
-//    SDL_RenderSetViewport(renderer, &flatsPanel.location);
-    SDL_SetRenderDrawColor(renderer, 128, 128, 128, 255);
-    SDL_RenderDrawRect(renderer, &paletteRect);
+    SDL_Rect flatPanelLocation = paletteRectRelative;
+    flatPanelLocation.x += flatsPanel.location.x;
+    flatPanelLocation.y += flatsPanel.location.y;
 
-    SDL_RenderSetViewport(renderer, &paletteRect);
+    // Palette Outline
+
+    SDL_SetRenderDrawColor(renderer, 128, 128, 128, 255);
+    SDL_RenderDrawRect(renderer, &paletteRectRelative);
+
+    // Palette
+
+    SDL_RenderSetViewport(renderer, &flatPanelLocation);
 
     int top = scrollBar.scrollPosition;
-    int bottom = top + paletteRect.h;
+    int bottom = top + paletteRectRelative.h;
 
+    // Render visible flats.
     Flat * flat = flats->data;
     for ( int i = 0; i < flats->count; i++, flat++ )
     {
-        if (   flat->rect.y + flat->rect.h >= top // Visible?
+        if (   flat->rect.y + flat->rect.h >= top
             && flat->rect.y < bottom )
         {
             SDL_Rect dest = flat->rect;
@@ -539,7 +546,9 @@ void RenderFlatsPanel(void)
         }
     }
 
-    SDL_RenderSetViewport(renderer, &flatsPanel.location);
+//    SDL_RenderSetViewport(renderer, &flatsPanel.location);
+
+    // Scrollbar
 
     int x = scrollBar.location * FONT_WIDTH;
     float percent = (float)scrollBar.scrollPosition / scrollBar.maxScrollPosition;
@@ -591,15 +600,15 @@ void LoadSectorPanel(void)
     sectorSpecialsPanel.processEvent = ProcessSpecialPanelEvent;
 
     flatsPanel = LoadPanel(PANEL_DATA_DIRECTORY "flat_palette.panel");
-    flatsPanel.location.x = sectorPanel.location.x + sectorPanel.location.w + PANEL_SCREEN_MARGIN;
-    flatsPanel.location.y = PANEL_SCREEN_MARGIN;
+    flatsPanel.location.y = 0;
     flatsPanel.render = RenderFlatsPanel;
     flatsPanel.processEvent = ProcessFlatsPanelEvent;
 
-    paletteRect.x = flatsPanel.location.x + 2 * FONT_WIDTH;
-    paletteRect.y = flatsPanel.location.y + 1 * FONT_HEIGHT;
-    paletteRect.w = 32 * FONT_WIDTH;
-    paletteRect.h = FONT_HEIGHT * 37;
+    // The palette rect relative to the flat panel.
+    paletteRectRelative.x = 2 * FONT_WIDTH;
+    paletteRectRelative.y = 1 * FONT_HEIGHT;
+    paletteRectRelative.w = 32 * FONT_WIDTH;
+    paletteRectRelative.h = FONT_HEIGHT * 37;
 
     UpdateFlatLocations();
 }

@@ -279,8 +279,13 @@ static void LinePanelAction(int selection)
         case LP_NOT_ON_MAP:       line->flags ^= ML_DONTDRAW; break;
         case LP_SECRET:           line->flags ^= ML_SECRET; break;
 
-        case LP_FRONT:  line->panelBackSelected = false; break;
-        case LP_BACK:   line->panelBackSelected = true; break;
+        case LP_FRONT:
+            line->panelBackSelected = false;
+            break;
+        case LP_BACK:
+            if ( line->flags & ML_TWOSIDED )
+                line->panelBackSelected = true;
+            break;
 
         case LP_SPECIAL:
             OpenPanel(&lineSpecialCategoryPanel, NULL);
@@ -451,11 +456,31 @@ void UpdateLinePanelContent(void)
     SetPanelColor(15, 1);
     PanelPrint(&linePanel, 2, 1, title);
 
-    SetPanelColor(14, 1);
+    SetPanelColor(11, 1);
 
     ItemPrint(&linePanel, LP_LOWER, side->bottom);
     ItemPrint(&linePanel, LP_MIDDLE, side->middle);
     ItemPrint(&linePanel, LP_UPPER, side->top);
+
+    // Gray out back side as needed.
+
+    {
+        int x = linePanelItems[LP_BACK].x;
+        int y = linePanelItems[LP_BACK].y;
+
+        if ( line->flags & ML_TWOSIDED )
+        {
+            SetPanelColor(11, 1);
+            PanelPrint(&linePanel, x - 4, y, "( )");
+            SetPanelColor(15, 1);
+            PanelPrint(&linePanel, x, y, "Back");
+        }
+        else
+        {
+            SetPanelColor(8, 1);
+            PanelPrint(&linePanel, x - 4, y, "( ) Back");
+        }
+    }
 }
 
 #pragma mark - RENDER
@@ -529,7 +554,7 @@ static void RenderLinePanel(void)
 
     int x = items[LP_SPECIAL].x;
     int y = items[LP_SPECIAL].y;
-    SetPanelRenderColor(14);
+    SetPanelRenderColor(11);
 
     if ( line->special == 0 )
     {
