@@ -25,7 +25,7 @@
 #include "v_video.h"
 #include "doomdef.h"
 
-#include "edit.h"
+#include "e_editor.h"
 #include "wad.h"
 
 

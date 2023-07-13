@@ -1,7 +1,7 @@
 // saveblocks.m
 
 #include "doombsp.h"
-#include "map.h"
+#include "m_map.h"
 
 short	datalist[0x10000], *data_p;
 float	orgx, orgy;

@@ -1,7 +1,7 @@
 // doombsp.c
 #include "doombsp.h"
-#include "edit.h"
-#include "map.h"
+#include "e_editor.h"
+#include "m_map.h"
 #include "p_setup.h"
 
 bool draw;

@@ -1,5 +1,5 @@
 //
-//  sector_panel.h
+//  p_sector_panel.h
 //  de
 //
 //  Created by Thomas Foster on 6/24/23.

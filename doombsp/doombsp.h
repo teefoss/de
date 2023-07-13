@@ -2,7 +2,7 @@
 #define DOOMBSP_H
 
 #include "cmdlib.h"
-#include "line.h"
+#include "m_line.h"
 #include "doomdata.h"
 #include "array.h"
 #include "next.h"

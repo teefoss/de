@@ -5,8 +5,8 @@
 //  Created by Thomas Foster on 6/21/23.
 //
 
-#include "defaults.h"
-#include "thing.h"
+#include "e_defaults.h"
+#include "m_thing.h"
 
 //    { 0x04, 0x14, 0x41 } funkly blue
 

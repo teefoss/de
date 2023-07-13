@@ -1,5 +1,5 @@
 //
-//  line_panel.h
+//  p_line_panel.h
 //  de
 //
 //  Created by Thomas Foster on 5/30/23.
@@ -8,8 +8,8 @@
 #ifndef line_panel_h
 #define line_panel_h
 
-#include "panel.h"
-#include "map.h"
+#include "p_panel.h"
+#include "m_map.h"
 #include <stdbool.h>
 
 typedef struct

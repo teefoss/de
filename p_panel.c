@@ -5,11 +5,11 @@
 //  Created by Thomas Foster on 5/27/23.
 //
 
-#include "panel.h"
+#include "p_panel.h"
 #include "common.h"
 #include "text.h"
-#include "edit.h"
-#include "defaults.h"
+#include "e_editor.h"
+#include "e_defaults.h"
 
 #include <string.h>
 

@@ -9,9 +9,9 @@
 #include "doomdata.h"
 #include "wad.h"
 #include "array.h"
-#include "progress_panel.h"
-#include "edit.h"
-#include "geometry.h"
+#include "p_progress_panel.h"
+#include "e_editor.h"
+#include "e_geometry.h"
 
 static SDL_Color playPalette[256];
 static Array /* Patch */ * patches;

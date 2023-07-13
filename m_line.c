@@ -5,10 +5,10 @@
 //  Created by Thomas Foster on 6/27/23.
 //
 
-#include "line.h"
-#include "map.h"
-#include "geometry.h"
-#include "mapview.h"
+#include "m_line.h"
+#include "m_map.h"
+#include "e_geometry.h"
+#include "e_map_view.h"
 
 bool lineCross[9][9];
 

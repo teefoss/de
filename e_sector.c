@@ -5,8 +5,8 @@
 //  Created by Thomas Foster on 6/21/23.
 //
 
-#include "sector.h"
-#include "map.h"
+#include "e_sector.h"
+#include "m_map.h"
 #include "doomdata.h"
 #include <errno.h>
 

@@ -5,10 +5,10 @@
 //  Created by Thomas Foster on 6/19/23.
 //
 
-#include "thing_panel.h"
+#include "p_thing_panel.h"
 #include "doomdata.h"
 #include "patch.h"
-#include "map.h"
+#include "m_map.h"
 
 Panel thingPanel;
 Panel thingCategoryPanel;

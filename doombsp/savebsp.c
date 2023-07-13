@@ -1,8 +1,8 @@
 // savebsp.m
 
 #include "doombsp.h"
-#include "thing.h"
-#include "edit.h"
+#include "m_thing.h"
+#include "e_editor.h"
 #include "m_bbox.h"
 #include <limits.h>
 

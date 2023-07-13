@@ -8,7 +8,7 @@
 #ifndef thing_h
 #define thing_h
 
-#include "edit.h"
+#include "e_editor.h"
 #include "patch.h"
 
 typedef enum

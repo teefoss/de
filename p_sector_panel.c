@@ -5,10 +5,10 @@
 //  Created by Thomas Foster on 6/24/23.
 //
 
-#include "sector_panel.h"
-#include "panel.h"
+#include "p_sector_panel.h"
+#include "p_panel.h"
 #include "array.h"
-#include "map.h"
+#include "m_map.h"
 #include "flat.h"
 #include "doomdata.h"
 

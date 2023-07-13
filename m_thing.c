@@ -5,8 +5,8 @@
 //  Created by Thomas Foster on 6/18/23.
 //
 
-#include "thing.h"
-#include "thing_panel.h"
+#include "m_thing.h"
+#include "p_thing_panel.h"
 #include "wad.h"
 
 #include <stdio.h>

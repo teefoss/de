@@ -5,7 +5,7 @@
 //  Created by Thomas Foster on 5/22/23.
 //
 
-#include "geometry.h"
+#include "e_geometry.h"
 
 bool PointsEqual(const SDL_Point * a, const SDL_Point * b)
 {

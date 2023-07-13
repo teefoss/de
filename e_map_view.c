@@ -5,15 +5,15 @@
 //  Created by Thomas Foster on 5/21/23.
 //
 
-#include "mapview.h"
-#include "map.h"
+#include "e_map_view.h"
+#include "m_map.h"
 #include "common.h"
-#include "geometry.h"
-#include "edit.h"
+#include "e_geometry.h"
+#include "e_editor.h"
 #include "doomdata.h"
-#include "defaults.h"
+#include "e_defaults.h"
 #include "text.h"
-#include "sector.h"
+#include "e_sector.h"
 
 #define FILLED (-1)
 

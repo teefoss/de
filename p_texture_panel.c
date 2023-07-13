@@ -5,10 +5,10 @@
 //  Created by Thomas Foster on 6/16/23.
 //
 
-#include "texture_panel.h"
+#include "p_texture_panel.h"
 
 #include "patch.h"
-#include "line_panel.h"
+#include "p_line_panel.h"
 #include "text.h"
 
 #define PALETTE_WIDTH 272

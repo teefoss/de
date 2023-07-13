@@ -44,7 +44,7 @@ rcsid[] = "$Id: p_setup.c,v 1.5 1997/02/03 22:45:12 b1 Exp $";
 
 //#include "doomstat.h"
 
-#include "map.h"
+#include "m_map.h"
 
 void	P_SpawnMapThing (mapthing_t*	mthing);
 

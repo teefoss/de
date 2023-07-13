@@ -5,11 +5,11 @@
 //  Created by Thomas Foster on 5/19/23.
 //
 
-#include "map.h"
+#include "m_map.h"
 #include "wad.h"
 #include "doomdata.h"
 #include "common.h"
-#include "geometry.h"
+#include "e_geometry.h"
 
 #include <limits.h>
 

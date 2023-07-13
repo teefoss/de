@@ -1,7 +1,7 @@
 // saveconnect.m
 
 #include "doombsp.h"
-#include "edit.h"
+#include "e_editor.h"
 #include <limits.h>
 
 typedef struct

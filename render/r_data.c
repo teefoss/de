@@ -32,7 +32,7 @@ rcsid[] = "$Id: r_data.c,v 1.4 1997/02/03 16:47:55 b1 Exp $";
 //#include "z_zone.h"
 //#include "m_swap.h"
 //#include "w_wad.h"
-#include "edit.h"
+#include "e_editor.h"
 #include "wad.h"
 
 #include "doomdata.h"

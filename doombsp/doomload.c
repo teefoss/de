@@ -1,6 +1,6 @@
 // doomload.m
 #include "doombsp.h"
-#include "map.h"
+#include "m_map.h"
 #include <limits.h>
 
 // TF: Stores map.lines and map.things, filtered, and coordinates converted

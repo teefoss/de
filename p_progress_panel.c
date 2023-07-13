@@ -5,8 +5,8 @@
 //  Created by Thomas Foster on 6/12/23.
 //
 
-#include "progress_panel.h"
-#include "panel.h"
+#include "p_progress_panel.h"
+#include "p_panel.h"
 
 #define MAX_STR 44
 

@@ -10,9 +10,9 @@
 
 #include "array.h"
 #include "wad.h"
-#include "vertex.h"
-#include "line.h"
-#include "thing.h"
+#include "m_vertex.h"
+#include "m_line.h"
+#include "m_thing.h"
 
 #include <stdbool.h>
 

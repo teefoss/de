@@ -5,12 +5,12 @@
 //  Created by Thomas Foster on 5/28/23.
 //
 
-#include "line_panel.h"
-#include "map.h"
+#include "p_line_panel.h"
+#include "m_map.h"
 #include "text.h"
-#include "mapview.h"
+#include "e_map_view.h"
 #include "patch.h"
-#include "texture_panel.h"
+#include "p_texture_panel.h"
 
 #include "doomdata.h"
 

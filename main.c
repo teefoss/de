@@ -6,19 +6,19 @@
 //
 
 #include "wad.h"
-#include "map.h"
+#include "m_map.h"
 #include "doomdata.h"
 #include "common.h"
-#include "mapview.h"
+#include "e_map_view.h"
 #include "args.h"
-#include "edit.h"
-#include "line_panel.h"
-#include "thing_panel.h"
+#include "e_editor.h"
+#include "p_line_panel.h"
+#include "p_thing_panel.h"
 #include "patch.h"
-#include "progress_panel.h"
-#include "texture_panel.h"
-#include "defaults.h"
-#include "sector_panel.h"
+#include "p_progress_panel.h"
+#include "p_texture_panel.h"
+#include "e_defaults.h"
+#include "p_sector_panel.h"
 #include "flat.h"
 
 #include <SDL2/SDL.h>

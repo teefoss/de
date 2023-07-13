@@ -5,7 +5,7 @@
 //  Created by Thomas Foster on 5/30/23.
 //
 
-#include "edit_state.h"
+#include "e_state.h"
 
 void UpdateEdit(float dt);
 void UpdateAutoscroll(float dt);
