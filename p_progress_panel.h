@@ -4,6 +4,7 @@
 //
 //  Created by Thomas Foster on 6/12/23.
 //
+//  This is currently not needed, but keeping it around in case it is.
 
 #ifndef progress_panel_h
 #define progress_panel_h
