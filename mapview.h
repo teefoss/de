@@ -22,6 +22,9 @@ void InitMapView(void);
 void UpdateVisibleRectSize(int width, int height);
 void DrawMap(void);
 void DrawSelectionBox(const SDL_Rect * box);
+void DrawVertex(const SDL_Point * origin);
+
+void WorldDrawLine(const SDL_FPoint * p1, const SDL_FPoint * p2);
 
 SDL_Point WindowToWorld(const SDL_Point * point);
 SDL_FPoint WorldToWindow(const SDL_FPoint * point);

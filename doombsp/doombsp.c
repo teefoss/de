@@ -2,6 +2,7 @@
 #include "doombsp.h"
 #include "edit.h"
 #include "map.h"
+#include "p_setup.h"
 
 bool draw;
 
@@ -41,6 +42,8 @@ void DoomBSP(void)
     }
 
     SaveWAD(editor.pwad);
+
+    LoadLevel(); // Update render array data from node builder arrays.
 
     printf("Node building complete.\n");
 //    ListDirectory(editor.pwad);

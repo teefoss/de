@@ -33,11 +33,6 @@ typedef struct
     int x, y;   // Location within Panel (relative)
     int width;  // Selection highlight width, proceeding horizontally fron x.
 
-    int up;     // Index of item above (-1 if none, 0 if next/prev in items)
-    int down;   // Index of item below (-1 if none, 0 if next/prev in items)
-    int left;   // Index of item to the left (-1 if none)
-    int right;  // Index of item to the right (-1 if none)
-
     // Rectangular area for mouse selection.
     bool hasMouseRect; // If false, just use x, y and width for highlight.
     int mouseX1;
@@ -133,9 +128,6 @@ int GetPanelStackPosition(const Panel * panel);
 bool IsMouseActionEvent(const SDL_Event * event, const Panel * panel);
 bool IsActionEvent(const SDL_Event * event, const Panel * panel);
 void UpdatePanelMouse(const SDL_Point * windowMouse);
-
-void UpdateRightTray(void);
-void InitRightTray(void);
 
 #pragma mark - SCROLLBAR
 

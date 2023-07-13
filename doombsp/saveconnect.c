@@ -39,7 +39,7 @@ byte		*connections;
 int			numblines;
 bline_t	*blines;
 
-int			numsectors;
+int			numsectors_;
 bbox_t		*secboxes;
 
 int			numbchains;
@@ -135,7 +135,7 @@ void DrawBChain (bchain_t *ch)
 }
 
 
-bdivline_t	ends[2], sides[2];
+bdivline_t	ends[2], sides_[2];
 int			end0out, end1out, side0out, side1out;
 bbox_t		sweptarea;
 
@@ -180,9 +180,9 @@ if (p>0)
 			startside = -1;	// off end
 			continue;
 		}
-		if (BPointOnSide (pt, &sides[0]) == side0out)
+		if (BPointOnSide (pt, &sides_[0]) == side0out)
 			side = 0;
-		else if (BPointOnSide (pt, &sides[1]) == side1out)
+		else if (BPointOnSide (pt, &sides_[1]) == side1out)
 			side = 1;
 		else
 			continue;		// in middle
@@ -219,7 +219,7 @@ void BuildConnections (void)
     // look for obscured sectors
 	blockcount = passcount = 0;
 	bbox[0] = secboxes;
-	for (i=0 ; i<numsectors-1 ; i++, bbox[0]++)
+	for (i=0 ; i<numsectors_-1 ; i++, bbox[0]++)
 	{
 		bbox[1] = bbox[0] + 1;
 		if (bbox[0]->xh - bbox[0]->xl < 64 || bbox[0]->yh - bbox[0]->yl < 64)
@@ -227,7 +227,7 @@ void BuildConnections (void)
 			continue;
 		}
 
-		for (j=i+1 ; j<numsectors ; j++, bbox[1]++)
+		for (j=i+1 ; j<numsectors_ ; j++, bbox[1]++)
 		{
 			if (bbox[1]->xh - bbox[1]->xl < 64 || bbox[1]->yh - bbox[1]->yl < 64)
 			{	// don't bother with small sectors (stairs, doorways, etc)
@@ -300,20 +300,20 @@ void BuildConnections (void)
 				ends[bn].dy = points[bn][1].y - points[bn][0].y;
 			}
 
-			sides[0].x = points[0][0].x;
-			sides[0].y = points[0][0].y;
-			sides[0].dx = points[1][1].x - points[0][0].x;
-			sides[0].dy = points[1][1].y - points[0][0].y;
+			sides_[0].x = points[0][0].x;
+			sides_[0].y = points[0][0].y;
+			sides_[0].dx = points[1][1].x - points[0][0].x;
+			sides_[0].dy = points[1][1].y - points[0][0].y;
 			
-			sides[1].x = points[0][1].x;
-			sides[1].y = points[0][1].y;
-			sides[1].dx = points[1][0].x - points[0][1].x;
-			sides[1].dy = points[1][0].y - points[0][1].y;
+			sides_[1].x = points[0][1].x;
+			sides_[1].y = points[0][1].y;
+			sides_[1].dx = points[1][0].x - points[0][1].x;
+			sides_[1].dy = points[1][0].y - points[0][1].y;
 			
 			end0out = !BPointOnSide (&points[1][0], &ends[0]);
 			end1out = !BPointOnSide (&points[0][0], &ends[1]);
-			side0out = !BPointOnSide (&points[0][1], &sides[0]);
-			side1out = !BPointOnSide (&points[0][0], &sides[1]);
+			side0out = !BPointOnSide (&points[0][1], &sides_[0]);
+			side1out = !BPointOnSide (&points[0][0], &sides_[1]);
 
             //
             // look for a line change that covers the swept area
@@ -324,7 +324,7 @@ void BuildConnections (void)
 				if (!DoesChainBlock (&bchains[k]))
 					continue;
 				blockcount++;
-				connections[i*numsectors+j] = connections[j*numsectors+i] = 1;
+				connections[i*numsectors_+j] = connections[j*numsectors_+i] = 1;
 				
                 if (draw)
                 {
@@ -333,8 +333,8 @@ void BuildConnections (void)
                     DrawBBox (bbox[1]);
                     DrawDivline (&ends[0]);
                     DrawDivline (&ends[1]);
-                    DrawDivline (&sides[0]);
-                    DrawDivline (&sides[1]);
+                    DrawDivline (&sides_[0]);
+                    DrawDivline (&sides_[1]);
                     DrawBChain (&bchains[k]);
                 }
                 goto blocked;
@@ -429,14 +429,14 @@ void ProcessConnections (void)
 	bline_t		    bline;
 	int			    sec;
 		
-	numsectors = secstore_i->count;
+	numsectors_ = secstore_i->count;
 	wlcount = linestore_i->count;
 
-	connections = malloc (numsectors*numsectors+8); // allow rounding to bytes
-	memset (connections, 0, numsectors*numsectors);
+	connections = malloc (numsectors_*numsectors_+8); // allow rounding to bytes
+	memset (connections, 0, numsectors_*numsectors_);
 	
-	secboxes = secbox = malloc (numsectors*sizeof(bbox_t));
-	for (i=0 ; i<numsectors ; i++, secbox++)
+	secboxes = secbox = malloc (numsectors_*sizeof(bbox_t));
+	for (i=0 ; i<numsectors_ ; i++, secbox++)
 		ClearBBox (secbox);
 
     //
@@ -499,7 +499,7 @@ void OutputConnections (void)
 	char	*bits;
 	
 	cons = (char *)connections;
-	bytes = (numsectors*numsectors+7)/8;
+	bytes = (numsectors_*numsectors_+7)/8;
 	bits = malloc(bytes);
 	
 	for (i=0 ; i<bytes ; i++)

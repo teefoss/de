@@ -217,6 +217,13 @@ void RemoveMap(const Wad * wad, const char * mapLabel)
         RemoveLumpNumber(wad, index);
 }
 
+void CopyLump(Wad * destination, const Wad * source, int lumpIndex)
+{
+    Lump * lump = GetLump(source, lumpIndex);
+    AddLump(destination, lump->name, lump->data, lump->size);
+    SaveWAD(destination);
+}
+
 void SaveWAD(const Wad * wad)
 {
     FILE * output = fopen(wad->path, "w");

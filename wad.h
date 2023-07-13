@@ -59,6 +59,7 @@ void AddLump(Wad * wad, const char * name, void * data, u32 size);
 void RemoveLumpNumber(const Wad * wad, int index);
 void RemoveLumpNamed(const Wad * wad, const char * name);
 void RemoveMap(const Wad * wad, const char * mapLabel);
+void CopyLump(Wad * destination, const Wad * source, int lumpIndex);
 
 int GetIndexOfLumpNamed(const Wad * wad, const char * name);
 const char * GetNameOfLump(const Wad * wad, int index);

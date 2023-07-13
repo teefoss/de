@@ -91,14 +91,14 @@ void InitMapView(void)
     visibleRect.y = bounds.y + (bounds.h / 2) - visibleRect.h / 2;
 }
 
-static void WorldDrawLine(const SDL_FPoint * p1, const SDL_FPoint * p2)
+void WorldDrawLine(const SDL_FPoint * p1, const SDL_FPoint * p2)
 {
     SDL_FPoint c1 = WorldToWindow(p1);
     SDL_FPoint c2 = WorldToWindow(p2);
 
 //    FosterDrawLineAA(c1.x, c1.y, c2.x, c2.y);
-    draw_line_antialias(c1.x, c1.y, c2.x, c2.y);
-//    SDL_RenderDrawLine(renderer, c1.x, c1.y, c2.x, c2.y);
+//    draw_line_antialias(c1.x, c1.y, c2.x, c2.y);
+    SDL_RenderDrawLine(renderer, c1.x, c1.y, c2.x, c2.y);
 //    GuptaSprollDrawLine(c1.x, c1.y, c2.x, c2.y);
 //    WuDrawLine(c1.x, c1.y, c2.x, c2.y);
 }
@@ -195,6 +195,20 @@ static void DrawGrid(void)
     }
 }
 
+void DrawVertex(const SDL_Point * origin)
+{
+    const float size = VERTEX_DRAW_SIZE / scale;
+
+    SDL_FRect rect = {
+        (float)origin->x - size / 2.0f,
+        (float)origin->y - size / 2.0f,
+        size,
+        size
+    };
+
+    WorldDrawRect(&rect, FILLED);
+}
+
 static void DrawVertices(void)
 {
     const float pointSize = VERTEX_DRAW_SIZE / scale;
@@ -203,11 +217,6 @@ static void DrawVertices(void)
     float right = visibleRect.x + visibleRect.w + pointSize;
     float top = visibleRect.y - pointSize;
     float bottom = visibleRect.y + visibleRect.h + pointSize;
-
-    SDL_FRect pointRect = {
-        .w = pointSize,
-        .h = pointSize
-    };
 
     Vertex * v;
     FOR_EACH(v, map.vertices)
@@ -220,9 +229,6 @@ static void DrawVertices(void)
             || v->origin.y > bottom )
             continue;
 
-        pointRect.x = (float)v->origin.x - pointSize / 2.0f;
-        pointRect.y = (float)v->origin.y - pointSize / 2.0f;
-
         SDL_Color color;
 
         if ( v->selected )
@@ -232,7 +238,7 @@ static void DrawVertices(void)
 
         SetRenderDrawColor(&color);
 
-        WorldDrawRect(&pointRect, FILLED);
+        DrawVertex(&v->origin);
     }
 }
 
@@ -253,32 +259,6 @@ static void DrawLines(void)
 
         if ( visibility == VISIBILITY_NONE )
             continue;
-
-#if 0
-        if ( visibility == VISIBILITY_PARTIAL )
-        {
-//            ClipLine(i, &clipped1, &clipped2);
-            SDL_Rect bounds = GetMapBounds();
-            double x0clip = p1.x;
-            double y0clip = p1.y;
-            double x1clip = p2.x;
-            double y1clip = p2.y;
-#if 1
-            LiangBarsky(bounds.x,
-                        bounds.x + bounds.w,
-                        bounds.y + bounds.h,
-                        bounds.y,
-                        p1.x, p1.y, p2.x, p2.y,
-                        &x0clip, &y0clip, &x1clip, &y1clip);
-#else
-            CohenSutherlandLineClip(&bounds, &x0clip, &y0clip, &x1clip, &y1clip);
-#endif
-            clipped1.x = x0clip;
-            clipped1.y = y0clip;
-            clipped2.x = x1clip;
-            clipped2.y = y1clip;
-        }
-#endif
 
         SDL_Color color;
 

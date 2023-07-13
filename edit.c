@@ -24,6 +24,9 @@
 #include "sector_panel.h"
 #include "flat.h"
 #include "doombsp.h"
+#include "r_main.h"
+#include "i_video.h"
+#include "v_video.h"
 
 #include <stdbool.h>
 #include <limits.h>
@@ -51,6 +54,15 @@ static SDL_Point visibleRectTarget;
 static int bmapDY = 0;
 static int bmapDX = 0;
 
+static SDL_Point newLine[2];
+
+SectorDef defaultSectorDef = {
+    .floorHeight = 0,
+    .ceilingHeight = 128,
+    .floorFlat = "FLOOR0_1",
+    .ceilingFlat = "FLOOR0_1",
+    .lightLevel = 255,
+};
 
 SDL_Point GridPoint(const SDL_Point * worldPoint)
 {
@@ -81,10 +93,7 @@ void DeselectAllObjects(void)
         things[i].selected = false;
     }
 
-//    while ( topPanel )
-//        ClosePanel();
-    ClosePanel();
-//    topPanel = -1; // Close all panels.
+    topPanel = -1; // Close all panels.
 }
 
 #pragma mark - AUTOSCROLL
@@ -265,6 +274,67 @@ void HandleDragViewEvent(const SDL_Event * event)
 
     if ( !keys[SDL_SCANCODE_SPACE] )
         editorState = ES_EDIT;
+}
+
+#pragma mark - NEW LINE
+
+void ProcessNewLineEvent(const SDL_Event * event)
+{
+    switch ( event->type )
+    {
+        case SDL_KEYDOWN:
+            switch ( event->key.keysym.sym )
+            {
+                case SDLK_ESCAPE:
+                    editorState = ES_EDIT;
+                    break;
+                default:
+                    break;
+            }
+            break;
+
+        case SDL_MOUSEBUTTONDOWN:
+            switch ( event->button.button )
+            {
+                case SDL_BUTTON_LEFT:
+                {
+                    Side side = {
+                        .top = "-",
+                        .middle = "-",
+                        .bottom = "-",
+                    };
+
+                    Side closest;
+                    SectorDef sectorDef;
+                    if ( GetClosestSide(&newLine[1], &closest) )
+                        sectorDef = closest.sectorDef;
+                    else
+                        sectorDef = defaultSectorDef;
+                    side.sectorDef = sectorDef;
+
+                    Line * line = NewLine(&newLine[0], &newLine[1]);
+                    line->sides[0] = side;
+
+                    newLine[0] = newLine[1];
+                    if ( event->button.clicks == 2 ) // Done.
+                        editorState = ES_EDIT;
+                    break;
+                }
+                case SDL_BUTTON_RIGHT:
+                    editorState = ES_EDIT;
+                    break;
+            }
+            break;
+
+        default:
+            break;
+    }
+}
+
+void UpdateNewLine(float dt)
+{
+    (void)dt;
+    newLine[1] = GridPoint(&worldMouse);
 }
 
 #pragma mark - EDIT
@@ -507,11 +577,18 @@ void ProcessEditEvent(const SDL_Event * event)
                     previousMouseY = windowMouse.y;
 
                     if ( event->button.clicks == 2 )
-                        AutoScrollToPoint(worldMouse);
+                    {
+                        newLine[0] = GridPoint(&worldMouse);
+                        editorState = ES_NEW_LINE;
+                    }
                     else if ( keys[SDL_SCANCODE_SPACE] )
+                    {
                         editorState = ES_DRAG_VIEW;
+                    }
                     else
+                    {
                         SelectObject(false);
+                    }
                     break;
 
                 case SDL_BUTTON_RIGHT:
@@ -586,6 +663,26 @@ void ManualScrollView(float dt)
         visibleRect.y = SDL_clamp(visibleRect.y,
                                   bounds.y,
                                   bounds.y + bounds.h - visibleRect.h);
+    }
+
+    if ( keys[SDL_SCANCODE_G] )
+    {
+        //        liveView.angle -= 0.1f;
+    }
+    if ( keys[SDL_SCANCODE_J] )
+    {
+//        liveView.angle += 0.1f;
+    }
+    if ( keys[SDL_SCANCODE_Y] )
+    {
+//        liveView.position.x += cosf(liveView.angle);
+//        liveView.position.y += sinf(liveView.angle);
+    }
+
+    if ( keys[SDL_SCANCODE_H] )
+    {
+//        liveView.position.x -= cosf(liveView.angle);
+//        liveView.position.y -= sinf(liveView.angle);
     }
 }
 
@@ -671,12 +768,13 @@ void InitEditor(void)
     visibleRectTarget.x = visibleRect.x;
     visibleRectTarget.y = visibleRect.y;
 
-    InitRightTray();
-
     // TODO: add some test that VSYNC is working, otherwise limit framerate.
     // FIXME: get smooth scrolling and non-laggy mouse movement
 
     SDL_SetEventFilter(WindowResizeEventFilter, NULL);
+
+//    V_Init();
+//    I_InitGraphics();
 }
 
 void RenderEditor(void)
@@ -687,11 +785,27 @@ void RenderEditor(void)
 
     DrawMap();
 
-    if ( editorState == ES_DRAG_BOX )
-        DrawSelectionBox(&selectionBox);
+    switch ( editorState )
+    {
+        case ES_DRAG_BOX:
+            DrawSelectionBox(&selectionBox);
+            break;
+        case ES_NEW_LINE:
+        {
+            SDL_Color lineColor = DefaultColor(LINE_ONE_SIDED);
+            SetRenderDrawColor(&lineColor);
+            WorldDrawLine(&(SDL_FPoint){ newLine[0].x, newLine[0].y },
+                          &(SDL_FPoint){ newLine[1].x, newLine[1].y });
+            DrawVertex(&newLine[0]);
+            DrawVertex(&newLine[1]);
+            break;
+        }
+        default:
+            break;
+    }
 
-    if ( topPanel != -1 )
-        RenderPanel(rightPanels[topPanel]);
+    for ( int i = 0; i <= topPanel; i++ )
+        RenderPanel(rightPanels[i]);
 
     SDL_RenderPresent(renderer);
 }
@@ -737,7 +851,10 @@ void EditorFrame(float dt)
 #endif
 
     StateUpdate(dt);
-    UpdateRightTray();
+
+//    R_RenderPlayerView(&viewPlayer);
+
+//    I_FinishUpdate(); // Actually render the live view.
 
     RenderEditor();
 
@@ -778,6 +895,11 @@ void EditorLoop(void)
     int refreshRate = GetRefreshRate();
     printf("refresh rate: %d Hz\n", refreshRate);
     const float dt = 1.0f / refreshRate;
+
+//    viewPlayer.mo = calloc(1, sizeof(*viewPlayer.mo));
+
+    // Populate node builder arrays, which the live view renderer needs.
+//    DoomBSP();
 
     while ( running )
         EditorFrame(dt);

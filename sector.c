@@ -10,7 +10,7 @@
 #include "doomdata.h"
 #include <errno.h>
 
-#define BLOCK_MAP_RESOLUTION 1 // How much the block map is scaled down by.
+#define BLOCK_MAP_RESOLUTION 4 // How much the block map is scaled down by.
 #define VISITED 0x8000 // Visited during flood fill.
 
 // Flood Fill Direction

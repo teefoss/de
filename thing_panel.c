@@ -52,22 +52,22 @@ const char * directionNames[] =
 static PanelItem items[THP_COUNT] =
 {
     [0] = { 0 },
-    [THP_TYPE] = { 2, 10, 25, THP_SW, THP_EASY, -1, -1, true, 2, 3, 13, 8 },
+    [THP_TYPE]      = { 2, 10, 25, true, 2, 3, 13, 8 },
 
-    [THP_NW] = { 2, 13, 2, -1, THP_W, THP_TYPE, THP_N },
-    [THP_N] = { 6, 13, 2, -1, THP_S, THP_NW, THP_NE },
-    [THP_NE] = { 10, 13, 2, -1, THP_E, THP_N, -1 },
-    [THP_W] = { 2, 15, 2, THP_NW, THP_SW, THP_TYPE, THP_E },
-    [THP_E] = { 10, 15, 2, THP_NE, THP_SE, THP_W, -1 },
-    [THP_SW] = { 2, 17, 2, THP_W, THP_TYPE, -1, THP_S },
-    [THP_S] = { 6, 17, 2, THP_N, THP_TYPE, THP_SW, THP_SE },
-    [THP_SE] = { 10, 17, 2, THP_E, THP_TYPE, THP_S, -1 },
+    [THP_NW]        = { 2, 13, 2 },
+    [THP_N]         = { 6, 13, 2 },
+    [THP_NE]        = { 10, 13, 2 },
+    [THP_W]         = { 2, 15, 2 },
+    [THP_E]         = { 10, 15, 2 },
+    [THP_SW]        = { 2, 17, 2 },
+    [THP_S]         = { 6, 17, 2 },
+    [THP_SE]        = { 10, 17, 2 },
 
-    [THP_EASY] = { 6, 20, 7, THP_TYPE, THP_NORMAL, -1, THP_AMBUSH },
-    [THP_NORMAL] = { 6, 21, 7, THP_EASY, THP_HARD, -1, THP_NETWORK },
-    [THP_HARD] = { 6, 22, 7, THP_NORMAL, -1, -1, THP_NETWORK },
-    [THP_AMBUSH] = { 6, 23, 7, THP_TYPE, THP_NETWORK, THP_EASY, -1 },
-    [THP_NETWORK] = { 6, 24, 7, THP_AMBUSH, -1, THP_NORMAL, -1 },
+    [THP_EASY]      = { 6, 20, 7  },
+    [THP_NORMAL]    = { 6, 21, 7  },
+    [THP_HARD]      = { 6, 22, 7  },
+    [THP_AMBUSH]    = { 6, 23, 7  },
+    [THP_NETWORK]   = { 6, 24, 7  },
 };
 
 static PanelItem categoryItems[THING_CATEGORY_COUNT];
@@ -276,14 +276,7 @@ void LoadThingPanel(void)
         categoryItems[i].x = 2;
         categoryItems[i].y = i + 2;
         categoryItems[i].width = 20;
-        categoryItems[i].left = -1;
-        categoryItems[i].right = -1;
-        categoryItems[i].up = i - 1;
-        categoryItems[i].down = i + 1;
     }
-
-    categoryItems[0].up = THING_CATEGORY_COUNT - 1;
-    categoryItems[THING_CATEGORY_COUNT - 1].down = 0;
 
     thingPalette = LoadPanel(PANEL_DATA_DIRECTORY "thing_palette.panel");
     thingPalette.location.y = 0;

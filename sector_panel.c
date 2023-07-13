@@ -134,42 +134,15 @@ static PanelItem specialItems2[] =
 static PanelItem items[SP_NUM_ITEMS] =
 {
     [0] = { 0 },
-    [SP_FLOOR_HEIGHT]   = {
-        10, 12, 5,
-        SP_CEILING_FLAT, SP_FLOOR_FLAT, -1, SP_FLOOR_FLAT,
-    },
-    [SP_CEILING_HEIGHT] = {
-        10, 4, 5,
-        -1, SP_HEADROOM, -1, SP_CEILING_FLAT,
-    },
-    [SP_HEADROOM] = {
-        10, 6, 5,
-        SP_CEILING_HEIGHT, SP_CEILING_FLAT, -1, SP_CEILING_FLAT,
-    },
-    [SP_SPECIAL] = {
-        2, 24, 32,
-        SP_LIGHT, SP_TAG, -1, SP_SUGGEST,
-    },
-    [SP_TAG] = {
-        7, 25, 4,
-        SP_SPECIAL, -1, -1, SP_SUGGEST,
-    },
-    [SP_SUGGEST] = {
-        13, 25, 7,
-        SP_SPECIAL, -1, SP_TAG, -1,
-    },
-    [SP_LIGHT] = {
-        2, 19, 4,
-        SP_FLOOR_FLAT, SP_SPECIAL, -1, -1,
-    },
-    [SP_FLOOR_FLAT] = {
-        8, 16, 8,
-        SP_FLOOR_HEIGHT, SP_LIGHT, -1, -1,
-    },
-    [SP_CEILING_FLAT] = {
-        8, 8, 8,
-        -1, SP_HEADROOM, SP_FLOOR_FLAT, -1,
-    }
+    [SP_FLOOR_HEIGHT]   = { 10, 12, 5 },
+    [SP_CEILING_HEIGHT] = { 10, 4, 5 },
+    [SP_HEADROOM]       = { 10, 6, 5 },
+    [SP_SPECIAL]        = { 2, 24, 32 },
+    [SP_TAG]            = { 7, 25, 4 },
+    [SP_SUGGEST]        = { 13, 25, 7 },
+    [SP_LIGHT]          = { 2, 19, 4 },
+    [SP_FLOOR_FLAT]     = { 8, 16, 8 },
+    [SP_CEILING_FLAT]   = { 8, 8, 8 }
 };
 
 void OpenSectorPanel(void)
@@ -587,14 +560,8 @@ void LoadSectorPanel(void)
     {
         sectorSpecialsPanel.items[i].x = 2;
         sectorSpecialsPanel.items[i].width = 23;
-        sectorSpecialsPanel.items[i].up = i - 1;
-        sectorSpecialsPanel.items[i].down = i + 1;
-        sectorSpecialsPanel.items[i].left = -1;
-        sectorSpecialsPanel.items[i].right = -1;
     }
 
-    sectorSpecialsPanel.items[0].up = -1;
-    sectorSpecialsPanel.items[sectorSpecialsPanel.numItems - 1].down = -1;
     sectorSpecialsPanel.location.x = sectorPanel.location.x + 2 * FONT_WIDTH;
     sectorSpecialsPanel.location.y = sectorPanel.location.y + 18 * FONT_HEIGHT;
     sectorSpecialsPanel.processEvent = ProcessSpecialPanelEvent;

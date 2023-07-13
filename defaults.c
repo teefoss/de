@@ -29,24 +29,36 @@ int palette[16] = {
     0xFFFFFF,
 };
 
-#define LIGHT_MODE
-#ifdef LIGHT_MODE
-#elif
-// TODO: dark mode
-#endif
+#define DARK_MODE
 
 int colors[NUM_COLORS] =
 {
+#ifdef DARK_MODE
+    [BACKGROUND]        = 0x000000,
+    [GRID_LINES]        = 0x202020,
+    [GRID_TILES]        = 0x303030,
+    [SELECTION]         = 0x00FF00,
+    [VERTEX]            = 0xFF0000,
+    [LINE_ONE_SIDED]    = 0xFF0000,
+    [LINE_TWO_SIDED]    = 0xFFFF00,
+    [LINE_SPECIAL]      = 0xFF00FF,
+#else
     [BACKGROUND]        = 0xFFFFFF,
     [GRID_LINES]        = 0xE8E8E8,
     [GRID_TILES]        = 0xD0D0D0,
     [SELECTION]         = 0xFF0000,
+    [VERTEX]            = 0x000000,
     [LINE_ONE_SIDED]    = 0x000000,
     [LINE_TWO_SIDED]    = 0x0000FF,
     [LINE_SPECIAL]      = 0xFF00FF,
+#endif
 
     [THING_PLAYER]      = 0x55FF55, // light green
+#ifdef DARK_MODE
+    [THING_DEMON]       = 0xFFFFFF, // white
+#else
     [THING_DEMON]       = 0x000000, // black
+#endif
     [THING_WEAPON]      = 0xAA5500, // brown
     [THING_PICKUP]      = 0xFF55FF, // light purple
     [THING_DECOR]       = 0x555555, // dark gray

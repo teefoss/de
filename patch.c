@@ -304,6 +304,7 @@ void RenderTextureInRect(const char * name, const SDL_Rect * rect)
     ASSERT(name[0] != '-');
     
     Texture * texture = FindTexture(name);
+    ASSERT(texture != NULL);
 
     if ( texture->texture == NULL )
         CreateTextureSDLTexture(texture);

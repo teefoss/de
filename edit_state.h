@@ -18,6 +18,7 @@ typedef enum
     ES_DRAG_OBJECTS,
     ES_DRAG_VIEW,
     ES_ZOOM,
+    ES_NEW_LINE,
 } EditorStateID;
 
 typedef struct

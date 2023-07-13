@@ -7,6 +7,11 @@
 
 #include "geometry.h"
 
+bool PointsEqual(const SDL_Point * a, const SDL_Point * b)
+{
+    return a->x == b->x && a->y == b->y;
+}
+
 SDL_Rect MakeCenteredRect(const SDL_Point * point, int size)
 {
     SDL_Rect square = {

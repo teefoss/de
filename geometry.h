@@ -19,6 +19,8 @@ typedef struct
     int bottom;
 } Box;
 
+bool PointsEqual(const SDL_Point * a, const SDL_Point * b);
+
 SDL_Rect MakeCenteredRect(const SDL_Point * point, int size);
 
 /// Check if a line from `p1` to `p2` intersects with a line from `p3` to `p4`.

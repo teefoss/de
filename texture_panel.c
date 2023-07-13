@@ -46,9 +46,9 @@ enum
 
 static PanelItem items[] =
 {
-    [TP_NAME] = { 8, 39, 8, -1, -1, -1, TP_WIDTH, true, 2, 39, 15, 39 },
-    [TP_WIDTH] = { 24, 39, 4, -1, -1, TP_NAME, TP_HEIGHT, true, 17, 39, 27, 39 },
-    [TP_HEIGHT] = { 37, 39, 4, -1, -1, TP_WIDTH, -1, true, 29, 39, 40, 39 },
+    [TP_NAME] = { 8, 39, 8, true, 2, 39, 15, 39 },
+    [TP_WIDTH] = { 24, 39, 4, true, 17, 39, 27, 39 },
+    [TP_HEIGHT] = { 37, 39, 4, true, 29, 39, 40, 39 },
 };
 
 SDL_Rect PaletteRect(void)
@@ -80,7 +80,8 @@ static void ScrollToSelected(void)
 void OpenTexturePanel(char * texture)
 {
     currentTexture = texture;
-    rightPanels[++topPanel] = &texturePanel;
+//    rightPanels[++topPanel] = &texturePanel;
+    OpenPanel(&texturePanel, NULL);
 
     ScrollToSelected();
 }

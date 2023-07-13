@@ -102,6 +102,7 @@ typedef struct
     s16     offset;
 } mapseg_t;
 
+#if 0 // use m_bbox.h!
 enum
 {
     BOXTOP,
@@ -109,6 +110,7 @@ enum
     BOXLEFT,
     BOXRIGHT
 }; // bbox coordinates
+#endif
 
 #define NF_SUBSECTOR 0x8000
 typedef struct
@@ -169,6 +171,7 @@ typedef struct
 ===============================================================================
 */
 
+#if 0 // de: unused
 // posts are runs of non masked source pixels
 typedef struct
 {
@@ -181,6 +184,7 @@ typedef struct
 
 // column_t is a list of 0 or more post_t, (byte)-1 terminated
 typedef post_t column_t;
+#endif
 
 // Structure within WAD (e.g. patches within P_START-P_END and S_START-S_END)
 // a patch holds one or more columns

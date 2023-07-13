@@ -45,5 +45,7 @@ void SaveDWD(void);
 
 SDL_Rect GetMapBounds(void);
 void TranslateCoord(int * y, const SDL_Rect * bounds);
+Line * NewLine(const SDL_Point * p1, const SDL_Point * p2);
+bool GetClosestSide(const SDL_Point * point, Side * out);
 
 #endif /* Map_h */

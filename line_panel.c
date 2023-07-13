@@ -49,41 +49,41 @@ enum
 static PanelItem linePanelItems[] =
 {
     { 0 },
-    { 17, 2, 5, -1, LP_UPPER, -1, LP_BACK, true, 13, 2, 21, 2 }, // front
-    { 27, 2, 4, -1, LP_UPPER, LP_FRONT, -1, true, 23, 2, 30, 2 }, // back
+    { 17, 2, 5, true, 13, 2, 21, 2 }, // front
+    { 27, 2, 4, true, 23, 2, 30, 2 }, // back
 
-    { 15, 6,  8, LP_FRONT, 0, -1, -1, true, 2, 4, 13, 9 },
-    { 15, 13, 8, 0, 0, -1, -1, true, 2, 11, 13, 16 },
-    { 15, 20, 8, 0, 0, -1, -1, true, 2, 18, 13, 23 },
+    { 15, 6,  8, true, 2, 4, 13, 9 },
+    { 15, 13, 8, true, 2, 11, 13, 16 },
+    { 15, 20, 8, true, 2, 18, 13, 23 },
 
-    { 12, 25, 4, 0, LP_BLOCKS_ALL, -1, LP_OFFSET_Y, true, 2, 25, 15, 25 }, // offset x
-    { 27, 25, 4, LP_LOWER, LP_BLOCKS_ALL, LP_OFFSET_X, -1, true, 17, 25, 30, 25 }, // offset y
+    { 12, 25, 4, true, 2, 25, 15, 25 }, // offset x
+    { 27, 25, 4, true, 17, 25, 30, 25 }, // offset y
 
-    { 6, 27, 27, LP_OFFSET_X, 0, -1, -1, true, 2, 27, 34, 27 }, // LP_BLOCKS_ALL,
-    { 6, 28, 27, 0, 0, -1, -1, true, 2, 28, 34, 28 },
-    { 6, 29, 27, 0, 0, -1, -1, true, 2, 29, 34, 29 },
-    { 6, 30, 27, 0, 0, -1, -1, true, 2, 30, 34, 30 },
-    { 6, 31, 27, 0, 0, -1, -1, true, 2, 31, 34, 31 },
-    { 6, 32, 27, 0, 0, -1, -1, true, 2, 32, 34, 32 },
-    { 6, 33, 27, 0, 0, -1, -1, true, 2, 33, 34, 33 },
-    { 6, 34, 27, 0, 0, -1, -1, true, 2, 34, 34, 34 },
-    { 6, 35, 27, 0, 0, -1, -1, true, 2, 35, 34, 35 },
+    { 6, 27, 27, true, 2, 27, 34, 27 }, // LP_BLOCKS_ALL,
+    { 6, 28, 27, true, 2, 28, 34, 28 },
+    { 6, 29, 27, true, 2, 29, 34, 29 },
+    { 6, 30, 27, true, 2, 30, 34, 30 },
+    { 6, 31, 27, true, 2, 31, 34, 31 },
+    { 6, 32, 27, true, 2, 32, 34, 32 },
+    { 6, 33, 27, true, 2, 33, 34, 33 },
+    { 6, 34, 27, true, 2, 34, 34, 34 },
+    { 6, 35, 27, true, 2, 35, 34, 35 },
 
-    { 2, 37, 31, 0, 0, -1, -1 }, // special
-    { 7, 38, 4, 0, -1, -1, LP_SUGGEST_TAG, true, 2, 38, 20, 38 }, // tag
-    { 17, 38, 7, LP_SPECIAL, -1, LP_TAG, -1 }, // suggest
+    { 2, 37, 31 }, // special
+    { 7, 38, 4, true, 2, 38, 20, 38 }, // tag
+    { 17, 38, 7 }, // suggest
 };
 
 static PanelItem specialCategoryItems[] =
 {
-    { 2, 2, 15, -1, 0, -1, -1 }, // None
-    { 2, 4, 15, 0, 0, -1, -1 }, // Button
-    { 2, 5, 15, 0, 0, -1, -1 },
-    { 2, 6, 15, 0, 0, -1, -1 },
-    { 2, 7, 15, 0, 0, -1, -1 },
-    { 2, 8, 15, 0, 0, -1, -1 },
-    { 2, 9, 15, 0, 0, -1, -1 },
-    { 2, 10, 15, 0, -1, -1, -1 }
+    { 2, 2, 15 }, // None
+    { 2, 4, 15 }, // Button
+    { 2, 5, 15 },
+    { 2, 6, 15 },
+    { 2, 7, 15 },
+    { 2, 8, 15 },
+    { 2, 9, 15 },
+    { 2, 10, 15 }
 };
 
 static PanelItem specialItems[NUM_SPECIAL_ROWS]; // Inited in LoadLinePanels()
@@ -352,8 +352,6 @@ void OpenSpecialsPanel(void)
 
 
     lineSpecialPanel.location.y = 0;
-    lineSpecialPanel.items[0].up = -1;
-    lineSpecialPanel.items[cat->count - 1].down = -1;
 
     SetPanelColor(10, 1);
     for ( int y = 0; y < lineSpecialPanel.height; y++ )
@@ -370,8 +368,6 @@ void OpenSpecialsPanel(void)
         item->x = 2;
         item->y = i + 1;
         item->width = cat->maxShortNameLength;
-        item->left = -1;
-        item->right = -1;
 
         SetPanelColor(15, 1);
         PanelPrint(&lineSpecialPanel,
@@ -383,7 +379,8 @@ void OpenSpecialsPanel(void)
 //    specialsPanel.render = RenderSpecialsPanel;
     lineSpecialPanel.processEvent = ProcessSpecialPanelEvent;
 
-    rightPanels[++topPanel] = &lineSpecialPanel;
+//    rightPanels[++topPanel] = &lineSpecialPanel;
+    OpenPanel(&lineSpecialPanel, NULL);
 }
 
 static bool ProcessSpecialCategoriesPanelEvent(const SDL_Event * event)

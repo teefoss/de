@@ -9,10 +9,108 @@
 #include "wad.h"
 #include "doomdata.h"
 #include "common.h"
+#include "geometry.h"
 
 #include <limits.h>
 
 Map map;
+
+bool GetClosestSide(const SDL_Point * point, Side * out)
+{
+    float   frac, distance, xintercept;
+    int     bestline = -1;
+
+    float x = (float)point->x + 0.5f;
+    float y = (float)point->y + 0.5f;
+
+
+    // find the closest line to the given point
+
+    Line * lines = map.lines->data;
+    float bestdistance = MAXFLOAT;
+    for ( int l = 0; l < map.lines->count; l++ )
+    {
+        if ( lines[l].deleted )
+            continue;
+
+        SDL_Point p1, p2;
+        GetLinePoints(l, &p1, &p2);
+
+        if ( p1.y == p2.y )
+            continue;
+
+        if ( p1.y < p2.y )
+        {
+            frac = (y - p1.y) / (p2.y - p1.y);
+            if ( frac < 0.0f || frac > 1.0f )
+                continue;
+
+            xintercept = p1.x + frac * (p2.x - p1.x);
+        }
+        else
+        {
+            frac = (y - p2.y) / (p1.y - p2.y);
+            if ( frac < 0.0f || frac > 1.0f )
+                continue;
+
+            xintercept = p2.x + frac * (p1.x - p2.x);
+        }
+
+        distance = fabsf(xintercept - x);
+        if ( distance < bestdistance )
+        {
+            bestdistance = distance;
+            bestline = l;
+        }
+    }
+
+    // If no line is intercepted, the point was outside all areas.
+    if ( bestdistance == MAXFLOAT )
+        return false;
+
+    Line * line = Get(map.lines, bestline);
+
+    SDL_Point p1, p2;
+    GetLinePoints(bestline, &p1, &p2);
+
+    if ( p1.y == p2.y )
+    {
+        int side = (p1.x < p2.x) ^ (y < p1.y);
+
+        if ( side == 1 && !(line->flags & ML_TWOSIDED) )
+            return false;
+
+        *out = line->sides[side];
+        return true;
+    }
+
+    if ( p1.x == p2.x )
+    {
+        int side = (p1.y < p2.y) ^ (x > p1.x);
+
+        if ( side == 1 && !(line->flags & ML_TWOSIDED) )
+            return false;
+
+        *out = line->sides[side];
+        return true;
+    }
+
+    float slope = ((float)p2.y - p1.y) / ((float)p2.x - p1.x);
+    float yintercept = p1.y - slope * p1.x;
+
+    // for y > mx+b, substitute in the normal point, which is on the front
+
+    SDL_FPoint normal = LineNormal(line, 1.0f);
+    bool direction =  normal.y > slope * normal.x + yintercept;
+    bool test = y > slope * x + yintercept;
+
+    if (direction == test)
+        *out = line->sides[0];
+    else
+        *out = line->sides[1];
+
+    return true;
+}
 
 
 #define BOUNDS_BORDER 128
@@ -216,7 +314,74 @@ void LoadMap(const Wad * wad, const char * lumpLabel)
     GetMapBounds();
 }
 
-bool ReadLine(FILE * dwd, SDL_Point * p1, SDL_Point *p2, Line * line)
+#pragma mark -
+
+/// Adds a new vertex to `map.vertices` and returns its index.
+int NewVertex(const SDL_Point * point)
+{
+    Vertex * v = map.vertices->data;
+    int i = 0;
+
+    for ( ; i < map.vertices->count; i++, v++ )
+    {
+        if ( v->origin.x == point->x && v->origin.y == point->y )
+        {
+            v->referenceCount++;
+            return i;
+        }
+    }
+
+    Vertex new = { .origin = *point, .referenceCount = 1 };
+    Push(map.vertices, &new);
+
+    return map.vertices->count - 1;
+}
+
+Line * NewLine(const SDL_Point * p1, const SDL_Point * p2)
+{
+    Line * line;
+    int availableIndex = -1;
+
+    for ( int i = 0; i < map.lines->count; i++ )
+    {
+        line = Get(map.lines, i);
+
+        if ( line->deleted )
+        {
+            availableIndex = i;
+        }
+        else
+        {
+            SDL_Point a, b;
+            GetLinePoints(i, &a, &b);
+
+            if (   (PointsEqual(&a, p1) && PointsEqual(&b, p2))
+                || (PointsEqual(&a, p2) && PointsEqual(&b, p1)) )
+            {
+                return line; // There already a line here, do nothing.
+            }
+        }
+    }
+
+    if ( availableIndex != -1 ) // Reuse a previously deleted line.
+    {
+        line = Get(map.lines, availableIndex);
+    }
+    else // There were no unused lines, add a new one.
+    {
+        Line new;
+        line = Push(map.lines, &new);
+    }
+
+    memset(line, 0, sizeof(*line));
+    line->v1 = NewVertex(p1);
+    line->v2 = NewVertex(p2);
+    return line;
+}
+
+#pragma mark - DWD
+
+static bool ReadLine(FILE * dwd, SDL_Point * p1, SDL_Point *p2, Line * line)
 {
     if ( fscanf(dwd, "(%d,%d) to (%d,%d) : %d : %d : %d\n",
                 &p1->x, &p1->y, &p2->x, &p2->y,
@@ -259,7 +424,7 @@ bool ReadLine(FILE * dwd, SDL_Point * p1, SDL_Point *p2, Line * line)
     return true;
 }
 
-void WriteLine(FILE * dwd, Line * line)
+static void WriteLine(FILE * dwd, Line * line)
 {
     Vertex * vertices = map.vertices->data;
     SDL_Point p1 = vertices[line->v1].origin;
@@ -310,7 +475,7 @@ void WriteLine(FILE * dwd, Line * line)
     }
 }
 
-bool ReadThing(FILE * dwd, Thing * thing)
+static bool ReadThing(FILE * dwd, Thing * thing)
 {
     if ( fscanf(dwd, "(%i,%i, %d) :%d, %d\n",
                 &thing->origin.x,
@@ -328,7 +493,7 @@ bool ReadThing(FILE * dwd, Thing * thing)
     return true;
 }
 
-void WriteThing(FILE * dwd, Thing * thing)
+static void WriteThing(FILE * dwd, Thing * thing)
 {
     fprintf(dwd, "(%d,%d, %d) :%d, %d\n",
             thing->origin.x,

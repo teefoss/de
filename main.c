@@ -117,7 +117,9 @@ void DetermineGame(char * iwadName)
                     "'doom', 'doomse', or 'doom2'\n");
             exit(EXIT_FAILURE);
         }
-    } else {
+    }
+    else
+    {
         // -g or --game was not specified, determine which game from the IWAD name.
         Capitalize(iwadName); // TODO: write CaseCompare!
 
@@ -222,30 +224,11 @@ print_usage:
     return EXIT_FAILURE;
 }
 
-void CreateProject(void)
-{
-    FILE * project = fopen("project.de", "w");
-    if ( project == NULL )
-    {
-        printf("Error: could not create project file!\n");
-        return;
-    }
-
-    fprintf(project, "de project file version 1\n\n");
-    fprintf(project, "iwad: doom2.wad\n");
-    fprintf(project, "pwad: mywad.wad");
-    fprintf(project, "node_builder: \n");
-    fprintf(project, "run: \n");
-    fprintf(project, "maps: \n");
-
-    fclose(project);
-
-    printf("Created a new project.\n"
-           "Please set up the project parameters in 'project.de'\n");
-}
-
 int RunEditor(const char * wadPath, const char * mapName)
 {
+    printf("[d]oom [e]ditor\n"
+           "v. 0.1 Copyright (C) 2023 Thomas Foster\n\n");
+
     LoadDefaults("de.config");
 
     editor.pwad = OpenWad(wadPath);
@@ -274,9 +257,7 @@ int RunEditor(const char * wadPath, const char * mapName)
     printf("Using IWAD '%s'.\n", iwadPath);
 
     LoadMap(editor.pwad, mapName);
-
     InitWindow(800, 800); // TODO: save user's favorite window size and position.
-
     DetermineGame(iwadPath);
 
     printf("Editing %s in '%s'\n\n", mapName, wadPath);
@@ -288,71 +269,32 @@ int RunEditor(const char * wadPath, const char * mapName)
     return EXIT_SUCCESS;
 }
 
-void CopyLump(Wad * destination, const Wad * source, int lumpIndex)
+void ParseListCommand(const char * wadPath)
 {
-    Lump * lump = GetLump(source, lumpIndex);
-    AddLump(destination, lump->name, lump->data, lump->size);
-    SaveWAD(destination);
-}
-
-int main(int argc, char ** argv)
-{
-    printf("[d]oom [e]ditor\n"
-           "v. 0.1 Copyright (C) 2023 Thomas Foster\n\n");
-
-    if ( argc == 1 )
-        goto error;
-
-    InitArgs(--argc, ++argv);
-
-    if ( GetArg2("--help", "-h") != -1 )
-    {
-        // TODO: write help text!
-        printf("Help coming soon\n");
-        return EXIT_SUCCESS;
-    }
-
-    char * wadPath = argv[0];
-
     if ( GetArg2("--list", "-ls") != -1 )
     {
         Wad * wad = OpenWad(wadPath);
         ListDirectory(wad);
         FreeWad(wad);
+        exit(0);
     }
+}
 
-    char * lumpToRemove = GetOptionArg2("--remove-number", "-rm-num");
-    if ( lumpToRemove )
-    {
-        Wad * wad = OpenWad(wadPath);
-        RemoveLumpNumber(wad, atoi(lumpToRemove));
-        SaveWAD(wad);
-        FreeWad(wad);
-    }
-
-    lumpToRemove = GetOptionArg("--remove");
-    if ( lumpToRemove )
-    {
-        Wad * wad = OpenWad(wadPath);
-
-        if ( GetArg("--map") != -1 )
-            RemoveMap(wad, lumpToRemove);
-        else
-            RemoveLumpNamed(wad, lumpToRemove);
-
-        SaveWAD(wad);
-        FreeWad(wad);
-    }
-
+void ParseCopyCommand(const char * wadPath)
+{
     char * copySource = GetOptionArg2("--copy", "-cp");
+
     if ( copySource )
     {
         Wad * destinationWAD = OpenOrCreateWad(wadPath);
 
         char * lumpName = GetLumpNameFromArg(&copySource);
+
         Wad * sourceWAD = OpenWad(copySource);
         if ( sourceWAD == NULL )
-            return EXIT_FAILURE;
+        {
+            exit(EXIT_FAILURE);
+        }
 
         int index = GetIndexOfLumpNamed(sourceWAD, lumpName);
 
@@ -373,13 +315,60 @@ int main(int argc, char ** argv)
         FreeWad(sourceWAD);
         FreeWad(destinationWAD);
     }
+}
+
+int main(int argc, char ** argv)
+{
+    if ( argc == 1 )
+    {
+        printf("Bad arguments! Here's some help:\n\n");
+        // TODO: print help!
+        exit(EXIT_FAILURE);
+    }
+
+    InitArgs(--argc, ++argv);
+
+    if ( GetArg2("--help", "-h") != -1 )
+    {
+        // TODO: write help text!
+        printf("Help coming soon\n");
+        return EXIT_SUCCESS;
+    }
+
+    char * wadPath = argv[0];
+
+    ParseListCommand(wadPath);
+
+
+    char * lumpToRemove = GetOptionArg2("--remove-number", "-rm-num");
+    if ( lumpToRemove )
+    {
+        Wad * wad = OpenWad(wadPath);
+        RemoveLumpNumber(wad, atoi(lumpToRemove));
+        SaveWAD(wad);
+        FreeWad(wad);
+        return EXIT_SUCCESS;
+    }
+
+    lumpToRemove = GetOptionArg2("--remove", "-rm");
+    if ( lumpToRemove )
+    {
+        Wad * wad = OpenWad(wadPath);
+
+        if ( GetArg("--map") != -1 )
+            RemoveMap(wad, lumpToRemove);
+        else
+            RemoveLumpNamed(wad, lumpToRemove);
+
+        SaveWAD(wad);
+        FreeWad(wad);
+    }
+
+    ParseCopyCommand(wadPath);
 
     char * mapName = GetOptionArg2("--edit", "-e");
     if ( mapName )
         return RunEditor(wadPath, mapName);
 
     return EXIT_SUCCESS;
-error:
-    printf("Error: bad arguments! Use 'de --help'\n");
-    return EXIT_FAILURE;
 }

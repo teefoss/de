@@ -3,16 +3,17 @@
 #include "doombsp.h"
 #include "thing.h"
 #include "edit.h"
+#include "m_bbox.h"
 #include <limits.h>
 
-Array * secstore_i;
+Array * secstore_i; // [] of mapsector_t
 Array * mapvertexstore_i;
 Array * subsecstore_i;
-Array * maplinestore_i;
+Array * maplinestore_i; // [] of mapseg_t!
 Array * nodestore_i;
 Array * mapthingstore_i;
 Array * ldefstore_i;
-Array * sdefstore_i;
+Array * sdefstore_i; // [] of mapsidedef_t!
 
 
 void WriteStorage(char * name, Array * store, int esize)
@@ -49,7 +50,8 @@ void OutputSegs (void)
 
 	count = maplinestore_i->count;
 	p = Get(maplinestore_i, 0);
-	for (i=0 ; i<count ; i++, p++)
+
+	for ( i = 0; i < count; i++, p++ )
 	{
 		p->v1 = SWAP16(p->v1);
 		p->v2 = SWAP16(p->v2);
@@ -157,11 +159,12 @@ void OutputNodes (void)
 
 	count = nodestore_i->count;
 	p = Get(nodestore_i, 0);
+
 	for (i=0 ; i<count ; i++, p++)
 	{
 		for ( size_t j = 0; j < sizeof(mapnode_t) / 2; j++ )
         {
-            // TODO: confirm this is a sane thing to do.
+            // TODO: unroll this.
             ((short *)p)[j] = SWAP16(((short *)p)[j]);
         }
 	}

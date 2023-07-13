@@ -46,37 +46,14 @@ void SetPanelRenderColor(int index)
     SDL_SetRenderDrawColor(renderer, c.r, c.g, c.b, 255);
 }
 
-void InitRightTray(void)
-{
-    SDL_Rect frame = GetWindowFrame();
-
-    rightTrayX = frame.w;
-}
-
-void UpdateRightTray(void)
-{
-    if ( topPanel == -1 )
-        return;
-    
-    SDL_Rect frame = GetWindowFrame();
-
-    float target;
-    if ( rightTrayIsOpen )
-        target = frame.w - rightPanels[topPanel]->location.w;
-    else
-        target = frame.w;
-
-    rightTrayX = LerpEpsilon(rightTrayX, target, 0.2f, 1.0f);
-    rightPanels[topPanel]->location.x = rightTrayX;
-
-    if ( rightTrayX == frame.w )
-        topPanel = -1;
-}
-
 void OpenPanel(Panel * panel, void * data)
 {
     rightPanels[++topPanel] = panel;
-    rightTrayIsOpen = true;
+
+    // Place it in the middle of the editor window.
+    SDL_Rect windowFrame = GetWindowFrame();
+    panel->location.x = (windowFrame.w - panel->location.w) / 2;
+    panel->location.y = (windowFrame.h - panel->location.h) / 2;
 
     panel->data = data;
 }
@@ -239,23 +216,19 @@ void RenderPanelTexture(const Panel * panel)
 {
     SDL_Rect dest = PanelRenderLocation(panel);
 
+    // Shadow
+    SDL_Rect shadow = dest;
+    shadow.x += 16;
+    shadow.y += 16;
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 128);
+    SDL_RenderFillRect(renderer, &shadow);
+
     // Texture
     SDL_RenderCopy(renderer, panel->texture, NULL, &dest);
 
     // Outline
-
-    SDL_Rect frame = GetWindowFrame();
-
-    SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
-    SDL_RenderDrawLine(renderer,
-                       panel->location.x - 1, 0,
-                       panel->location.x - 1, frame.h);
-
-    SDL_SetRenderDrawColor(renderer, 64, 64, 64, 255);
-    for ( int i = 0; i < 1; i++ )
-        SDL_RenderDrawLine(renderer,
-                           panel->location.x + i, 0,
-                           panel->location.x + i, frame.h);
+    SetPanelRenderColor(11);
+    SDL_RenderDrawRect(renderer, &dest);
 }
 
 /// Render a colored horizontal bar at panel item by extracting the console
@@ -318,19 +291,6 @@ bool ShouldRenderInactiveTextField(const Panel * panel, int itemIndex)
 
 void RenderPanel(const Panel * panel)
 {
-    // Fill entire tray area.
-
-    SDL_Rect frame = GetWindowFrame();
-    SDL_Rect trayRect = {
-        .x = rightPanels[topPanel]->location.x,
-        .y = 0,
-        .w = (frame.w - rightTrayX) + 1,
-        .h = frame.h
-    };
-
-    SetPanelRenderColor(1);
-    SDL_RenderFillRect(renderer, &trayRect);
-
     // Texture
 
     RenderPanelTexture(panel);
@@ -469,50 +429,7 @@ bool ProcessPanelEvent(Panel * panel, const SDL_Event * event)
             break;
     }
 
-    // Change selection:
-
-    if ( panel->items == NULL )
-        return false;
-
-    PanelItem * item = &panel->items[panel->selection];
-
-    switch ( event->type )
-    {
-        case SDL_KEYDOWN:
-            switch ( event->key.keysym.sym )
-            {
-                case SDLK_UP:
-                    if ( item->up == 0 )
-                        panel->selection--;
-                    else if ( item->up > 0 )
-                        panel->selection = item->up;
-                    return true;
-
-                case SDLK_DOWN:
-                    if ( item->down == 0
-                        && panel->selection < panel->numItems - 1 )
-                        panel->selection++;
-                    else if ( item->down > 0 )
-                        panel->selection = item->down;
-                    return true;
-
-                case SDLK_LEFT:
-                    if ( item->left != -1 )
-                        panel->selection = item->left;
-                    return true;
-
-                case SDLK_RIGHT:
-                    if ( item->right != -1 )
-                        panel->selection = item->right;
-                    return true;
-
-                default:
-                    return false;
-            }
-
-        default:
-            return false;
-    }
+    return false;
 }
 
 int GetPanelStackPosition(const Panel * panel)

@@ -91,11 +91,12 @@ Flat * GetFlat(const char * name)
 
 void RenderFlat(const char * name, int x, int y, float scale)
 {
+    ASSERT(name != NULL);
     Flat * flat = GetFlat(name);
 
     if ( flat == NULL )
     {
-        fprintf(stderr, "Try to render flat with wonkey name (%s)!\n", name);
+        fprintf(stderr, "Tried to render flat with wonkey name (%s)!\n", name);
         return;
     }
 
