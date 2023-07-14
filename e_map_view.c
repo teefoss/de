@@ -265,9 +265,9 @@ static void DrawLines(void)
         if ( l->selected )
             color = DefaultColor(SELECTION);
         else if ( l->special > 0 )
-            color = DefaultColor(LINE_SPECIAL);
+            color = DefaultColor(DEF_COLOR_LINE_TWO_SIDED);
         else if ( l->flags & ML_TWOSIDED )
-            color = DefaultColor(LINE_TWO_SIDED);
+            color = DefaultColor(DEF_COLOR_LINE_TWO_SIDED);
         else
             color = DefaultColor(LINE_ONE_SIDED);
 
@@ -358,6 +358,8 @@ void DrawSelectionBox(const SDL_Rect * box)
     if ( box->w <= 0 || box->h <= 0 )
         return;
 
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 128);
+    SDL_Color color = DefaultColor(SELECTION_BOX);
+    color.a = 128;
+    SetRenderDrawColor(&color);
     WorldDrawRect(&(SDL_FRect){ box->x, box->y, box->w, box->h }, 4);
 }

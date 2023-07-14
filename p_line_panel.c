@@ -92,6 +92,11 @@ Panel linePanel;
 Panel lineSpecialCategoryPanel;
 Panel lineSpecialPanel;
 
+// When a line is selected, it is copied here. When any property is changed,
+// this updates the base, then base is copied to all other selected lines.
+static Line base;
+int flagToToggle;
+
 LineSpecial * specials;
 int numSpecials;
 
@@ -111,6 +116,81 @@ int firstSpecial; // Index of topmost visible special in list.
 
 //static void RenderSpecialsPanel(void);
 static bool ProcessSpecialPanelEvent(const SDL_Event * event);
+
+void OpenLinePanel(Line * line)
+{
+    base = *line;
+
+    OpenPanel(&linePanel, NULL);
+    UpdateLinePanelContent();
+}
+
+void SetFlag(Line * line, int flags, int flag)
+{
+    line->flags &= ~flag;
+    line->flags |= flags & flag;
+}
+
+/// Called after a property was changed, propogating the change it to all
+/// selected lines.
+void LinePanelApplyChange(LineProperty property)
+{
+    int s = base.panelBackSelected;
+
+    for ( int i = 0; i < map.lines->count; i++ )
+    {
+        Line * line = Get(map.lines, i);
+
+        if ( line->deleted )
+            continue;
+
+        if ( line->selected )
+        {
+            switch ( property )
+            {
+                case LINE_BLOCKS_ALL:
+                case LINE_BLOCKS_MONSTERS:
+                case LINE_TWO_SIDED:
+                case LINE_TOP_UNPEGGED:
+                case LINE_BOTTOM_UNPEGGED:
+                case LINE_SECRET:
+                case LINE_BLOCKS_SOUND:
+                case LINE_DONT_DRAW:
+                case LINE_ALWAYS_DRAW:
+                {
+                    int flag = 1 << property;
+                    line->flags &= ~flag;
+                    line->flags |= base.flags & flag;
+                    break;
+                }
+                case LINE_SPECIAL:
+                    line->special = base.special;
+                    break;
+                case LINE_TAG:
+                    line->tag = base.tag;
+                    break;
+                case LINE_OFFSET_X:
+                    line->sides[s].offsetX = base.sides[s].offsetX;
+                    break;
+                case LINE_OFFSET_Y:
+                    line->sides[s].offsetY = base.sides[s].offsetY;
+                    break;
+                case LINE_TOP_TEXTURE:
+                    strncpy(line->sides[s].top, base.sides[s].top, 8);
+                    break;
+                case LINE_MIDDLE_TEXTURE:
+                    strncpy(line->sides[s].middle, base.sides[s].middle, 8);
+                    break;
+                case LINE_BOTTOM_TEXTURE:
+                    strncpy(line->sides[s].bottom, base.sides[s].bottom, 8);
+                    break;
+                case LINE_SIDE_SELECTION:
+                    line->panelBackSelected = base.panelBackSelected;
+                    break;
+            }
+        }
+    }
+}
 
 
 #pragma mark -
@@ -252,61 +332,102 @@ int SuggestTag(void)
 
 #pragma mark - INPUT
 
+static void TextEditingCompletionHandler(void)
+{
+    switch ( linePanel.textItem )
+    {
+        case LP_TAG:
+            LinePanelApplyChange(LINE_TAG);
+            break;
+        case LP_OFFSET_X:
+            LinePanelApplyChange(LINE_OFFSET_X);
+            break;
+        case LP_OFFSET_Y:
+            LinePanelApplyChange(LINE_OFFSET_Y);
+            break;
+        default:
+            break;
+    }
+}
+
 static void LinePanelAction(int selection)
 {
-    Line * line = linePanel.data;
-    Side * side = &line->sides[line->panelBackSelected];
+    Side * side = &base.sides[base.panelBackSelected];
 
     switch ( selection )
     {
         case LP_LOWER:
-            OpenTexturePanel(side->bottom);
+            OpenTexturePanel(side->bottom, LINE_BOTTOM_TEXTURE);
             break;
         case LP_MIDDLE:
-            OpenTexturePanel(side->middle);
+            OpenTexturePanel(side->middle, LINE_MIDDLE_TEXTURE);
             break;
         case LP_UPPER:
-            OpenTexturePanel(side->top);
+            OpenTexturePanel(side->top, LINE_TOP_TEXTURE);
             break;
-
-        case LP_BLOCKS_ALL:       line->flags ^= ML_BLOCKING; break;
-        case LP_BLOCKS_MONSTERS:  line->flags ^= ML_BLOCKMONSTERS; break;
-        case LP_BLOCKS_SOUND:     line->flags ^= ML_SOUNDBLOCK; break;
-        case LP_TWO_SIDED:        line->flags ^= ML_TWOSIDED; break;
-        case LP_UPPER_UNPEGGED:   line->flags ^= ML_DONTPEGTOP; break;
-        case LP_LOWER_UNPEGGED:   line->flags ^= ML_DONTPEGBOTTOM; break;
-        case LP_ALWAYS_ON_MAP:    line->flags ^= ML_MAPPED; break;
-        case LP_NOT_ON_MAP:       line->flags ^= ML_DONTDRAW; break;
-        case LP_SECRET:           line->flags ^= ML_SECRET; break;
-
+        case LP_BLOCKS_ALL:
+            base.flags ^= ML_BLOCKING;
+            LinePanelApplyChange(LINE_BLOCKS_ALL);
+            break;
+        case LP_BLOCKS_MONSTERS:
+            base.flags ^= ML_BLOCKMONSTERS;
+            LinePanelApplyChange(LINE_BLOCKS_MONSTERS);
+            break;
+        case LP_TWO_SIDED:
+            base.flags ^= ML_TWOSIDED;
+            LinePanelApplyChange(LINE_TWO_SIDED);
+            break;
+        case LP_UPPER_UNPEGGED:
+            base.flags ^= ML_DONTPEGTOP;
+            LinePanelApplyChange(LINE_TOP_UNPEGGED);
+            break;
+        case LP_LOWER_UNPEGGED:
+            base.flags ^= ML_DONTPEGBOTTOM;
+            LinePanelApplyChange(LINE_BOTTOM_UNPEGGED);
+            break;
+        case LP_SECRET:
+            base.flags ^= ML_SECRET;
+            LinePanelApplyChange(LINE_SECRET);
+            break;
+        case LP_BLOCKS_SOUND:
+            base.flags ^= ML_SOUNDBLOCK;
+            LinePanelApplyChange(LINE_BLOCKS_SOUND);
+            break;
+        case LP_NOT_ON_MAP:
+            base.flags ^= ML_DONTDRAW;
+            LinePanelApplyChange(LINE_DONT_DRAW);
+            break;
+        case LP_ALWAYS_ON_MAP:
+            base.flags ^= ML_MAPPED;
+            LinePanelApplyChange(LINE_ALWAYS_DRAW);
+            break;
         case LP_FRONT:
-            line->panelBackSelected = false;
+            base.panelBackSelected = false;
+            LinePanelApplyChange(LINE_SIDE_SELECTION);
             break;
         case LP_BACK:
-            if ( line->flags & ML_TWOSIDED )
-                line->panelBackSelected = true;
+            if ( base.flags & ML_TWOSIDED )
+            {
+                base.panelBackSelected = true;
+                LinePanelApplyChange(LINE_SIDE_SELECTION);
+            }
             break;
-
         case LP_SPECIAL:
             OpenPanel(&lineSpecialCategoryPanel, NULL);
             break;
-
         case LP_TAG:
-            StartTextEditing(&linePanel, LP_TAG, &line->tag, VALUE_INT);
+            StartTextEditing(&linePanel, LP_TAG, &base.tag, VALUE_INT);
             break;
-
         case LP_OFFSET_X:
             StartTextEditing(&linePanel, LP_OFFSET_X, &side->offsetX, VALUE_INT);
             break;
-
         case LP_OFFSET_Y:
             StartTextEditing(&linePanel, LP_OFFSET_Y, &side->offsetY, VALUE_INT);
             break;
-
         case LP_SUGGEST_TAG:
-            line->tag = SuggestTag();
+            base.tag = SuggestTag();
+            LinePanelApplyChange(LINE_TAG);
             break;
-
         default:
             break;
     }
@@ -437,20 +558,33 @@ void ItemPrint(const Panel * panel, int item, const char * string)
 
 void UpdateLinePanelContent(void)
 {
-    Line * line = linePanel.data;
-    Side * side = &line->sides[line->panelBackSelected];
+    Side * side = &base.sides[base.panelBackSelected];
 
-    int i;
-    for ( i = 0; i < map.lines->count; i++ )
+    int numSelected = 0;
+    int index = -1;
+    for ( int i = 0; i < map.lines->count; i++ )
     {
         Line * check = Get(map.lines, i);
-        if ( check == line )
-            break;
+        if ( check->selected )
+        {
+            index = i;
+            numSelected++;
+        }
     }
 
     char title[100] = { 0 };
-    snprintf(title, sizeof(title), "Line %d", i);
-    SetPanelColor(15, 1);
+    if ( numSelected == 1 )
+    {
+        snprintf(title, sizeof(title), "Line %d", index);
+        SetPanelColor(15, 1);
+    }
+    else if ( numSelected > 1 )
+    {
+        snprintf(title, sizeof(title), "%d Lines Selected", numSelected);
+        SetPanelColor(12, 1);
+    }
+
+    PanelPrint(&linePanel, 2, 1, "                   ");
     PanelPrint(&linePanel, 2, 1, title);
 
     SetPanelColor(11, 1);
@@ -465,7 +599,7 @@ void UpdateLinePanelContent(void)
         int x = linePanelItems[LP_BACK].x;
         int y = linePanelItems[LP_BACK].y;
 
-        if ( line->flags & ML_TWOSIDED )
+        if ( base.flags & ML_TWOSIDED )
         {
             SetPanelColor(11, 1);
             PanelPrint(&linePanel, x - 4, y, "( )");
@@ -484,7 +618,7 @@ void UpdateLinePanelContent(void)
 
 static void RenderLinePanel(void)
 {
-    const Line * line = linePanel.data;
+    const Line * line = &base;
     const Side * side = &line->sides[line->panelBackSelected];
     PanelItem * items = linePanelItems;
 
@@ -613,6 +747,7 @@ void LoadLinePanels(const char * dspPath)
     linePanel.render = RenderLinePanel;
     linePanel.processEvent = ProcessLinePanelEvent;
     linePanel.selection = 1;
+    linePanel.textEditingCompletionHandler = TextEditingCompletionHandler;
 
     printf("Loading line specials from %s...\n", dspPath);
     LoadSpecials(dspPath);

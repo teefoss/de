@@ -19,6 +19,27 @@ typedef enum
     VISIBILITY_FULL
 } Visibility;
 
+typedef enum
+{
+    LINE_BLOCKS_ALL,
+    LINE_BLOCKS_MONSTERS,
+    LINE_TWO_SIDED,
+    LINE_TOP_UNPEGGED,
+    LINE_BOTTOM_UNPEGGED,
+    LINE_SECRET,
+    LINE_BLOCKS_SOUND,
+    LINE_DONT_DRAW,
+    LINE_ALWAYS_DRAW,
+    LINE_SPECIAL,
+    LINE_TAG,
+    LINE_OFFSET_X,
+    LINE_OFFSET_Y,
+    LINE_BOTTOM_TEXTURE,
+    LINE_MIDDLE_TEXTURE,
+    LINE_TOP_TEXTURE,
+    LINE_SIDE_SELECTION,
+} LineProperty;
+
 typedef struct
 {
     int floorHeight;

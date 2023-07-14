@@ -21,7 +21,9 @@ SDL_Rect paletteRectRelative;
 int paletteTopY = 0;
 int maxPaletteTopY; // Calculated during init.
 bool draggingScrollHandle;
+
 char * currentTexture;
+LineProperty texturePosition; // Whether we're selecting top/middle/bottom
 
 typedef struct
 {
@@ -77,10 +79,11 @@ static void ScrollToSelected(void)
     }
 }
 
-void OpenTexturePanel(char * texture)
+void OpenTexturePanel(char * texture, LineProperty property)
 {
     currentTexture = texture;
-//    rightPanels[++topPanel] = &texturePanel;
+    texturePosition = property;
+
     OpenPanel(&texturePanel, NULL);
 
     ScrollToSelected();
@@ -247,6 +250,7 @@ bool ProcessTexturePanelEvent(const SDL_Event * event)
                         if ( SDL_PointInRect(&location, &t->rect) )
                         {
                             strncpy(currentTexture, t->name, 8);
+                            LinePanelApplyChange(texturePosition);
                             UpdateLinePanelContent();
                             if ( event->button.clicks == 2 )
                                 topPanel--;

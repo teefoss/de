@@ -33,6 +33,12 @@
 
 #define SHIFT_DOWN (mods & KMOD_SHIFT)
 
+#ifdef __APPLE__
+#define COMMAND (mods & KMOD_GUI)
+#else
+#define COMMAND (mods & KMOD_CTRL)
+#endif
+
 Editor editor;
 
 static bool running = true;
@@ -55,6 +61,9 @@ static int bmapDY = 0;
 static int bmapDX = 0;
 
 static SDL_Point newLine[2];
+
+static Array * lineCopies;
+static Array * thingCopies;
 
 SectorDef defaultSectorDef = {
     .floorHeight = 0,
@@ -343,28 +352,31 @@ void SelectObject(bool openPanel)
 {
     SDL_Rect clickRect = MakeCenteredRect(&worldMouse, SELECTION_SIZE / scale);
 
-    Vertex * vertex = map.vertices->data;
-    for ( int i = 0; i < map.vertices->count; i++, vertex++ )
+    if ( !openPanel ) // Don't bother checking vertices when right-clicking.
     {
-        if ( vertex->removed ) continue;
-
-        if ( SDL_PointInRect(&vertex->origin, &clickRect) )
+        Vertex * vertex = map.vertices->data;
+        for ( int i = 0; i < map.vertices->count; i++, vertex++ )
         {
-            if ( !SHIFT_DOWN && !vertex->selected )
-                DeselectAllObjects();
+            if ( vertex->removed ) continue;
 
-            if ( vertex->selected && SHIFT_DOWN )
+            if ( SDL_PointInRect(&vertex->origin, &clickRect) )
             {
-                vertex->selected = false;
-            }
-            else
-            {
-                vertex->selected = true;
-                //printf("%d, %d\n", vertex->origin.x, vertex->origin.y);
-                StartDraggingObjects();
-            }
+                if ( !SHIFT_DOWN && !vertex->selected )
+                    DeselectAllObjects();
 
-            return;
+                if ( vertex->selected && SHIFT_DOWN )
+                {
+                    vertex->selected = false;
+                }
+                else
+                {
+                    vertex->selected = true;
+                    //printf("%d, %d\n", vertex->origin.x, vertex->origin.y);
+                    StartDraggingObjects();
+                }
+
+                return;
+            }
         }
     }
 
@@ -376,7 +388,7 @@ void SelectObject(bool openPanel)
                         &vertices[line->v2].origin,
                         &clickRect) )
         {
-            if ( !SHIFT_DOWN && !line->selected )
+            if ( !SHIFT_DOWN && !line->selected && !openPanel )
                 DeselectAllObjects();
 
             if ( SHIFT_DOWN && line->selected )
@@ -399,8 +411,7 @@ void SelectObject(bool openPanel)
 
                 if ( openPanel )
                 {
-                    OpenPanel(&linePanel, line);
-                    UpdateLinePanelContent(); // TODO: panel->refresh
+                    OpenLinePanel(line);
                 }
                 else
                 {
@@ -498,7 +509,24 @@ void CenterSelectedObjects(void)
     AutoScrollToPoint(focus);
 }
 
-void ProcessEditEvent(const SDL_Event * event)
+void TryRunNumericScript(int num)
+{
+    if ( COMMAND )
+    {
+        char command[8] = { 0 };
+
+#ifdef _WIN32
+        sprintf(command, "%d.bat", num);
+#else
+        sprintf(command, "./%d.sh", num);
+#endif
+
+        DoomBSP();
+        system(command);
+    }
+}
+
+void ProcessEditorEvent(const SDL_Event * event)
 {
     switch ( event->type )
     {
@@ -522,17 +550,27 @@ void ProcessEditEvent(const SDL_Event * event)
         case SDL_KEYDOWN:
             switch ( event->key.keysym.sym )
             {
-                case SDLK_1:
-                    if ( mods & KMOD_GUI )
-                    {
-                        DoomBSP();
-                        system("./1.sh");
-                    }
-                    break;
+                case SDLK_1: TryRunNumericScript(1); break;
+                case SDLK_2: TryRunNumericScript(2); break;
+                case SDLK_3: TryRunNumericScript(3); break;
+                case SDLK_4: TryRunNumericScript(4); break;
+                case SDLK_5: TryRunNumericScript(5); break;
+                case SDLK_6: TryRunNumericScript(6); break;
+                case SDLK_7: TryRunNumericScript(7); break;
+                case SDLK_8: TryRunNumericScript(8); break;
+                case SDLK_9: TryRunNumericScript(9); break;
+                case SDLK_0: TryRunNumericScript(0); break;
+
                 case SDLK_s:
-                    if ( mods & KMOD_GUI )
+                    if ( COMMAND )
                         DoomBSP();
                     break;
+
+                case SDLK_f:
+                    if ( COMMAND )
+                        FlipSelectedLines();
+                    break;
+
 #ifdef DRAW_BLOCK_MAP
                 case SDLK_o:
                     bmapScale /= 2.0f;
@@ -541,6 +579,7 @@ void ProcessEditEvent(const SDL_Event * event)
                     bmapScale *= 2.0f;
                     break;
 #endif
+
                 case SDLK_EQUALS:
                     ZoomIn();
                     break;

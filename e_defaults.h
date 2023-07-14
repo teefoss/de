@@ -24,15 +24,16 @@ typedef struct
 } Default;
 
 typedef enum
-{
+{   // TODO: namespace these!
     BACKGROUND,
     GRID_LINES,
     GRID_TILES,
     SELECTION,
     VERTEX,
     LINE_ONE_SIDED,
-    LINE_TWO_SIDED,
-    LINE_SPECIAL,
+    DEF_COLOR_LINE_TWO_SIDED,
+    DEF_COLOR_LINE_SPECIAL,
+    SELECTION_BOX,
 
     THING_PLAYER,
     THING_DEMON,

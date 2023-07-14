@@ -22,6 +22,8 @@ typedef struct
 extern Panel linePanel;
 
 void LoadLinePanels(const char * dspPath);
+void OpenLinePanel(Line * line);
+void LinePanelApplyChange(LineProperty property);
 void UpdateLinePanelContent(void);
 void FreeLinePanels(void);
 

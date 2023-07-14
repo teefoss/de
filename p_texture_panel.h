@@ -9,10 +9,11 @@
 #define texture_panel_h
 
 #include "p_panel.h"
+#include "m_line.h"
 
 extern Panel texturePanel;
 
 void LoadTexturePanel(void);
-void OpenTexturePanel(char * texture);
+void OpenTexturePanel(char * texture, LineProperty property);
 
 #endif /* texture_panel_h */

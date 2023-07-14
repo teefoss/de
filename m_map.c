@@ -379,6 +379,27 @@ Line * NewLine(const SDL_Point * p1, const SDL_Point * p2)
     return line;
 }
 
+void FlipSelectedLines(void)
+{
+    Line * line = map.lines->data;
+    for ( int i = 0; i < map.lines->count; i++, line++ )
+    {
+        if ( line->selected )
+        {
+            SWAP(line->v1, line->v2);
+
+            if ( line->selected == FRONT_SELECTED )
+                line->selected = BACK_SELECTED;
+            else
+                line->selected = FRONT_SELECTED;
+
+            // Make sure to swap the sectordefs if two-sided!
+            if ( line->flags & ML_TWOSIDED )
+                SWAP(line->sides[0], line->sides[1]);
+        }
+    }
+}
+
 #pragma mark - DWD
 
 static bool ReadLine(FILE * dwd, SDL_Point * p1, SDL_Point *p2, Line * line)

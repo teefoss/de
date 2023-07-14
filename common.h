@@ -16,6 +16,7 @@
 #define SIGN(a) (a < 0 ? -1 : a > 0 ? 1 : 0)
 #define MAX(a, b) ((a > b) ? (a) : (b))
 #define MIN(a, b) ((a < b) ? (a) : (b))
+#define SWAP(a, b) do { typeof(a) temp = a; a = b; b = temp; } while (0)
 
 #define SWAP16(x)   SDL_SwapLE16(x)
 #define SWAP32(x)   SDL_SwapLE32(x)
