@@ -151,3 +151,14 @@ void * Peek(Array * arr)
     ASSERT(arr->count > 0);
     return (u8 *)arr->data + (arr->count - 1) * arr->esize;
 }
+
+Array * DeepCopy(Array * arr)
+{
+    Array * copy = NewArray(arr->count, arr->esize, arr->resize);
+    memcpy(copy->data, arr->data, arr->count * arr->esize);
+
+    // Manually set `count` - only Insert/Push etc. set it!
+    copy->count = arr->count;
+
+    return copy;
+}

@@ -31,12 +31,18 @@
 
 static SDL_Window * viewWindow;
 static SDL_Renderer * viewRenderer;
-SDL_Texture * screen;
+
+static SDL_Surface * surface8;  // Palette surface
+static SDL_Surface * surface32; // Same format as window (probably 32 bit?)
+SDL_Texture * texture;
+
 static SDL_Color colors[256];
 
 void I_ShutdownGraphics(void)
 {
-    SDL_DestroyTexture(screen);
+    SDL_FreeSurface(surface8);
+    SDL_FreeSurface(surface32);
+    SDL_DestroyTexture(texture);
     SDL_DestroyRenderer(viewRenderer);
     SDL_DestroyWindow(viewWindow);
 }
@@ -57,36 +63,12 @@ void I_StartTic (void)
 //
 void I_FinishUpdate (void)
 {
-    SDL_Surface * surface = SDL_CreateRGBSurface(0, SCREENWIDTH, SCREENHEIGHT, 8, 0, 0, 0, 0);
-    SDL_SetPaletteColors(surface->format->palette, colors, 0, 256);
+    SDL_LowerBlit(surface8, NULL, surface32, NULL);
+    SDL_UpdateTexture(texture, NULL, surface32->pixels, surface32->pitch);
 
-//    SDL_RenderClear(viewRenderer);
-//    SDL_SetRenderTarget(viewRenderer, screen);
-//
-    SDL_LockSurface(surface);
-    for ( int y = 0; y < SCREENHEIGHT; y++ )
-    {
-        for ( int x = 0; x < SCREENWIDTH; x++ )
-        {
-            u8 * pixel = surface->pixels;
-            pixel[y * surface->pitch + x] = *(screens[0] + y * SCREENWIDTH + x);
-//            u8 * pixel = screens[0] + y * SCREENWIDTH + x;
-//            SDL_Color c = colors[*pixel];
-//            SDL_SetRenderDrawColor(viewRenderer, c.r, c.g, c.b, 255);
-//            SDL_RenderDrawPoint(viewRenderer, x, y);
-        }
-    }
-    SDL_UnlockSurface(surface);
-
-    SDL_Texture * texture = SDL_CreateTextureFromSurface(viewRenderer, surface);
-
-//
-//    SDL_SetRenderTarget(viewRenderer, NULL);
+    SDL_RenderClear(viewRenderer);
     SDL_RenderCopy(viewRenderer, texture, NULL, NULL);
     SDL_RenderPresent(viewRenderer);
-
-    SDL_DestroyTexture(texture);
-    SDL_FreeSurface(surface);
 }
 
 
@@ -129,10 +111,29 @@ void I_InitGraphics(void)
     Lump * paletteLump = GetLumpNamed(editor.iwad, "PLAYPAL");
     I_SetPalette(paletteLump->data);
 
-    screen = SDL_CreateTexture(viewRenderer,
-                               pixelFormat,
-                               SDL_TEXTUREACCESS_TARGET,
-                               SCREENWIDTH, SCREENHEIGHT);
+    // Paletted surface.
+
+    surface8 = SDL_CreateRGBSurface(0, SCREENWIDTH, SCREENHEIGHT, 8, 0, 0, 0, 0);
+    SDL_FillRect(surface8, NULL, 0);
+    SDL_SetPaletteColors(surface8->format->palette, colors, 0, 256);
+
+    // Surface in window format.
+
+    u32 rmask, gmask, bmask, amask;
+    int bpp;
+    SDL_PixelFormatEnumToMasks(pixelFormat, &bpp, &rmask, &gmask, &bmask, &amask);
+    surface32 = SDL_CreateRGBSurface(0,
+                                     SCREENWIDTH, SCREENHEIGHT,
+                                     bpp,
+                                     rmask, gmask, bmask, amask);
+    SDL_FillRect(surface32, NULL, 0);
+
+    // Texture.
+
+    texture = SDL_CreateTexture(viewRenderer,
+                                pixelFormat,
+                                SDL_TEXTUREACCESS_STREAMING,
+                                SCREENWIDTH, SCREENHEIGHT);
 
     atexit(I_ShutdownGraphics);
 }

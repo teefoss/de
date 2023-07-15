@@ -22,8 +22,6 @@
 //
 //-----------------------------------------------------------------------------
 
-static const char
-rcsid[] = "$Id: p_setup.c,v 1.5 1997/02/03 22:45:12 b1 Exp $";
 
 
 #include <math.h>
@@ -119,9 +117,8 @@ mapthing_t	playerstarts[MAXPLAYERS];
 //
 // P_LoadVertexes
 //
-void P_LoadVertexes (int lump)
+void P_LoadVertexes (void)
 {
-    byte*		data;
     int			i;
     mapvertex_t*	ml;
     vertex_t*		li;
@@ -162,9 +159,8 @@ void P_LoadVertexes (int lump)
 //
 // P_LoadSegs
 //
-void P_LoadSegs (int lump)
+void P_LoadSegs (void)
 {
-    byte*		data;
     int			i;
     mapseg_t*	ml;
     seg_t*		li;
@@ -208,9 +204,8 @@ void P_LoadSegs (int lump)
 //
 // P_LoadSubsectors
 //
-void P_LoadSubsectors (int lump)
+void P_LoadSubsectors (void)
 {
-    byte*		data;
     int			i;
     mapsubsector_t*	ms;
     subsector_t*	ss;
@@ -242,9 +237,8 @@ void P_LoadSubsectors (int lump)
 //
 // P_LoadSectors
 //
-void P_LoadSectors (int lump)
+void P_LoadSectors (void)
 {
-    byte*		data;
     int			i;
     mapsector_t*	ms;
     sector_t*		ss;
@@ -279,9 +273,8 @@ void P_LoadSectors (int lump)
 //
 // P_LoadNodes
 //
-void P_LoadNodes (int lump)
+void P_LoadNodes (void)
 {
-    byte*	data;
     int		i;
     int		j;
     int		k;
@@ -319,7 +312,7 @@ void P_LoadNodes (int lump)
 //
 // P_LoadThings
 //
-void P_LoadThings (int lump)
+void P_LoadThings (void)
 {
 #if 0 // TODO: render things
     byte*		data;
@@ -377,7 +370,7 @@ void P_LoadThings (int lump)
 // P_LoadLineDefs
 // Also counts secret lines for intermissions.
 //
-void P_LoadLineDefs (int lump)
+void P_LoadLineDefs (void)
 {
     byte*		data;
     int			i;
@@ -460,7 +453,7 @@ void P_LoadLineDefs (int lump)
 //
 // P_LoadSideDefs
 //
-void P_LoadSideDefs (int lump)
+void P_LoadSideDefs (void)
 {
     byte*		data;
     int			i;
@@ -496,7 +489,7 @@ void P_LoadSideDefs (int lump)
 //
 // P_LoadBlockMap
 //
-void P_LoadBlockMap (int lump)
+void P_LoadBlockMap (void)
 {
 #if 0
     // MARK: de removed
@@ -541,13 +534,13 @@ void P_GroupLines (void)
     seg_t*		seg;
     fixed_t		bbox[4];
     int			block;
-	
+
     // look up sector number for each subsector
     ss = subsectors;
     for (i=0 ; i<numsubsectors ; i++, ss++)
     {
-	seg = &segs[ss->firstline];
-	ss->sector = seg->sidedef->sector;
+        seg = &segs[ss->firstline];
+        ss->sector = seg->sidedef->sector;
     }
 
     // count number of lines in each sector
@@ -555,62 +548,69 @@ void P_GroupLines (void)
     total = 0;
     for (i=0 ; i<numlines ; i++, li++)
     {
-	total++;
-	li->frontsector->linecount++;
+        total++;
+        li->frontsector->linecount++;
 
-	if (li->backsector && li->backsector != li->frontsector)
-	{
-	    li->backsector->linecount++;
-	    total++;
-	}
+        if (li->backsector && li->backsector != li->frontsector)
+        {
+            li->backsector->linecount++;
+            total++;
+        }
     }
-	
-    // build line tables for each sector	
-//    linebuffer = Z_Malloc (total*4, PU_LEVEL, 0);
-    linebuffer = malloc(total * 4);
+
+    // build line tables for each sector
+    //    linebuffer = Z_Malloc (total*4, PU_LEVEL, 0);
+
+    // FIXME: confirm that 4 == sizeof(rline_t *) in original!
+    linebuffer = malloc(total * sizeof(rline_t *));
+    rline_t ** lbuf = linebuffer;
+
     sector = sectors;
     for (i=0 ; i<numsectors ; i++, sector++)
     {
-	M_ClearBox (bbox);
-	sector->lines = linebuffer;
-	li = lines;
-	for (j=0 ; j<numlines ; j++, li++)
-	{
-	    if (li->frontsector == sector || li->backsector == sector)
-	    {
-		*linebuffer++ = li;
-		M_AddToBox (bbox, li->v1->x, li->v1->y);
-		M_AddToBox (bbox, li->v2->x, li->v2->y);
-	    }
-	}
-	if (linebuffer - sector->lines != sector->linecount)
-    {
-//        I_Error ("P_GroupLines: miscounted");
-        // TODO: de error
+        M_ClearBox (bbox);
+//        sector->lines = linebuffer;
+        sector->lines = lbuf;
+        li = lines;
+        for (j=0 ; j<numlines ; j++, li++)
+        {
+            if (li->frontsector == sector || li->backsector == sector)
+            {
+//                *linebuffer++ = li;
+                *lbuf++ = li;
+                M_AddToBox (bbox, li->v1->x, li->v1->y);
+                M_AddToBox (bbox, li->v2->x, li->v2->y);
+            }
+        }
+        if (lbuf - sector->lines != sector->linecount)
+        {
+            //        I_Error ("P_GroupLines: miscounted");
+            // TODO: de error
+        }
+
+        // set the degenmobj_t to the middle of the bounding box
+        sector->soundorg.x = (bbox[BOXRIGHT]+bbox[BOXLEFT])/2;
+        sector->soundorg.y = (bbox[BOXTOP]+bbox[BOXBOTTOM])/2;
+
+        // adjust bounding box to map blocks
+        block = (bbox[BOXTOP]-bmaporgy+MAXRADIUS)>>MAPBLOCKSHIFT;
+        block = block >= bmapheight ? bmapheight-1 : block;
+        sector->blockbox[BOXTOP]=block;
+
+        block = (bbox[BOXBOTTOM]-bmaporgy-MAXRADIUS)>>MAPBLOCKSHIFT;
+        block = block < 0 ? 0 : block;
+        sector->blockbox[BOXBOTTOM]=block;
+
+        block = (bbox[BOXRIGHT]-bmaporgx+MAXRADIUS)>>MAPBLOCKSHIFT;
+        block = block >= bmapwidth ? bmapwidth-1 : block;
+        sector->blockbox[BOXRIGHT]=block;
+
+        block = (bbox[BOXLEFT]-bmaporgx-MAXRADIUS)>>MAPBLOCKSHIFT;
+        block = block < 0 ? 0 : block;
+        sector->blockbox[BOXLEFT]=block;
     }
-			
-	// set the degenmobj_t to the middle of the bounding box
-	sector->soundorg.x = (bbox[BOXRIGHT]+bbox[BOXLEFT])/2;
-	sector->soundorg.y = (bbox[BOXTOP]+bbox[BOXBOTTOM])/2;
-		
-	// adjust bounding box to map blocks
-	block = (bbox[BOXTOP]-bmaporgy+MAXRADIUS)>>MAPBLOCKSHIFT;
-	block = block >= bmapheight ? bmapheight-1 : block;
-	sector->blockbox[BOXTOP]=block;
 
-	block = (bbox[BOXBOTTOM]-bmaporgy-MAXRADIUS)>>MAPBLOCKSHIFT;
-	block = block < 0 ? 0 : block;
-	sector->blockbox[BOXBOTTOM]=block;
-
-	block = (bbox[BOXRIGHT]-bmaporgx+MAXRADIUS)>>MAPBLOCKSHIFT;
-	block = block >= bmapwidth ? bmapwidth-1 : block;
-	sector->blockbox[BOXRIGHT]=block;
-
-	block = (bbox[BOXLEFT]-bmaporgx-MAXRADIUS)>>MAPBLOCKSHIFT;
-	block = block < 0 ? 0 : block;
-	sector->blockbox[BOXLEFT]=block;
-    }
-	
+    free(linebuffer);
 }
 
 
@@ -733,28 +733,29 @@ P_SetupLevel
 
 void LoadLevel(void)
 {
-    P_LoadBlockMap (0);
-    P_LoadVertexes (0);
-    P_LoadSectors (0);
-    P_LoadSideDefs (0);
-    P_LoadLineDefs (0);
-    P_LoadSubsectors (0);
-    P_LoadNodes (0);
-    P_LoadSegs (0);
+    P_LoadBlockMap ();
+    P_LoadVertexes ();
+    P_LoadSectors ();
+    P_LoadSideDefs ();
+    P_LoadLineDefs ();
+    P_LoadSubsectors ();
+    P_LoadNodes ();
+    P_LoadSegs ();
 
     P_GroupLines ();
 
-    P_LoadThings (0);
+    P_LoadThings ();
 
     for ( int i = 0; i < map.things->count; i++ )
     {
         Thing * thing = Get(map.things, i);
 
-        if ( thing->type == MT_PLAYER )
+        if ( thing->type == 1 ) // Player 1 Start
         {
-            viewPlayer.mo->x = thing->origin.x;
-            viewPlayer.mo->y = thing->origin.y;
-            viewPlayer.mo->angle = thing->angle;
+            viewPlayer.mo->x = thing->origin.x << FRACBITS;
+            viewPlayer.mo->y = thing->origin.y << FRACBITS;
+            viewPlayer.mo->z = 0; // TODO: Check this
+            viewPlayer.mo->angle = ANG45 * (thing->angle / 45);
         }
     }
 }

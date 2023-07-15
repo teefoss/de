@@ -12,6 +12,7 @@
 #include "e_map_view.h"
 #include "m_map.h"
 #include "e_geometry.h"
+#include "e_undo.h"
 #include "text.h"
 #include "p_panel.h"
 #include "p_line_panel.h"
@@ -52,6 +53,7 @@ static SDL_Point windowMouse;
 u32 mouseButtons;
 
 static SDL_Point dragStart;
+static bool didDragObjects;
 static SDL_Rect selectionBox;
 static int previousMouseX;
 static int previousMouseY;
@@ -144,6 +146,7 @@ void StartDraggingObjects(void)
 {
     editorState = ES_DRAG_OBJECTS;
     previousDragPoint = GridPoint(&worldMouse);
+    didDragObjects = false;
 }
 
 void DragSelectedObjects(float dt)
@@ -154,6 +157,12 @@ void DragSelectedObjects(float dt)
 
     int dx = current.x - previousDragPoint.x;
     int dy = current.y - previousDragPoint.y;
+
+    if ( !didDragObjects && (dx != 0 || dy != 0) )
+    {
+        didDragObjects = true;
+        SaveUndoState();
+    }
 
     Vertex * vertices = map.vertices->data;
     for ( int i = 0; i < map.vertices->count; i++ )
@@ -307,6 +316,8 @@ void ProcessNewLineEvent(const SDL_Event * event)
             {
                 case SDL_BUTTON_LEFT:
                 {
+                    SaveUndoState();
+
                     Side side = {
                         .top = "-",
                         .middle = "-",
@@ -468,6 +479,111 @@ void SelectObject(bool openPanel)
     }
 }
 
+void CopyObjects(void)
+{
+    Clear(lineCopies);
+    Clear(thingCopies);
+
+    for ( int i = 0; i < map.lines->count; i++ )
+    {
+        Line * line = Get(map.lines, i);
+
+        if ( line->selected )
+        {
+            Line copy = *line;
+
+            // Store the line's position, in case vertices change in between
+            // now and pasting. Well, we've already got an NXPoint's so just
+            // use that.
+            SDL_Point p1, p2;
+            GetLinePoints(i, &p1, &p2);
+            copy.p1 = (NXPoint){ p1.x, p1.y };
+            copy.p2 = (NXPoint){ p2.x, p2.y };
+
+            Push(lineCopies, &copy);
+        }
+    }
+
+    for ( int i = 0; i < map.things->count; i++ )
+    {
+        Thing * thing = Get(map.things, i);
+
+        if ( thing->selected )
+            Push(thingCopies, thing);
+    }
+}
+
+void PasteObjects(void)
+{
+    if ( lineCopies->count > 0 || thingCopies->count > 0 )
+        SaveUndoState();
+    
+    DeselectAllObjects();
+
+    // TODO: find the bbox of all selected objects, paste at mouse location.
+    for ( int i = 0; i < lineCopies->count; i++ )
+    {
+        Line * line = Get(lineCopies, i);
+        SDL_Point p1 = { line->p1.x + 16, line->p1.y + 16 };
+        SDL_Point p2 = { line->p2.x + 16, line->p2.y + 16 };
+        Line * new = NewLine(&p1, &p2);
+
+        // Copy everything but the vertex indices.
+        int v1 = new->v1; // Save
+        int v2 = new->v2;
+        *new = *line; // Copy
+        new->v1 = v1; // Restore
+        new->v2 = v2;
+
+        Vertex * vertices = map.vertices->data;
+        vertices[v1].selected = true;
+        vertices[v2].selected = true;
+    }
+
+    for ( int i = 0; i < thingCopies->count; i++ )
+    {
+        Thing * thing = Get(thingCopies, i);
+        NewThing(thing,
+                 &(SDL_Point){ thing->origin.x + 32, thing->origin.y + 32 });
+    }
+}
+
+/// Delete all selected objects.
+void DeleteObjects(void)
+{
+    SaveUndoState();
+
+    Vertex * vertices = map.vertices->data;
+
+    for ( int i = 0; i < map.lines->count; i++ )
+    {
+        Line * line = Get(map.lines, i);
+        Vertex * v1 = &vertices[line->v1];
+        Vertex * v2 = &vertices[line->v2];
+
+        // Remove lines with both vertices selected.
+        if ( line->selected && v1->selected && v2->selected )
+        {
+            line->deleted = true;
+
+            // Remove vertices if this is the last line that uses them.
+            if ( --v1->referenceCount <= 0 )
+                v1->removed = true;
+            if ( --v2->referenceCount <= 0 )
+                v2->removed = true;
+        }
+    }
+
+    for ( int i = 0; i < map.things->count; i++ )
+    {
+        Thing * thing = Get(map.things, i);
+        if ( thing->selected )
+            thing->deleted = true;
+    }
+
+    DeselectAllObjects();
+}
+
 /// Autoscroll to the center of selected object(s)
 void CenterSelectedObjects(void)
 {
@@ -561,6 +677,16 @@ void ProcessEditorEvent(const SDL_Event * event)
                 case SDLK_9: TryRunNumericScript(9); break;
                 case SDLK_0: TryRunNumericScript(0); break;
 
+                case SDLK_i:
+                {
+                    size_t mapSize = sizeof(Map);
+                    mapSize += map.vertices->count + sizeof(Vertex);
+                    mapSize += map.lines->count + sizeof(Line);
+                    mapSize += map.things->count + sizeof(Thing);
+                    printf("map size: %zu bytes\n", mapSize);
+                    break;
+                }
+
                 case SDLK_s:
                     if ( COMMAND )
                         DoomBSP();
@@ -569,6 +695,38 @@ void ProcessEditorEvent(const SDL_Event * event)
                 case SDLK_f:
                     if ( COMMAND )
                         FlipSelectedLines();
+                    break;
+
+                case SDLK_c:
+                    if ( COMMAND )
+                        CopyObjects();
+                    else
+                        CenterSelectedObjects();
+                    break;
+
+                case SDLK_x:
+                    if ( COMMAND )
+                    {
+                        CopyObjects();
+                        DeleteObjects();
+                    }
+                    break;
+
+                case SDLK_v:
+                    if ( COMMAND )
+                        PasteObjects();
+                    break;
+
+                case SDLK_z:
+                    if ( COMMAND && SHIFT_DOWN )
+                        Redo();
+                    else if ( COMMAND )
+                        Undo();
+
+                    break;
+
+                case SDLK_BACKSPACE:
+                    DeleteObjects();
                     break;
 
 #ifdef DRAW_BLOCK_MAP
@@ -599,9 +757,6 @@ void ProcessEditorEvent(const SDL_Event * event)
                     break;
                 case SDLK_ESCAPE:
                     DeselectAllObjects();
-                    break;
-                case SDLK_c:
-                    CenterSelectedObjects();
                     break;
                 default:
                     break;
@@ -788,18 +943,13 @@ void InitEditor(void)
 
     InitLineCross();
     InitMapView();
-    printf("LoadProgressPanel (%d)\n", topPanel);
     LoadProgressPanel();
     LoadAllPatches(editor.iwad);
     LoadAllTextures(editor.iwad);
-    printf("LoadTexturePanel (%d)\n", topPanel);
     LoadTexturePanel();
-    printf("LoadThingPanel (%d)\n", topPanel);
     LoadThingPanel();
     LoadThingDefinitions(); // Needs thing palette to be loaded first.
     LoadFlats(editor.iwad);
-    printf("LoadSectorPanel (%d)\n", topPanel);
-
     LoadSectorPanel();
 
     keys = SDL_GetKeyboardState(NULL);
@@ -812,8 +962,17 @@ void InitEditor(void)
 
     SDL_SetEventFilter(WindowResizeEventFilter, NULL);
 
-//    V_Init();
-//    I_InitGraphics();
+#if 0
+    V_Init();
+    I_InitGraphics();
+    viewPlayer.mo = calloc(1, sizeof(*viewPlayer.mo));
+    // Populate node builder arrays, which the live view renderer needs.
+    DoomBSP();
+#endif
+
+
+    lineCopies = NewArray(0, sizeof(Line), 16);
+    thingCopies = NewArray(0, sizeof(Thing), 16);
 }
 
 void RenderEditor(void)
@@ -892,7 +1051,6 @@ void EditorFrame(float dt)
     StateUpdate(dt);
 
 //    R_RenderPlayerView(&viewPlayer);
-
 //    I_FinishUpdate(); // Actually render the live view.
 
     RenderEditor();
@@ -934,11 +1092,6 @@ void EditorLoop(void)
     int refreshRate = GetRefreshRate();
     printf("refresh rate: %d Hz\n", refreshRate);
     const float dt = 1.0f / refreshRate;
-
-//    viewPlayer.mo = calloc(1, sizeof(*viewPlayer.mo));
-
-    // Populate node builder arrays, which the live view renderer needs.
-//    DoomBSP();
 
     while ( running )
         EditorFrame(dt);

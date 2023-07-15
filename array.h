@@ -80,4 +80,6 @@ void Remove(Array * array, int index);
 /// to `index`.
 void FastRemove(Array * arr, int index);
 
+Array * DeepCopy(Array * arr);
+
 #endif /* array_h */

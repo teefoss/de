@@ -249,6 +249,9 @@ static void DrawLines(void)
 
     for ( int i = 0; i < map.lines->count; i++, l++ )
     {
+        if ( l->deleted )
+            continue;
+
         SDL_Point p1 = vertices[l->v1].origin;
         SDL_Point p2 = vertices[l->v2].origin;
 
@@ -308,6 +311,9 @@ DrawThings(void) // TODO: sort selected and draw on top
     Thing * thing = map.things->data;
     for ( int i = 0; i < map.things->count; i++, thing++ )
     {
+        if ( thing->deleted )
+            continue;
+        
         if (   thing->origin.x < left
             || thing->origin.x > right
             || thing->origin.y < top

@@ -22,8 +22,6 @@
 //-----------------------------------------------------------------------------
 
 
-static const char
-rcsid[] = "$Id: m_bbox.c,v 1.1 1997/02/03 22:45:10 b1 Exp $";
 
 #include "stdlib.h"
 
@@ -34,6 +32,7 @@ rcsid[] = "$Id: m_bbox.c,v 1.1 1997/02/03 22:45:10 b1 Exp $";
 #pragma implementation "m_fixed.h"
 #endif
 #include "m_fixed.h"
+#include "common.h"
 
 
 
@@ -45,7 +44,7 @@ FixedMul
 ( fixed_t	a,
   fixed_t	b )
 {
-    return ((long long) a * (long long) b) >> FRACBITS;
+    return (fixed_t)(((u64)a * (u64)b) >> FRACBITS);
 }
 
 

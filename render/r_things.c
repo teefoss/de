@@ -29,13 +29,13 @@ rcsid[] = "$Id: r_things.c,v 1.5 1997/02/03 16:47:56 b1 Exp $";
 #include <stdio.h>
 #include <stdlib.h>
 
-
+#include "e_editor.h"
+#include "wad.h"
 #include "doomdef.h"
 //#include "m_swap.h" FIXME: render includes - use SWAP16() SWAP32()
 
 //#include "i_system.h" FIXME: render includes - check what's needed here
 //#include "z_zone.h" FIXME: render includes - just use malloc
-//#include "w_wad.h" FIXME: render includes - change to use wad.h
 
 #include "r_local.h"
 
@@ -421,6 +421,8 @@ R_DrawVisSprite
 
 
 //    patch = W_CacheLumpNum (vis->patch+firstspritelump, PU_CACHE);
+    Lump * lump = GetLump(editor.iwad, vis->patch+firstspritelump);
+    patch = lump->data;
     // FIXME: use wad.lumps[x].data
 
     dc_colormap = vis->colormap;

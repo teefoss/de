@@ -24,7 +24,6 @@
 //-----------------------------------------------------------------------------
 
 
-static const char rcsid[] = "$Id: r_main.c,v 1.5 1997/02/03 22:45:12 b1 Exp $";
 
 
 
@@ -831,7 +830,6 @@ R_PointInSubsector
 //
 void R_SetupFrame (player_t* player)
 {		
-    int		i;
     
     viewplayer = player;
     viewx = player->mo->x;

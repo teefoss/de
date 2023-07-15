@@ -10,6 +10,7 @@
 #include "doomdata.h"
 #include "common.h"
 #include "e_geometry.h"
+#include "e_undo.h"
 
 #include <limits.h>
 
@@ -379,8 +380,19 @@ Line * NewLine(const SDL_Point * p1, const SDL_Point * p2)
     return line;
 }
 
+Thing * NewThing(const Thing * thing, const SDL_Point * point)
+{
+    Thing new = *thing;
+    new.origin = *point;
+    new.deleted = false;
+
+    return Push(map.things, &new);
+}
+
 void FlipSelectedLines(void)
 {
+    SaveUndoState();
+
     Line * line = map.lines->data;
     for ( int i = 0; i < map.lines->count; i++, line++ )
     {

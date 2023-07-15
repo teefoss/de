@@ -194,29 +194,26 @@ R_DrawColumnInCache
     int		count;
     int		position;
     byte*	source;
-    byte*	dest;
-	
-    dest = (byte *)cache + 3;
-	
+    
     while (patch->topdelta != 0xff)
     {
-	source = (byte *)patch + 3;
-	count = patch->length;
-	position = originy + patch->topdelta;
-
-	if (position < 0)
-	{
-	    count += position;
-	    position = 0;
-	}
-
-	if (position + count > cacheheight)
-	    count = cacheheight - position;
-
-	if (count > 0)
-	    memcpy (cache + position, source, count);
-		
-	patch = (column_t *)(  (byte *)patch + patch->length + 4); 
+        source = (byte *)patch + 3;
+        count = patch->length;
+        position = originy + patch->topdelta;
+        
+        if (position < 0)
+        {
+            count += position;
+            position = 0;
+        }
+        
+        if (position + count > cacheheight)
+            count = cacheheight - position;
+        
+        if (count > 0)
+            memcpy (cache + position, source, count);
+        
+        patch = (column_t *)(  (byte *)patch + patch->length + 4); 
     }
 }
 
@@ -231,10 +228,10 @@ R_DrawColumnInCache
 
 void R_GenerateComposite (int texnum)
 {
-#if 0 // FIXME: de removed: put back?
+
     byte*		block;
     texture_t*		texture;
-    texpatch_t*		patch;	
+    texpatch_t*		patch;
     patch_t*		realpatch;
     int			x;
     int			x1;
@@ -243,55 +240,60 @@ void R_GenerateComposite (int texnum)
     column_t*		patchcol;
     short*		collump;
     unsigned short*	colofs;
-	
+
     texture = textures[texnum];
 
-    block = Z_Malloc (texturecompositesize[texnum],
-		      PU_STATIC, 
-		      &texturecomposite[texnum]);	
+    //    block = Z_Malloc (texturecompositesize[texnum],
+    //		      PU_STATIC,
+    //		      &texturecomposite[texnum]);
+    block = malloc(texturecompositesize[texnum]);
 
     collump = texturecolumnlump[texnum];
     colofs = texturecolumnofs[texnum];
     
     // Composite the columns together.
     patch = texture->patches;
-		
+
     for (i=0 , patch = texture->patches;
-	 i<texture->patchcount;
-	 i++, patch++)
+         i<texture->patchcount;
+         i++, patch++)
     {
-	realpatch = W_CacheLumpNum (patch->patch, PU_CACHE);
-	x1 = patch->originx;
-	x2 = x1 + SHORT(realpatch->width);
 
-	if (x1<0)
-	    x = 0;
-	else
-	    x = x1;
-	
-	if (x2 > texture->width)
-	    x2 = texture->width;
+        //	realpatch = W_CacheLumpNum (patch->patch, PU_CACHE);
+        Lump * lump = GetLump(editor.iwad, patch->patch);
+        realpatch = lump->data;
 
-	for ( ; x<x2 ; x++)
-	{
-	    // Column does not have multiple patches?
-	    if (collump[x] >= 0)
-		continue;
-	    
-	    patchcol = (column_t *)((byte *)realpatch
-				    + LONG(realpatch->columnofs[x-x1]));
-	    R_DrawColumnInCache (patchcol,
-				 block + colofs[x],
-				 patch->originy,
-				 texture->height);
-	}
-						
+        x1 = patch->originx;
+        x2 = x1 + SWAP16(realpatch->width);
+
+        if (x1 < 0)
+            x = 0;
+        else
+            x = x1;
+
+        if (x2 > texture->width)
+            x2 = texture->width;
+
+        for ( ; x<x2 ; x++)
+        {
+            // Column does not have multiple patches?
+            if (collump[x] >= 0)
+                continue;
+
+            patchcol = (column_t *)((byte *)realpatch
+                                    + SWAP32(realpatch->columnofs[x-x1]));
+            R_DrawColumnInCache (patchcol,
+                                 block + colofs[x],
+                                 patch->originy,
+                                 texture->height);
+        }
+
     }
 
     // Now that the texture has been built in column cache,
     //  it is purgable from zone memory.
-    Z_ChangeTag (block, PU_CACHE);
-#endif
+    //    Z_ChangeTag (block, PU_CACHE);
+    free(block);
 }
 
 
@@ -334,7 +336,9 @@ void R_GenerateLookup (int texnum)
          i++, patch++)
     {
         //	realpatch = W_CacheLumpNum (patch->patch, PU_CACHE);
-        // FIXME: just use wad lump data
+        Lump * lump = GetLump(editor.iwad, patch->patch);
+        realpatch = lump->data;
+        
         x1 = patch->originx;
         x2 = x1 + SWAP16(realpatch->width);
 
@@ -458,7 +462,7 @@ void R_InitTextures (void)
     name[8] = 0;	
 //    names = W_CacheLumpName ("PNAMES", PU_STATIC);
     names = GetLumpNamed(editor.iwad, "PNAMES")->data;
-    nummappatches = SWAP32 ( *((int *)names) );
+    nummappatches = SWAP32 ( *((u32 *)names) );
     name_p = names+4;
     patchlookup = alloca (nummappatches*sizeof(*patchlookup));
     
