@@ -149,82 +149,7 @@ void DetermineGame(char * iwadName)
 
 }
 
-int DoSubprogramEdit(int argc, char ** argv)
-{
-    // de edit [WAD file] --map [map label]
-    // optional args:
-    //      --iwad (if not present, try to read from project config)
-    //      -g, --game (if not present, try to read from project config,
-    //                  or if project config not present, try to guess)
-
-    LoadDefaults("de.config");
-
-    // At the very least, we should have 'edit [wad] --map [name]]'
-    if ( argc < 4 )
-    {
-        printf("Error: bad arguments!\n");
-        return EXIT_FAILURE;
-    }
-
-    // Open or create the specified PWAD.
-
-    // TODO: if it's an IWAD and the name is doom.wad, etc. warn and quit.
-    // This is a failsafe to prevent editing the original wads.
-    // (User can rename the wad if they really want to do this.)
-
-    char * fileToEdit = argv[1];
-
-    editor.pwad = OpenWad(fileToEdit);
-    if ( editor.pwad == NULL )
-    {
-        printf("Creating %s...\n", fileToEdit);
-        editor.pwad = CreateWad(fileToEdit);
-        if ( editor.pwad == NULL ) {
-            fprintf(stderr, "Error: could not create '%s'\n", fileToEdit);
-            return EXIT_FAILURE;
-        }
-    }
-
-    // Get the map label (required).
-
-    char * mapLabel = GetOptionArg("--map");
-    if ( mapLabel == NULL ) {
-        fprintf(stderr, "Error: missing --map option");
-        goto print_usage;
-    }
-
-    // Get the specified iwad name (optional)
-
-    char * iwadName = GetOptionArg("--iwad");
-    if ( iwadName == NULL ) {
-        // TODO: make optional, read project file when not present.
-        fprintf(stderr, "Error: missing --iwad option");
-        goto print_usage;
-    }
-
-    editor.iwad = OpenWad(iwadName);
-    if ( editor.iwad == NULL ) {
-        fprintf(stderr, "Error: could not load IWAD '%s'\n", iwadName);
-        return EXIT_FAILURE;
-    }
-
-    LoadMap(editor.pwad, mapLabel);
-    InitWindow(800, 800); // TODO: save user's favorite window size and position.
-
-    DetermineGame(iwadName);
-
-    InitEditor();
-    EditorLoop();
-
-    CleanupEditor();
-    return EXIT_SUCCESS;
-
-print_usage:
-    printf("Usage: de edit [WAD path] --map [name] (--iwad [path])");
-    return EXIT_FAILURE;
-}
-
-int RunEditor(const char * wadPath, const char * mapName)
+int RunEditor(const char * wadPath, char * mapName)
 {
     printf("[d]oom [e]ditor\n"
            "v. 0.1 Copyright (C) 2023 Thomas Foster\n\n");
@@ -256,8 +181,14 @@ int RunEditor(const char * wadPath, const char * mapName)
     }
     printf("Using IWAD '%s'.\n", iwadPath);
 
-    LoadMap(editor.pwad, mapName);
-    InitWindow(800, 800); // TODO: save user's favorite window size and position.
+    if ( !LoadMap(editor.pwad, mapName) )
+        CreateMap(mapName);
+    InitWindow(1200, 1200); // TODO: save user's favorite window size and position.
+
+    Capitalize(mapName);
+    SDL_SetWindowTitle(window, mapName);
+
+
     DetermineGame(iwadPath);
 
     printf("Editing %s in '%s'\n\n", mapName, wadPath);

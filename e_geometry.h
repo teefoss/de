@@ -32,6 +32,12 @@ bool LineLineIntersection(const SDL_Point * p1,
 /// Check if a line from `p1` to `p2` is partially or complete inside rect `r`.
 bool LineInRect(const SDL_Point * p1, const SDL_Point * p2, const SDL_Rect * r);
 
+// Homebrew line clipping.
+bool ClipLineInRect(const SDL_Point * p1, const SDL_Point * p2,
+                    const SDL_Rect * r,
+                    SDL_Point * c1, SDL_Point * c2);
+
+
 void EnclosePoint(const SDL_Point * point, Box * box);
 SDL_Rect BoxToRect(const Box * box);
 

@@ -352,7 +352,7 @@ void ProcessThings (void)
 	}
 }
 
-int ProcessSidedef(Side * ws)
+int ProcessSidedef(Sidedef * ws)
 {
 	mapsidedef_t ms;
 	

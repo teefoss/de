@@ -8,7 +8,7 @@
 #include "flat.h"
 #include "patch.h"
 
-/* Flat */ Array * flats;
+Array * flats; // Array of `Flat` from IWAD
 
 void LoadFlat(Wad * wad, int lumpIndex, SDL_Color * playpal)
 {
@@ -78,7 +78,7 @@ void LoadFlats(Wad * wad)
     }
 }
 
-Flat * GetFlat(const char * name)
+Flat * FindFlat(const char * name)
 {
     Flat * flat = flats->data;
 
@@ -89,10 +89,16 @@ Flat * GetFlat(const char * name)
     return NULL;
 }
 
+void GetFlatName(int index, char * string)
+{
+    Flat * flat = Get(flats, index);
+    strncpy(string, flat->name, 8);
+}
+
 void RenderFlat(const char * name, int x, int y, float scale)
 {
     ASSERT(name != NULL);
-    Flat * flat = GetFlat(name);
+    Flat * flat = FindFlat(name);
 
     if ( flat == NULL )
     {

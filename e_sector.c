@@ -33,10 +33,11 @@ typedef enum {
 //      y1 < y2 ? The west-facing side is the front
 
 static SDL_Rect mapBounds;
-static u16 * blockMap;
+static u16 * blockMap;      // Each block is the index of the line.
+static size_t allocated;    // Track blockMap size so it can be reallocated.
 static int blockMapWidth;
 static int blockMapHeight;
-static size_t allocated;
+
 
 
 #ifdef DRAW_BLOCK_MAP
@@ -210,21 +211,6 @@ static void CreateBlockMap(void)
     }
 }
 
-bool didSelect; // Track whether any lines were selected during fill.
-
-static void SelectLine(int index, int selectedSide)
-{
-    Line * lines = map.lines->data;
-    index--;
-
-    // Don't select the back of one-sided lines.
-    if ( selectedSide == BACK_SELECTED && !(lines[index].flags & ML_TWOSIDED) )
-        return;
-
-    didSelect = true;
-    lines[index].selected = selectedSide;
-}
-
 // Early exit, if trying to fill outside map bounds (someone tried to select
 // outside of all sectors).
 bool cancelFill;
@@ -256,13 +242,13 @@ static void FloodFill(int x, int y, Direction direction)
         bool southFront = p1.x < p2.x;
 
         if ( direction == EAST )
-            SelectLine(index, westFront ? FRONT_SELECTED : BACK_SELECTED);
+            SelectLine(index - 1, westFront ? SIDE_FRONT : SIDE_BACK);
         else if ( direction == WEST )
-            SelectLine(index, westFront ? BACK_SELECTED : FRONT_SELECTED);
+            SelectLine(index - 1, westFront ? SIDE_BACK : SIDE_FRONT);
         else if ( direction == NORTH )
-            SelectLine(index, southFront ? FRONT_SELECTED : BACK_SELECTED);
+            SelectLine(index - 1, southFront ? SIDE_FRONT : SIDE_BACK);
         else if ( direction == SOUTH )
-            SelectLine(index, southFront ? BACK_SELECTED : FRONT_SELECTED);
+            SelectLine(index - 1, southFront ? SIDE_BACK : SIDE_FRONT);
 
         return;
     }
@@ -291,10 +277,9 @@ bool SelectSector(const SDL_Point * point)
     int y = (point->y - mapBounds.y) / BLOCK_MAP_RESOLUTION;
 
     cancelFill = false;
-    didSelect = false;
     FloodFill(x, y, NO_DIRECTION);
 
-    return didSelect;
+    return editor.numSelectedLines > 0;
 }
 
 

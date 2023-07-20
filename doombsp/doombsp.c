@@ -13,7 +13,7 @@ void DoomBSP(void)
     bool replace;
 
     int index = GetIndexOfLumpNamed(editor.pwad, map.label);
-    if ( -index == -1 )
+    if ( index == -1 )
     {
         editor.pwad->position = editor.pwad->lumps->count;
         replace = false;

@@ -220,7 +220,7 @@ void RenderPanelTexture(const Panel * panel)
     SDL_Rect shadow = dest;
     shadow.x += 16;
     shadow.y += 16;
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 128);
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 160);
     SDL_RenderFillRect(renderer, &shadow);
 
     // Texture

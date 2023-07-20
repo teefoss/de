@@ -40,9 +40,19 @@
 #define COMMAND (mods & KMOD_CTRL)
 #endif
 
+typedef enum {
+    SELECTION_NONE,
+    SELECTION_VERTEX,
+    SELECTION_LINE,
+    SELECTION_THING,
+    SELECTION_SECTOR
+} SelectionType;
+
 Editor editor;
 
 static bool running = true;
+
+// TODO: related properties here can/should be organized into structs.
 
 // Input
 
@@ -59,21 +69,19 @@ static int previousMouseX;
 static int previousMouseY;
 static SDL_Point visibleRectTarget;
 
+
 static int bmapDY = 0;
 static int bmapDX = 0;
 
-static SDL_Point newLine[2];
+static struct
+{
+    SDL_Point start;
+    SDL_Point end;
+    bool multi;
+} createLine;
 
 static Array * lineCopies;
 static Array * thingCopies;
-
-SectorDef defaultSectorDef = {
-    .floorHeight = 0,
-    .ceilingHeight = 128,
-    .floorFlat = "FLOOR0_1",
-    .ceilingFlat = "FLOOR0_1",
-    .lightLevel = 255,
-};
 
 SDL_Point GridPoint(const SDL_Point * worldPoint)
 {
@@ -87,6 +95,15 @@ SDL_Point GridPoint(const SDL_Point * worldPoint)
     return gridPoint;
 }
 
+void DeselectAllLines(void)
+{
+    Line * lines = map.lines->data;
+    for ( int i = 0; i < map.lines->count; i++ )
+        lines[i].selected = DESELECTED;
+
+    editor.numSelectedLines = 0;
+}
+
 void DeselectAllObjects(void)
 {
     Vertex * vertices = map.vertices->data;
@@ -94,10 +111,7 @@ void DeselectAllObjects(void)
         vertices[i].selected = false;
     }
 
-    Line * lines = map.lines->data;
-    for ( int i = 0; i < map.lines->count; i++ ) {
-        lines[i].selected = false;
-    }
+    DeselectAllLines();
 
     Thing * things = map.things->data;
     for ( int i = 0; i < map.things->count; i++ ) {
@@ -173,6 +187,7 @@ void DragSelectedObjects(float dt)
         {
             vertices[i].origin.x += dx;
             vertices[i].origin.y += dy;
+
             map.boundsDirty = true;
         }
     }
@@ -196,6 +211,36 @@ void HandleDragObjectsEvent(const SDL_Event * event)
         && event->button.button == SDL_BUTTON_LEFT )
     {
         editorState = ES_EDIT;
+        MergeVertices();
+
+        // If dragging a vertex onto a line, split it.
+
+        Array * selectedVertices = NewArray(0, sizeof(Vertex), 1);
+
+        // FIXME: Don't use possibly invalidated pointers!
+        Vertex * v;
+        FOR_EACH(v, map.vertices)
+        {
+            if ( v->selected && !v->removed )
+                Push(selectedVertices, v);
+        }
+
+        // FIXME: Don't use possibly invalidated pointers!
+        Line * l;
+        FOR_EACH(l, map.lines)
+        {
+            FOR_EACH(v, selectedVertices)
+            {
+                
+                if ( VertexOnLine(v, l) )
+                {
+                    SDL_Point vertexGridPoint = GridPoint(&v->origin);
+                    SplitLine(l, &vertexGridPoint);
+                }
+            }
+        }
+
+        FreeArray(selectedVertices);
     }
 }
 
@@ -227,7 +272,7 @@ void SelectObjectsInSelectionBox(void)
         if ( LineInRect(&v1->origin, &v2->origin, &selectionBox) ) {
             v1->selected = true;
             v2->selected = true;
-            line->selected = true;
+            line->selected = FRONT_SELECTED;
         }
     }
 
@@ -294,7 +339,77 @@ void HandleDragViewEvent(const SDL_Event * event)
         editorState = ES_EDIT;
 }
 
-#pragma mark - NEW LINE
+#pragma mark - CREATE LINE
+
+bool GetSectorOnSide(Line * line, int side)
+{
+    line->sides[side].sectorDef = GetBaseSectordef();
+    DeselectAllLines();
+    SDL_FPoint fillPoint = LineNormal(line, side == 0 ? 1.0f : -1.0f);
+    
+    if ( !SelectSector(&(SDL_Point){ fillPoint.x, fillPoint.y }) )
+        return false;
+
+    Line * check;
+    FOR_EACH(check, map.lines)
+    {
+        if ( check->selected )
+        {
+            int selectedSide = check->selected - 1;
+            line->sides[side].sectorDef = check->sides[selectedSide].sectorDef;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void CreateLine(void)
+{
+    SDL_FPoint fillPoint;
+
+    SaveUndoState();
+
+    Line * line = NewLine(&baseLine, &createLine.start, &createLine.end);
+
+    // Find the sector on the front.
+    line->sides[SIDE_FRONT].sectorDef = GetBaseSectordef();
+    DeselectAllLines();
+    fillPoint = LineNormal(line, 1.0f);
+    if ( SelectSector(&(SDL_Point){ fillPoint.x, fillPoint.y }) )
+    {
+        for ( int i = 0; i < map.lines->count; i++ )
+        {
+            Line * check = Get(map.lines, i);
+            if ( check->selected && !check->deleted )
+                line->sides[0].sectorDef = check->sides[check->selected - 1].sectorDef;
+        }
+    }
+
+    // Find the sector on the back, and set to two-sided if present.
+    line->sides[1].sectorDef = GetBaseSectordef();
+    DeselectAllLines();
+    fillPoint = LineNormal(line, -1.0f);
+    if ( SelectSector(&(SDL_Point){ fillPoint.x, fillPoint.y}) )
+    {
+        for ( int i = 0; i < map.lines->count; i++ )
+        {
+            Line * check = Get(map.lines, i);
+            if ( check->selected && !check->deleted )
+            {
+                line->sides[1].sectorDef = check->sides[check->selected - 1].sectorDef;
+                line->flags |= ML_TWOSIDED;
+            }
+        }
+    }
+
+    DeselectAllLines();
+
+    if ( createLine.multi )
+        createLine.start = createLine.end; // Begin another line.
+    else
+        editorState = ES_EDIT; // Done.
+}
 
 void ProcessNewLineEvent(const SDL_Event * event)
 {
@@ -316,28 +431,7 @@ void ProcessNewLineEvent(const SDL_Event * event)
             {
                 case SDL_BUTTON_LEFT:
                 {
-                    SaveUndoState();
-
-                    Side side = {
-                        .top = "-",
-                        .middle = "-",
-                        .bottom = "-",
-                    };
-
-                    Side closest;
-                    SectorDef sectorDef;
-                    if ( GetClosestSide(&newLine[1], &closest) )
-                        sectorDef = closest.sectorDef;
-                    else
-                        sectorDef = defaultSectorDef;
-                    side.sectorDef = sectorDef;
-
-                    Line * line = NewLine(&newLine[0], &newLine[1]);
-                    line->sides[0] = side;
-
-                    newLine[0] = newLine[1];
-                    if ( event->button.clicks == 2 ) // Done.
-                        editorState = ES_EDIT;
+                    CreateLine();
                     break;
                 }
                 case SDL_BUTTON_RIGHT:
@@ -354,12 +448,81 @@ void ProcessNewLineEvent(const SDL_Event * event)
 void UpdateNewLine(float dt)
 {
     (void)dt;
-    newLine[1] = GridPoint(&worldMouse);
+    createLine.end = GridPoint(&worldMouse);
 }
 
 #pragma mark - EDIT
 
-void SelectObject(bool openPanel)
+void SeparateVertices(void)
+{
+    for ( int i = 0; i < map.vertices->count; i++ )
+    {
+        Vertex * v = Get(map.vertices, i);
+
+        // We want selected vertices with 2 or more connections.
+        if ( v->removed || v->referenceCount < 2 || !v->selected )
+            continue;
+
+        for ( int j = 0; j < map.lines->count; j++ )
+        {
+            Line * l = Get(map.lines, j);
+
+            if ( l->deleted )
+                continue;
+
+            if ( v->referenceCount == 1 )
+                break; // The vertex has been fully separated.
+
+            if ( l->v1 == i || l->v2 == i )
+            {
+                Vertex new = { .origin = v->origin, .referenceCount = 1 };
+                Push(map.vertices, &new);
+
+                if ( l->v1 == i )
+                    l->v1 = map.vertices->count - 1;
+                else if ( l->v2 == i )
+                    l->v2 = map.vertices->count - 1;
+
+                v = Get(map.vertices, i);
+                v->referenceCount--;
+            }
+        }
+    }
+}
+
+void SelectLine(int index, Side side)
+{
+    Line * lines = map.lines->data;
+
+    if ( lines[index].selected == side + 1 )
+        return;
+
+    printf("Line %d\n", index);
+    printf("- v1: %d\n", lines[index].v1);
+    printf("- v2: %d\n", lines[index].v2);
+    printf("- two-sided: %s\n", lines[index].flags & ML_TWOSIDED ? "yes" : "no");
+    for ( int i = 0; i < 2; i++ )
+    {
+        Sidedef * s = &lines[index].sides[i];
+        printf("- side %d:\n", i);
+        printf("    floor: %s\n", s->sectorDef.floorFlat);
+        printf("    ceiling: %s\n", s->sectorDef.ceilingFlat);
+    }
+
+    // Don't select the back of one-sided lines.
+    if ( side == SIDE_BACK && !(lines[index].flags & ML_TWOSIDED) )
+        return;
+
+    lines[index].selected = side + 1;
+
+    Vertex * vertices = map.vertices->data;
+    vertices[lines[index].v1].selected = true;
+    vertices[lines[index].v2]. selected = true;
+
+    editor.numSelectedLines++;
+}
+
+SelectionType SelectObject(bool openPanel)
 {
     SDL_Rect clickRect = MakeCenteredRect(&worldMouse, SELECTION_SIZE / scale);
 
@@ -382,11 +545,13 @@ void SelectObject(bool openPanel)
                 else
                 {
                     vertex->selected = true;
-                    //printf("%d, %d\n", vertex->origin.x, vertex->origin.y);
+                    printf("Vertex %d\n", i);
+                    printf("- %d, %d\n", vertex->origin.x, -vertex->origin.y);
+                    printf("- reference count: %d\n", vertex->referenceCount);
                     StartDraggingObjects();
                 }
 
-                return;
+                return SELECTION_VERTEX;
             }
         }
     }
@@ -404,33 +569,19 @@ void SelectObject(bool openPanel)
 
             if ( SHIFT_DOWN && line->selected )
             {
-                line->selected = false;
+                line->selected = DESELECTED;
             }
             else
             {
-                line->selected = true;
-                vertices[line->v1].selected = true;
-                vertices[line->v2]. selected = true;
-
-                printf("selected line %d:\n", i);
-                printf("- v1: %d, %d\n",
-                       vertices[line->v1].origin.x,
-                       vertices[line->v1].origin.y);
-                printf("- v2: %d, %d\n",
-                       vertices[line->v2].origin.x,
-                       vertices[line->v2].origin.y);
+                SelectLine(i, SIDE_FRONT);
 
                 if ( openPanel )
-                {
                     OpenLinePanel(line);
-                }
                 else
-                {
                     StartDraggingObjects();
-                }
             }
 
-            return;
+            return SELECTION_LINE;
         }
     }
 
@@ -460,7 +611,7 @@ void SelectObject(bool openPanel)
                 }
             }
 
-            return;
+            return SELECTION_THING;
         }
     }
 
@@ -469,14 +620,18 @@ void SelectObject(bool openPanel)
 
     if ( openPanel )
     {
-        if ( SelectSector(&worldMouse) )
+        if ( SelectSector(&worldMouse) ) {
             OpenSectorPanel();
+            return SELECTION_SECTOR;
+        }
     }
     else
     {
         dragStart = worldMouse;
         editorState = ES_DRAG_BOX;
     }
+
+    return SELECTION_NONE;
 }
 
 void CopyObjects(void)
@@ -526,7 +681,7 @@ void PasteObjects(void)
         Line * line = Get(lineCopies, i);
         SDL_Point p1 = { line->p1.x + 16, line->p1.y + 16 };
         SDL_Point p2 = { line->p2.x + 16, line->p2.y + 16 };
-        Line * new = NewLine(&p1, &p2);
+        Line * new = NewLine(NULL, &p1, &p2); // TODO: clean up here now that NewLine is passed data.
 
         // Copy everything but the vertex indices.
         int v1 = new->v1; // Save
@@ -616,6 +771,12 @@ void CenterSelectedObjects(void)
         if ( thing->selected )
             EnclosePoint(&thing->origin, &box);
 
+    if ( box.left == INT_MAX )
+    {
+        box.left = box.right = worldMouse.x;
+        box.top = box.bottom = worldMouse.y;
+    }
+
     SDL_Point focus =
     {
         .x = box.left + (box.right - box.left) / 2,
@@ -656,7 +817,10 @@ void ProcessEditorEvent(const SDL_Event * event)
                 case SDL_WINDOWEVENT_RESIZED:
                 case SDL_WINDOWEVENT_SIZE_CHANGED:
                     visibleRect.w = event->window.data1;
-                    visibleRect.h = event->window.data2;
+                    visibleRect.h = event->window.data2 - FONT_HEIGHT;
+
+                    // Recalculate the bounds border.
+                    map.boundsDirty = true;
                     break;
                 default:
                     break;
@@ -697,6 +861,10 @@ void ProcessEditorEvent(const SDL_Event * event)
                         FlipSelectedLines();
                     break;
 
+                case SDLK_BACKQUOTE:
+                    SeparateVertices();
+                    break;
+
                 case SDLK_c:
                     if ( COMMAND )
                         CopyObjects();
@@ -722,7 +890,11 @@ void ProcessEditorEvent(const SDL_Event * event)
                         Redo();
                     else if ( COMMAND )
                         Undo();
+                    break;
 
+                case SDLK_t:
+                    if ( COMMAND )
+                        CheckMap();
                     break;
 
                 case SDLK_BACKSPACE:
@@ -770,14 +942,30 @@ void ProcessEditorEvent(const SDL_Event * event)
                     previousMouseX = windowMouse.x;
                     previousMouseY = windowMouse.y;
 
-                    if ( event->button.clicks == 2 )
+                    if ( COMMAND )
                     {
-                        newLine[0] = GridPoint(&worldMouse);
+                        createLine.multi = SHIFT_DOWN;
+                        createLine.start = GridPoint(&worldMouse);
                         editorState = ES_NEW_LINE;
                     }
                     else if ( keys[SDL_SCANCODE_SPACE] )
                     {
                         editorState = ES_DRAG_VIEW;
+                    }
+                    else if ( mods & KMOD_ALT )
+                    {
+                        // TODO: refactor
+                        DeselectAllObjects();
+                        SelectObject(false);
+                        for ( int i = 0; i < map.lines->count; i++ )
+                        {
+                            Line * line = Get(map.lines, i);
+                            if ( line->selected ) {
+                                SDL_Point worldGridPoint = GridPoint(&worldMouse);
+                                SplitLine(line, &worldGridPoint);
+                                break;
+                            }
+                        }
                     }
                     else
                     {
@@ -786,7 +974,18 @@ void ProcessEditorEvent(const SDL_Event * event)
                     break;
 
                 case SDL_BUTTON_RIGHT:
-                    SelectObject(true);
+                    if ( COMMAND )
+                    {
+                        Thing new = { .type = 1 };
+                        SDL_Point origin = GridPoint(&worldMouse);
+
+                        // TODO: track and use the last thing that was added.
+                        NewThing(&new, &origin);
+                    }
+                    else
+                    {
+                        SelectObject(true);
+                    }
                     break;
 
                 default:
@@ -812,7 +1011,6 @@ void ProcessEditorEvent(const SDL_Event * event)
 void ManualScrollView(float dt)
 {
     static float scrollSpeed = 0.0f;
-    bool moved = false;
 
     if (   keys[SDL_SCANCODE_W]
         || keys[SDL_SCANCODE_A]
@@ -823,41 +1021,58 @@ void ManualScrollView(float dt)
         float max = (600.0f / scale) * dt;
         if ( scrollSpeed > max )
             scrollSpeed = max;
-        moved = true;
     }
     else
     {
         scrollSpeed = 0.0f;
     }
 
-    if ( keys[SDL_SCANCODE_W] )
-        visibleRect.y -= scrollSpeed;
+    SDL_Rect bounds = GetMapBounds();
 
-    if ( keys[SDL_SCANCODE_S] )
-        visibleRect.y += scrollSpeed;
+    // When the world bounds are smaller than visibleRect, use a padding
+    // so view does not 'snap' side-to-side.
+    int hPad = SDL_max(0, (visibleRect.w - bounds.w - 1) / 2);
+    int minX = bounds.x - hPad;
+    int maxX = (bounds.x + bounds.w - 1) + hPad - 1;
 
-    if ( keys[SDL_SCANCODE_A] )
-        visibleRect.x -= scrollSpeed;
+    int vPad = SDL_max(0, (visibleRect.h - bounds.h - 1) / 2);
+    int minY = bounds.y - vPad;
+    int maxY = (bounds.y + bounds.h - 1) + vPad - 1;
 
-    if ( keys[SDL_SCANCODE_D] )
-        visibleRect.x += scrollSpeed;
+    // UP
 
-    if ( moved )
+    if ( keys[SDL_SCANCODE_W] && visibleRect.y > minY )
     {
-        SDL_Rect bounds = GetMapBounds();
-
-        // TODO: only clamp when moving toward the edge.
-        // This way, a user who has reduced the world bounds the vis rect
-        // don't snap back when subsequently scrolling.
-
-        // Don't let the user scroll off into infinity!
-        visibleRect.x = SDL_clamp(visibleRect.x,
-                                  bounds.x,
-                                  bounds.x + bounds.w - visibleRect.w);
-        visibleRect.y = SDL_clamp(visibleRect.y,
-                                  bounds.y,
-                                  bounds.y + bounds.h - visibleRect.h);
+        visibleRect.y -= scrollSpeed;
+        printf("visibleRect y: %f\n", visibleRect.y);
     }
+
+    // DOWN
+
+    if ( keys[SDL_SCANCODE_S] && visibleRect.y + visibleRect.h < maxY )
+    {
+        visibleRect.y += scrollSpeed;
+        printf("visibleRect y: %f\n", visibleRect.y);
+    }
+
+    // LEFT
+
+    if ( keys[SDL_SCANCODE_A] && visibleRect.x > minX )
+    {
+        visibleRect.x -= scrollSpeed;
+        printf("visibleRect x: %f\n", visibleRect.x);
+    }
+
+    // RIGHT
+
+    if ( keys[SDL_SCANCODE_D] && visibleRect.x + visibleRect.w < maxX )
+    {
+        visibleRect.x += scrollSpeed;
+        printf("visibleRect x: %f\n", visibleRect.x);
+    }
+
+    return;
+
 
     if ( keys[SDL_SCANCODE_G] )
     {
@@ -865,18 +1080,18 @@ void ManualScrollView(float dt)
     }
     if ( keys[SDL_SCANCODE_J] )
     {
-//        liveView.angle += 0.1f;
+        //        liveView.angle += 0.1f;
     }
     if ( keys[SDL_SCANCODE_Y] )
     {
-//        liveView.position.x += cosf(liveView.angle);
-//        liveView.position.y += sinf(liveView.angle);
+        //        liveView.position.x += cosf(liveView.angle);
+        //        liveView.position.y += sinf(liveView.angle);
     }
 
     if ( keys[SDL_SCANCODE_H] )
     {
-//        liveView.position.x -= cosf(liveView.angle);
-//        liveView.position.y -= sinf(liveView.angle);
+        //        liveView.position.x -= cosf(liveView.angle);
+        //        liveView.position.y -= sinf(liveView.angle);
     }
 }
 
@@ -923,7 +1138,7 @@ int WindowResizeEventFilter(void * data, SDL_Event * event)
         visibleRect.x = oldVisibleOrigin.x + dx;
         visibleRect.y = oldVisibleOrigin.y + dy;
         visibleRect.w = event->window.data1;
-        visibleRect.h = event->window.data2;
+        visibleRect.h = event->window.data2 - FONT_HEIGHT;
 
         RenderEditor();
     }
@@ -960,7 +1175,8 @@ void InitEditor(void)
     // TODO: add some test that VSYNC is working, otherwise limit framerate.
     // FIXME: get smooth scrolling and non-laggy mouse movement
 
-    SDL_SetEventFilter(WindowResizeEventFilter, NULL);
+    // FIXME: Get rid of this for now.
+//    SDL_SetEventFilter(WindowResizeEventFilter, NULL);
 
 #if 0
     V_Init();
@@ -981,8 +1197,17 @@ void RenderEditor(void)
     SetRenderDrawColor(&background);
     SDL_RenderClear(renderer);
 
+    //
+    // Map / visible rect.
+    //
+
+    SDL_Rect frame = GetWindowFrame();
+    SDL_Rect mapRect = { 0, 0, frame.w, frame.h - FONT_HEIGHT };
+    SDL_RenderSetViewport(renderer, &mapRect);
+
     DrawMap();
 
+    // TODO: if this gets unruly: editorState->render
     switch ( editorState )
     {
         case ES_DRAG_BOX:
@@ -992,15 +1217,64 @@ void RenderEditor(void)
         {
             SDL_Color lineColor = DefaultColor(LINE_ONE_SIDED);
             SetRenderDrawColor(&lineColor);
-            WorldDrawLine(&(SDL_FPoint){ newLine[0].x, newLine[0].y },
-                          &(SDL_FPoint){ newLine[1].x, newLine[1].y });
-            DrawVertex(&newLine[0]);
-            DrawVertex(&newLine[1]);
+
+            SDL_FPoint pt1 = { createLine.start.x, createLine.start.y };
+            SDL_FPoint pt2 = { createLine.end.x, createLine.end.y };
+
+            WorldDrawLine(&pt1, &pt2);
+
+            DrawVertex(&createLine.start);
+            DrawVertex(&createLine.end);
             break;
         }
         default:
             break;
     }
+
+    //
+    // Status bar
+    //
+
+    SDL_RenderSetViewport(renderer, NULL);
+
+    SDL_Rect statusBarRect = { 0, frame.h - FONT_HEIGHT, frame.w, FONT_HEIGHT };
+    SDL_SetRenderDrawColor(renderer, 170, 170, 170, 255);
+    SDL_RenderFillRect(renderer, &statusBarRect);
+    SDL_RenderSetViewport(renderer, &statusBarRect);
+
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL_Point gridPoint = GridPoint(&worldMouse);
+
+    const char * format = "Position: %5d, %5d   Grid: %2d";
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
+    int viewInfoW = RenderString(0, 0, format, gridPoint.x, -gridPoint.y, gridSize);
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    RenderString(frame.w - viewInfoW - 8, 0, format, gridPoint.x, -gridPoint.y, gridSize);
+
+
+    if ( editorState == ES_NEW_LINE )
+    {
+        // TODO: this needs refactoring!
+        int x;
+        SDL_SetRenderDrawColor(renderer, 255, 255, 85, 255);
+        x = RenderString(1 * FONT_WIDTH, 0, "Create Line ");
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        x = RenderString(x, 0, ": ");
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+        x = RenderString(x, 0, "LBM");
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        x = RenderString(x, 0, "=Confirm ");
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+        x = RenderString(x, 0, "Esc");
+        SDL_SetRenderDrawColor(renderer, 0, 0, 9, 255);
+        RenderString(x, 0, "=Cancel");
+    }
+
+    SDL_RenderSetViewport(renderer, NULL);
+
+    //
+    // Panels
+    //
 
     for ( int i = 0; i <= topPanel; i++ )
         RenderPanel(rightPanels[i]);
@@ -1091,10 +1365,25 @@ void EditorLoop(void)
 {
     int refreshRate = GetRefreshRate();
     printf("refresh rate: %d Hz\n", refreshRate);
-    const float dt = 1.0f / refreshRate;
+    const float target_dt = 1.0f / refreshRate;
+
+    int old = SDL_GetTicks();
 
     while ( running )
+    {
+        int new = SDL_GetTicks();
+        float dt = (new - old) / 1000.0f;
+
+        if ( dt < target_dt )
+        {
+            SDL_Delay(1);
+            continue;
+        }
+
         EditorFrame(dt);
+
+        old = new;
+    }
 }
 
 void CleanupEditor(void)

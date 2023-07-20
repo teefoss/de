@@ -52,7 +52,7 @@ void InitWindow(int width, int height)
     }
 
     u32 rendererFlags = 0;
-    rendererFlags |= SDL_RENDERER_PRESENTVSYNC;
+//    rendererFlags |= SDL_RENDERER_PRESENTVSYNC;
     rendererFlags |= SDL_RENDERER_TARGETTEXTURE;
     rendererFlags |= SDL_RENDERER_SOFTWARE;
 //    rendererFlags |= SDL_RENDERER_ACCELERATED;
@@ -66,7 +66,7 @@ void InitWindow(int width, int height)
         exit(EXIT_FAILURE);
     }
 
-    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+//    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 //    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "2");
 
     // Adjust for High DPI displays.

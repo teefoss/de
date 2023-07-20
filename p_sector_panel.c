@@ -16,11 +16,19 @@
 #define LIGHT_METER_ROW 14
 #define LIGHT_METER_FIRST_COL 2
 #define LIGHT_METER_LAST_COL 33
-#define LIGHT_METER_TICK 8 // Each meter tick is 8 light.
+#define LIGHT_METER_TICK 8 // Each meter tick is 8 light levels.
 
 Panel sectorPanel;
 Panel sectorSpecialsPanel;
 Panel flatsPanel;
+
+static SectorDef baseSectordef = {
+    .floorHeight = 0,
+    .ceilingHeight = 200,
+    .lightLevel = 255,
+};
+
+static enum { SELECTING_FLOOR, SELECTING_CEILING } flatSelection;
 
 static SDL_Rect paletteRectRelative;
 
@@ -31,13 +39,10 @@ static Scrollbar scrollBar = {
     .max = 36
 };
 
-static int numSelectedSectorDefs;
-static SectorDef * selectedSectorDefs[MAX_SELECTED_SECTORDEFS];
+//static int numSelectedSectorDefs;
+//static SectorDef * selectedSectorDefs[MAX_SELECTED_SECTORDEFS];
 static int headroom;
 
-// Cursor text cell.
-static int cx = -1;
-static int cy = -1;
 
 static Scrollbar lightMeter = {
     .type = SCROLLBAR_HORIZONTAL,
@@ -141,28 +146,49 @@ static PanelItem items[SP_NUM_ITEMS] =
     [SP_TAG]            = { 7, 25, 4 },
     [SP_SUGGEST]        = { 13, 25, 7 },
     [SP_LIGHT]          = { 2, 19, 4 },
-    [SP_FLOOR_FLAT]     = { 8, 16, 8 },
-    [SP_CEILING_FLAT]   = { 8, 8, 8 }
+    [SP_FLOOR_FLAT]     = { 8, 16, 8, true, 22, 11, 33, 16 },
+    [SP_CEILING_FLAT]   = { 8, 8, 8, true, 22, 3, 33, 8 }
 };
+
+static void ScrollToSelected(void);
+
+void SectorPanelApplyChange(void)
+{
+    Line * line;
+    FOR_EACH(line, map.lines)
+    {
+        if ( line->deleted )
+            continue;
+        else if ( line->selected )
+            line->sides[line->selected - 1].sectorDef = baseSectordef;
+    }
+}
+
+SectorDef GetBaseSectordef(void)
+{
+    if ( baseSectordef.floorFlat[0] == '\0' )
+        GetFlatName(0, baseSectordef.floorFlat);
+
+    if ( baseSectordef.ceilingFlat[0] == '\0' )
+        GetFlatName(0, baseSectordef.ceilingFlat);
+
+    return baseSectordef;
+}
 
 void OpenSectorPanel(void)
 {
     OpenPanel(&sectorPanel, NULL);
-    numSelectedSectorDefs = 0;
 
-    Line * lines = map.lines->data;
-    for ( Line * line = lines; line < lines + map.lines->count; line++ )
+    Line * line;
+    FOR_EACH(line, map.lines)
     {
-        Side * side = SelectedSide(line);
+        Sidedef * side = SelectedSide(line);
         if ( side )
-            selectedSectorDefs[numSelectedSectorDefs++] = &side->sectorDef;
+        {
+            baseSectordef = side->sectorDef;
+            break;
+        }
     }
-}
-
-static void UpdateSelectedSectorDefs(void)
-{
-    for ( int i = 1; i < numSelectedSectorDefs; i++ )
-        *selectedSectorDefs[i] = *selectedSectorDefs[0];
 }
 
 static void UpdateFlatLocations(void)
@@ -199,24 +225,26 @@ static void UpdateFlatLocations(void)
 
 static void TextInputCompletionHandler(void)
 {
-    SectorDef * def = selectedSectorDefs[0];
+    SectorDef * def = &baseSectordef;
 
     switch ( sectorPanel.selection )
     {
         case SP_FLOOR_HEIGHT:
+            SectorPanelApplyChange();
+            break;
         case SP_CEILING_HEIGHT:
-            UpdateSelectedSectorDefs();
+            SectorPanelApplyChange();
             break;
         case SP_HEADROOM:
             if ( headroom >= 0 )
             {
                 def->ceilingHeight = def->floorHeight + headroom;
-                UpdateSelectedSectorDefs();
+                SectorPanelApplyChange();
             }
             break;
         case SP_LIGHT:
             def->lightLevel = SDL_clamp(def->lightLevel, 0, 255);
-            UpdateSelectedSectorDefs();
+            SectorPanelApplyChange();
             break;
         default:
             break;
@@ -225,18 +253,22 @@ static void TextInputCompletionHandler(void)
 
 bool ProcessSectorPanelEvent(const SDL_Event * event)
 {
-    SectorDef * def = selectedSectorDefs[0];
+    SectorDef * def = &baseSectordef;
 
     if ( IsActionEvent(event, &sectorPanel) )
     {
         switch ( sectorPanel.selection )
         {
             case SP_FLOOR_FLAT:
+                flatSelection = SELECTING_FLOOR;
                 OpenPanel(&flatsPanel, NULL);
+                ScrollToSelected();
                 break;
 
             case SP_CEILING_FLAT:
+                flatSelection = SELECTING_CEILING;
                 OpenPanel(&flatsPanel, NULL);
+                ScrollToSelected();
                 break;
 
             case SP_FLOOR_HEIGHT:
@@ -286,7 +318,7 @@ bool ProcessSectorPanelEvent(const SDL_Event * event)
                     }
                 }
                 def->tag = maxTag + 1;
-                UpdateSelectedSectorDefs();
+                SectorPanelApplyChange();
                 break;
             }
 
@@ -299,10 +331,10 @@ bool ProcessSectorPanelEvent(const SDL_Event * event)
     switch ( event->type )
     {
         case SDL_MOUSEMOTION:
-            cx = (event->motion.x - sectorPanel.location.x) / FONT_WIDTH;
-            cy = (event->motion.y - sectorPanel.location.y) / FONT_HEIGHT;
             if ( lightMeter.isDragging ) {
-                int position = GetPositionInScrollbar(&lightMeter, cx, cy);
+                int position = GetPositionInScrollbar(&lightMeter,
+                                                      sectorPanel.textLocation.x,
+                                                      sectorPanel.textLocation.y);
                 def->lightLevel = position * LIGHT_METER_TICK;
                 def->lightLevel = SDL_clamp(def->lightLevel, 0, 255);
                 return true;
@@ -313,7 +345,9 @@ bool ProcessSectorPanelEvent(const SDL_Event * event)
         {
             if ( event->button.button == SDL_BUTTON_LEFT )
             {
-                int position = GetPositionInScrollbar(&lightMeter, cx, cy);
+                int position = GetPositionInScrollbar(&lightMeter,
+                                                      sectorPanel.textLocation.x,
+                                                      sectorPanel.textLocation.y);
 
                 if ( position != -1 )
                 {
@@ -329,7 +363,7 @@ bool ProcessSectorPanelEvent(const SDL_Event * event)
             if ( event->button.button == SDL_BUTTON_LEFT && lightMeter.isDragging )
             {
                 lightMeter.isDragging = false;
-                UpdateSelectedSectorDefs();
+                SectorPanelApplyChange();
                 return true;
             }
             return false;
@@ -357,8 +391,8 @@ static bool ProcessSpecialPanelEvent(const SDL_Event * event)
     if ( IsActionEvent(event, &sectorSpecialsPanel) )
     {
         int id = sectorSpecials[sectorSpecialsPanel.selection].id;
-        selectedSectorDefs[0]->special = id;
-        UpdateSelectedSectorDefs();
+        baseSectordef.special = id;
+        SectorPanelApplyChange();
         topPanel--;
         return true;
     }
@@ -366,62 +400,9 @@ static bool ProcessSpecialPanelEvent(const SDL_Event * event)
     return false;
 }
 
-static bool ProcessFlatsPanelEvent(const SDL_Event * event)
-{
-//    if ( IsActionEvent(event, &flatsPanel) )
-//    {
-//        return true;
-//    }
-
-    switch ( event->type )
-    {
-        case SDL_MOUSEBUTTONDOWN:
-        {
-            if ( event->button.button == SDL_BUTTON_LEFT )
-            {
-                if ( GetPositionInScrollbar(&scrollBar,
-                                            flatsPanel.textLocation.x,
-                                            flatsPanel.textLocation.y) != -1 )
-                {
-                    scrollBar.isDragging = true;
-                    ScrollToPosition(&scrollBar, flatsPanel.textLocation.y);
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        case SDL_MOUSEMOTION:
-            if ( scrollBar.isDragging )
-            {
-                ScrollToPosition(&scrollBar, flatsPanel.textLocation.y);
-                return true;
-            }
-            return false;
-
-        case SDL_MOUSEBUTTONUP:
-            if ( event->button.button == SDL_BUTTON_LEFT
-                && scrollBar.isDragging )
-            {
-                scrollBar.isDragging = false;
-                return true;
-            }
-            return false;
-
-        case SDL_MOUSEWHEEL:
-            scrollBar.scrollPosition += event->wheel.y * 16;
-            CLAMP(scrollBar.scrollPosition, 0, scrollBar.maxScrollPosition);
-            return true;
-
-        default:
-            return false;
-    }
-}
-
 void RenderSectorPanel(void)
 {
-    SectorDef * sector = selectedSectorDefs[0];
+    SectorDef * sector = &baseSectordef;
 
     RenderFlat(sector->floorFlat, 22 * FONT_WIDTH, 11 * FONT_HEIGHT, 1.5f);
     RenderFlat(sector->ceilingFlat, 22 * FONT_WIDTH, 3 * FONT_HEIGHT, 1.5f);
@@ -486,6 +467,108 @@ void RenderSectorPanel(void)
                         "%s", GetSpecialName(sector->special));
 }
 
+#pragma mark - FLATS PANEL
+
+static void ScrollToSelected(void)
+{
+    Flat * flat;
+    FOR_EACH(flat, flats)
+    {
+        if ( (flatSelection == SELECTING_FLOOR
+            && strcmp(flat->name, baseSectordef.floorFlat) == 0 )
+            ||
+            (flatSelection == SELECTING_CEILING
+                && strcmp(flat->name, baseSectordef.ceilingFlat) == 0) )
+        {
+            scrollBar.scrollPosition = flat->rect.y - PALETTE_ITEM_MARGIN;
+        }
+    }
+}
+
+static bool ProcessFlatsPanelEvent(const SDL_Event * event)
+{
+    switch ( event->type )
+    {
+        case SDL_MOUSEBUTTONDOWN:
+        {
+            if ( event->button.button == SDL_BUTTON_LEFT )
+            {
+                if ( GetPositionInScrollbar(&scrollBar,
+                                            flatsPanel.textLocation.x,
+                                            flatsPanel.textLocation.y) != -1 )
+                {
+                    scrollBar.isDragging = true;
+                    ScrollToPosition(&scrollBar, flatsPanel.textLocation.y);
+                    return true;
+                }
+
+                else if ( SDL_PointInRect(&flatsPanel.mouseLocation,
+                                          &paletteRectRelative) )
+                {
+                    SDL_Point loc = flatsPanel.mouseLocation;
+
+                    // Convert to palette space
+                    loc.x -= paletteRectRelative.x;
+                    loc.y -= paletteRectRelative.y;
+                    loc.y += scrollBar.scrollPosition;
+
+                    Flat * flat = flats->data;
+                    for ( int i = 0; i < flats->count; i++, flat++ )
+                    {
+                        // TODO: if is filtered out, continue
+
+                        if ( SDL_PointInRect(&loc, &flat->rect) )
+                        {
+                            if ( flatSelection == SELECTING_FLOOR )
+                            {
+                                GetFlatName(i, baseSectordef.floorFlat);
+                                SectorPanelApplyChange();
+                            }
+                            else if ( flatSelection == SELECTING_CEILING )
+                            {
+                                GetFlatName(i, baseSectordef.ceilingFlat);
+                                SectorPanelApplyChange();
+                            }
+
+                            if ( event->button.clicks == 2 )
+                                topPanel--;
+                        }
+                    }
+                }
+
+                return true;
+            }
+
+            return false;
+        }
+
+        case SDL_MOUSEMOTION:
+            if ( scrollBar.isDragging )
+            {
+                ScrollToPosition(&scrollBar, flatsPanel.textLocation.y);
+                return true;
+            }
+            return false;
+
+        case SDL_MOUSEBUTTONUP:
+            if ( event->button.button == SDL_BUTTON_LEFT
+                && scrollBar.isDragging )
+            {
+                scrollBar.isDragging = false;
+                return true;
+            }
+            return false;
+
+        case SDL_MOUSEWHEEL:
+            scrollBar.scrollPosition += event->wheel.y * 16;
+            CLAMP(scrollBar.scrollPosition, 0, scrollBar.maxScrollPosition);
+            return true;
+
+        default:
+            return false;
+    }
+}
+
 void RenderFlatsPanel(void)
 {
     SDL_Rect flatPanelLocation = paletteRectRelative;
@@ -515,11 +598,31 @@ void RenderFlatsPanel(void)
             dest.y -= scrollBar.scrollPosition;
             SDL_RenderCopy(renderer, flat->texture, NULL, &dest);
 
-            // TODO: selection box
+            if ( (flatSelection == SELECTING_FLOOR
+                && strncmp(baseSectordef.floorFlat, flat->name, 8) == 0)
+                ||
+                (flatSelection == SELECTING_CEILING
+                && strncmp(baseSectordef.ceilingFlat, flat->name, 8) == 0) )
+            {
+                // TODO: factor out (texture palette is the same)
+                SDL_Rect box = flat->rect;
+                box.y -= scrollBar.scrollPosition;
+
+                int margin = SELECTION_BOX_MARGIN;
+                box.x -= margin;
+                box.y -= margin;
+                box.w += margin * 2;
+                box.h += margin * 2;
+
+                // TODO: this should be a default
+                SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+                DrawRect(&(SDL_FRect){ box.x, box.y, box.w, box.h },
+                         SELECTION_BOX_THICKNESS);
+            }
         }
     }
 
-//    SDL_RenderSetViewport(renderer, &flatsPanel.location);
+    SDL_RenderSetViewport(renderer, &flatsPanel.location);
 
     // Scrollbar
 
@@ -530,6 +633,8 @@ void RenderFlatsPanel(void)
     SetPanelRenderColor(15);
     RenderChar(x, y, 8);
 }
+
+#pragma mark -
 
 void LoadSectorPanel(void)
 {
@@ -567,7 +672,7 @@ void LoadSectorPanel(void)
     sectorSpecialsPanel.processEvent = ProcessSpecialPanelEvent;
 
     flatsPanel = LoadPanel(PANEL_DATA_DIRECTORY "flat_palette.panel");
-    flatsPanel.location.y = 0;
+//    flatsPanel.location.y = 0;
     flatsPanel.render = RenderFlatsPanel;
     flatsPanel.processEvent = ProcessFlatsPanelEvent;
 

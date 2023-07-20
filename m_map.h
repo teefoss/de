@@ -16,6 +16,7 @@
 
 #include <stdbool.h>
 
+#define BOUNDS_BORDER 128
 #define MAP_LABEL_LENGTH 6
 
 typedef struct
@@ -35,7 +36,10 @@ extern Map map;
 void CreateMap(const char * label);
 
 /// Load map from WAD lump.
-void LoadMap(const Wad * wad, const char * lumpLabel);
+bool LoadMap(const Wad * wad, const char * lumpLabel);
+
+/// Run a diagnostic to check for problems.
+void CheckMap(void);
 
 /// Load map from .dwd file.
 void LoadDWD(const char * mapName);
@@ -43,11 +47,14 @@ void LoadDWD(const char * mapName);
 /// Save the currently loaded map to .dwd
 void SaveDWD(void);
 
+bool VertexOnLine(const Vertex * vertex, const Line * line);
 SDL_Rect GetMapBounds(void);
 void TranslateCoord(int * y, const SDL_Rect * bounds);
-Line * NewLine(const SDL_Point * p1, const SDL_Point * p2);
+Line * NewLine(const Line * data, const SDL_Point * p1, const SDL_Point * p2);
+void SplitLine(Line * line, const SDL_Point * gridPoint);
 Thing * NewThing(const Thing * thing, const SDL_Point * point);
 void FlipSelectedLines(void);
-bool GetClosestSide(const SDL_Point * point, Side * out);
+void MergeVertices(void);
+bool GetClosestSide(const SDL_Point * point, Sidedef * out);
 
 #endif /* Map_h */

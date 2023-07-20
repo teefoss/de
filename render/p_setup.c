@@ -746,6 +746,7 @@ void LoadLevel(void)
 
     P_LoadThings ();
 
+#if 0
     for ( int i = 0; i < map.things->count; i++ )
     {
         Thing * thing = Get(map.things, i);
@@ -758,6 +759,7 @@ void LoadLevel(void)
             viewPlayer.mo->angle = ANG45 * (thing->angle / 45);
         }
     }
+#endif
 }
 
 

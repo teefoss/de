@@ -40,6 +40,13 @@ typedef enum
     LINE_SIDE_SELECTION,
 } LineProperty;
 
+typedef enum
+{
+    SIDE_FRONT,
+    SIDE_BACK,
+    NUM_SIDES
+} Side;
+
 typedef struct
 {
     int floorHeight;
@@ -60,7 +67,7 @@ typedef struct
     char top[9];
     SectorDef sectorDef;
     int sectorNum; // Used by the node builder.
-} Side;
+} Sidedef;
 
 typedef struct
 {
@@ -73,7 +80,7 @@ typedef struct
     int special;
     int tag;
 
-    Side sides[2];
+    Sidedef sides[2];
 
     enum
     {
@@ -93,7 +100,7 @@ SDL_FPoint  LineMidpoint(const Line * line);
 float       LineLength(const Line * line);
 SDL_FPoint  LineNormal(const Line * line, float length);
 void        GetLinePoints(int index, SDL_Point * p1, SDL_Point * p2);
-Side *      SelectedSide(Line * line);
+Sidedef *   SelectedSide(Line * line);
 void        ClipLine(int lineIndex, SDL_Point * out1, SDL_Point * out2);
 Visibility  LineVisibility(int index);
 

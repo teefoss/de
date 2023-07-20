@@ -86,7 +86,7 @@ void InitMapView(void)
     int w, h;
     SDL_GetWindowSize(window, &w, &h);
     visibleRect.w = w;
-    visibleRect.h = h;
+    visibleRect.h = h - FONT_HEIGHT;
     visibleRect.x = bounds.x + (bounds.w / 2) - visibleRect.w / 2;
     visibleRect.y = bounds.y + (bounds.h / 2) - visibleRect.h / 2;
 }
@@ -255,12 +255,20 @@ static void DrawLines(void)
         SDL_Point p1 = vertices[l->v1].origin;
         SDL_Point p2 = vertices[l->v2].origin;
 
-        SDL_FPoint clipped1 = { p1.x, p1.y };
-        SDL_FPoint clipped2 = { p2.x, p2.y };
+        SDL_Point clipped1, clipped2;
+        if ( !ClipLineInRect(&p1, &p2,
+                             &(SDL_Rect){
+                                visibleRect.x,
+                                visibleRect.y,
+                                visibleRect.w,
+                                visibleRect.h
+                             },
+                             &clipped1, &clipped2) )
+        {
+            continue;
+        }
 
-        Visibility visibility = LineVisibility(i);
-
-        if ( visibility == VISIBILITY_NONE )
+        if ( LineLength(l) == 0 )
             continue;
 
         SDL_Color color;
@@ -313,7 +321,7 @@ DrawThings(void) // TODO: sort selected and draw on top
     {
         if ( thing->deleted )
             continue;
-        
+
         if (   thing->origin.x < left
             || thing->origin.x > right
             || thing->origin.y < top
@@ -341,22 +349,6 @@ void DrawMap(void)
     DrawLines();
     DrawVertices();
     DrawThings();
-
-    // Debug, show click rect.
-#if 0
-    Box debug_mouse = MakeCenteredSquare(mouse.x, mouse.y, SELECTION_SIZE);
-    SDL_Rect r = {
-        debug_mouse.left,
-        debug_mouse.top,
-        (debug_mouse.right - debug_mouse.left) + 1,
-        (debug_mouse.bottom - debug_mouse.top) + 1,
-    };
-
-    SDL_Point convert = WorldToWindow(r.x, r.y);
-    r.x = convert.x;
-    r.y = convert.y;
-    SDL_RenderDrawRect(renderer, &r);
-#endif
 }
 
 void DrawSelectionBox(const SDL_Rect * box)

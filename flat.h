@@ -23,5 +23,6 @@ extern Array * flats;
 
 void LoadFlats(Wad * wad);
 void RenderFlat(const char * name, int x, int y, float scale);
+void GetFlatName(int index, char * string);
 
 #endif /* flat_h */

@@ -141,8 +141,8 @@ typedef struct {
 
     bool isDragging;
 
-    int scrollPosition;
-    int maxScrollPosition;
+    int scrollPosition; // The y position visible at the top of the panel.
+    int maxScrollPosition; // The maximum y position that can be scrolled to.
 } Scrollbar;
 
 /// x, y is (usually) the click point in console coordinates

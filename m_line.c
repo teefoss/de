@@ -61,6 +61,7 @@ float LineLength(const Line * line)
     return sqrtf(dx * dx + dy * dy);
 }
 
+/// Do not pass a line of zero length!
 SDL_FPoint LineNormal(const Line * line, float length)
 {
     Vertex * vertices = map.vertices->data;
@@ -89,9 +90,12 @@ void GetLinePoints(int index, SDL_Point * p1, SDL_Point * p2)
     *p2 = vertices[line->v2].origin;
 }
 
-Side * SelectedSide(Line * line)
+Sidedef * SelectedSide(Line * line)
 {
-    if ( line->selected <= 0 )
+    if ( line->selected == DESELECTED )
+        return NULL;
+
+    if ( line->deleted )
         return NULL;
 
     return &line->sides[line->selected - 1];

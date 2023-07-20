@@ -20,6 +20,7 @@ typedef struct
 } LineSpecial;
 
 extern Panel linePanel;
+extern Line baseLine;
 
 void LoadLinePanels(const char * dspPath);
 void OpenLinePanel(Line * line);

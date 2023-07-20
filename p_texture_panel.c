@@ -12,9 +12,11 @@
 #include "text.h"
 
 #define PALETTE_WIDTH 272
+
+// TODO: convert to use Scrollbar
 #define SCROLL_BAR_COL 40
-#define SCROLL_BAR_TOP 2
-#define SCROLL_BAR_BOTTOM 36
+#define SCROLL_BAR_TOP 3
+#define SCROLL_BAR_BOTTOM 37
 
 Panel texturePanel;
 SDL_Rect paletteRectRelative;
@@ -23,6 +25,8 @@ int maxPaletteTopY; // Calculated during init.
 bool draggingScrollHandle;
 
 char * currentTexture;
+int currentWidth;
+int currentHeight;
 LineProperty texturePosition; // Whether we're selecting top/middle/bottom
 
 typedef struct
@@ -41,16 +45,22 @@ static Filter filter = {
 enum
 {
     TP_NAME,
-    TP_WIDTH,
-    TP_HEIGHT,
+    TP_SIZE,
+    TP_REMOVE,
+    TP_FILTER_NAME,
+    TP_FILTER_WIDTH,
+    TP_FILTER_HEIGHT,
     TP_COUNT,
 };
 
 static PanelItem items[] =
 {
-    [TP_NAME] = { 8, 39, 8, true, 2, 39, 15, 39 },
-    [TP_WIDTH] = { 24, 39, 4, true, 17, 39, 27, 39 },
-    [TP_HEIGHT] = { 37, 39, 4, true, 29, 39, 40, 39 },
+    [TP_NAME] = { 8, 39, 0 },
+    [TP_SIZE] = { 24, 39, 0 },
+    [TP_REMOVE] = { 35, 39, 6 },
+    [TP_FILTER_NAME] = { 8, 41, 8, true, 2, 41, 15, 41 },
+    [TP_FILTER_WIDTH] = { 24, 41, 4, true, 17, 41, 27, 41 },
+    [TP_FILTER_HEIGHT] = { 37, 41, 4, true, 29, 41, 40, 41 },
 };
 
 SDL_Rect PaletteRect(void)
@@ -83,6 +93,13 @@ void OpenTexturePanel(char * texture, LineProperty property)
 {
     currentTexture = texture;
     texturePosition = property;
+
+    Texture * t = FindTexture(texture);
+    if ( t )
+    {
+        currentWidth = t->rect.w;
+        currentHeight = t->rect.h;
+    }
 
     OpenPanel(&texturePanel, NULL);
 
@@ -158,24 +175,32 @@ void DoTexturePanelAction(void)
 {
     switch ( texturePanel.selection )
     {
-        case TP_NAME:
+        case TP_FILTER_NAME:
             StartTextEditing(&texturePanel,
                              texturePanel.selection,
                              filter.name,
                              VALUE_STRING);
             break;
-        case TP_WIDTH:
+        case TP_FILTER_WIDTH:
             StartTextEditing(&texturePanel,
                              texturePanel.selection,
                              &filter.width,
                              VALUE_INT);
             break;
-        case TP_HEIGHT:
+        case TP_FILTER_HEIGHT:
             StartTextEditing(&texturePanel,
                              texturePanel.selection,
                              &filter.height,
                              VALUE_INT);
             break;
+
+        case TP_REMOVE:
+            strcpy(currentTexture, "-");
+            topPanel--;
+            UpdateLinePanelContent();
+            LinePanelApplyChange(texturePosition);
+            break;
+
         default:
             break;
     }
@@ -196,13 +221,25 @@ bool ProcessTexturePanelEvent(const SDL_Event * event)
             switch ( event->key.keysym.sym )
             {
                 case SDLK_BACKSPACE:
-                    if ( texturePanel.selection == TP_WIDTH )
+                    if ( texturePanel.selection == TP_FILTER_WIDTH )
                         filter.width = 0;
-                    else if ( texturePanel.selection == TP_HEIGHT )
+                    else if ( texturePanel.selection == TP_FILTER_HEIGHT )
                         filter.height = 0;
                     else if ( texturePanel.selection == TP_NAME )
                         filter.name[0] = '\0';
                     UpdatePaletteTextureLocations();
+                    return true;
+                case SDLK_n:
+                    texturePanel.selection = TP_FILTER_NAME;
+                    DoTexturePanelAction();
+                    return true;
+                case SDLK_w:
+                    texturePanel.selection = TP_FILTER_WIDTH;
+                    DoTexturePanelAction();
+                    return true;
+                case SDLK_h:
+                    texturePanel.selection = TP_FILTER_HEIGHT;
+                    DoTexturePanelAction();
                     return true;
                 default:
                     return false;
@@ -250,8 +287,12 @@ bool ProcessTexturePanelEvent(const SDL_Event * event)
                         if ( SDL_PointInRect(&location, &t->rect) )
                         {
                             strncpy(currentTexture, t->name, 8);
+                            currentWidth = t->rect.w;
+                            currentHeight = t->rect.h;
+
                             LinePanelApplyChange(texturePosition);
                             UpdateLinePanelContent();
+
                             if ( event->button.clicks == 2 )
                                 topPanel--;
                         }
@@ -276,7 +317,23 @@ bool ProcessTexturePanelEvent(const SDL_Event * event)
 
 void RenderTexturePanel(void)
 {
+    // Title
+
+    SetPanelRenderColor(15);
+    int titleX = 2;
+    int titleY = 1;
+    if ( texturePosition == LINE_TOP_TEXTURE )
+        PANEL_RENDER_STRING(titleX, titleY, "Top Texture");
+
+    if ( texturePosition == LINE_MIDDLE_TEXTURE )
+        PANEL_RENDER_STRING(titleX, titleY, "Middle Texture");
+
+    if ( texturePosition == LINE_BOTTOM_TEXTURE )
+        PANEL_RENDER_STRING(titleX, titleY, "Bottom Texture");
+
+    //
     // Texture palette
+    //
 
     SDL_Rect paletteRect = PaletteRect();
     SDL_RenderSetViewport(renderer, &paletteRect);
@@ -319,39 +376,53 @@ void RenderTexturePanel(void)
     SDL_RenderSetViewport(renderer, &texturePanel.location);
 
     // TODO: clean this up
-    if ( !texturePanel.isTextEditing || (texturePanel.isTextEditing && texturePanel.textItem != TP_WIDTH) )
+    if ( ShouldRenderInactiveTextField(&texturePanel, TP_FILTER_WIDTH) )
     {
+        // TODO: refactor this with below
         if ( filter.width <= 0 )
         {
             SetPanelRenderColor(8);
-            PANEL_RENDER_STRING(items[TP_WIDTH].x, items[TP_WIDTH].y, "Any");
+            PANEL_RENDER_STRING(items[TP_FILTER_WIDTH].x, items[TP_FILTER_WIDTH].y, "Any");
         }
         else
         {
             SetPanelRenderColor(15);
-            PANEL_RENDER_STRING(items[TP_WIDTH].x, items[TP_WIDTH].y, "%d", filter.width);
+            PANEL_RENDER_STRING(items[TP_FILTER_WIDTH].x, items[TP_FILTER_WIDTH].y, "%d", filter.width);
         }
     }
 
-    if ( !texturePanel.isTextEditing || (texturePanel.isTextEditing && texturePanel.textItem != TP_HEIGHT) )
+    if ( ShouldRenderInactiveTextField(&texturePanel, TP_FILTER_HEIGHT) )
     {
         if ( filter.height <= 0 )
         {
             SetPanelRenderColor(8);
-            PANEL_RENDER_STRING(items[TP_HEIGHT].x, items[TP_HEIGHT].y, "Any");
+            PANEL_RENDER_STRING(items[TP_FILTER_HEIGHT].x, items[TP_FILTER_HEIGHT].y, "Any");
         }
         else
         {
             SetPanelRenderColor(15);
-            PANEL_RENDER_STRING(items[TP_HEIGHT].x, items[TP_HEIGHT].y, "%d", filter.height);
+            PANEL_RENDER_STRING(items[TP_FILTER_HEIGHT].x, items[TP_FILTER_HEIGHT].y, "%d", filter.height);
         }
     }
 
-    if ( !texturePanel.isTextEditing || (texturePanel.isTextEditing && texturePanel.textItem != TP_NAME) )
+    if ( ShouldRenderInactiveTextField(&texturePanel, TP_FILTER_NAME) )
     {
         SetPanelRenderColor(15);
-        PANEL_RENDER_STRING(items[TP_NAME].x, items[TP_NAME].y, "%s", filter.name);
+        PANEL_RENDER_STRING(items[TP_FILTER_NAME].x, items[TP_FILTER_NAME].y, "%s", filter.name);
     }
+
+    //
+    // Selected texture info
+    //
+
+    SetPanelRenderColor(11);
+    PANEL_RENDER_STRING(items[TP_NAME].x, items[TP_NAME].y,
+                        "%s",
+                        currentTexture);
+    PANEL_RENDER_STRING(items[TP_SIZE].x, items[TP_SIZE].y,
+                        "%d x %d",
+                        currentWidth, currentHeight);
+
 
     // Scroll bar control
 
@@ -363,6 +434,8 @@ void RenderTexturePanel(void)
     RenderChar(x, y, 8);
 
     // The border around the texture palette (in window space)
+
+    SDL_RenderSetViewport(renderer, &texturePanel.location);
 
     SDL_RenderSetViewport(renderer, NULL);
     SetPanelRenderColor(8);
@@ -382,7 +455,7 @@ void LoadTexturePanel(void)
     paletteRectRelative = (SDL_Rect)
     {
         .x = 2 * FONT_WIDTH,
-        .y = 1 * FONT_HEIGHT,
+        .y = 2 * FONT_HEIGHT,
         .w = 38 * FONT_WIDTH,
         .h = 37 * FONT_HEIGHT
     };

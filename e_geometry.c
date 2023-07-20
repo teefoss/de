@@ -24,22 +24,57 @@ SDL_Rect MakeCenteredRect(const SDL_Point * point, int size)
     return square;
 }
 
+#if 1
+bool LineLineIntersection2(const SDL_Point * p1, // a start
+                           const SDL_Point * p2, // a end
+                           const SDL_Point * p3, // b start
+                           const SDL_Point * p4, // b end
+                           SDL_Point * intersection)
+{
+    float adx = p2->x - p1->x;
+    float ady = p2->y - p1->y;
+    float bdx = p4->x - p3->x;
+    float bdy = p4->y - p3->y;
+    float cdx = p1->x - p3->x;
+    float cdy = p1->y - p3->y;
+
+    float s = (-ady * cdx + adx * cdy) / (-bdx * ady + adx * bdy);
+    float t = ( bdx * cdy - bdy * cdx) / (-bdx * ady + adx * bdy);
+
+    if ( s >= 0 && s <= 1 && t >= 0 && t <= 1 )
+    {
+        if ( intersection != NULL )
+        {
+            intersection->x = p1->x + (t * adx);
+            intersection->y = p1->y + (t * ady);
+        }
+        return true;
+    }
+
+    return false;
+}
+#endif
+
 bool LineLineIntersection(const SDL_Point * p1,
                           const SDL_Point * p2,
                           const SDL_Point * p3,
                           const SDL_Point * p4)
 {
+    float dx1 = p2->x - p1->x;
+    float dy1 = p2->y - p1->y;
+    float dx2 = p4->x - p3->x;
+    float dy2 = p4->y - p3->y;
+
     // Calculate the direction of the lines.
-    float denominator = (p4->y - p3->y) * (p2->x - p1->x) - (p4->x - p3->x) * (p2->y - p1->y);
+    float denominator = dy2 * dx1 - dx2 * dy1;
 
     // Check if lines are parallel and vertically aligned.
-    if ( denominator == 0 && p1->x == p2->x && p3->x == p4->x ) {
+    if ( denominator == 0 && p1->x == p2->x && p3->x == p4->x )
         return false;
-    }
 
     // Calculate the 'u' parameters.
-    float uA = ((p4->x - p3->x) * (p1->y - p3->y) - (p4->y - p3->y) * (p1->x - p3->x)) / denominator;
-    float uB = ((p2->x - p1->x) * (p1->y - p3->y) - (p2->y - p1->y) * (p1->x - p3->x)) / denominator;
+    float uA = (dx2 * (p1->y - p3->y) - dy2 * (p1->x - p3->x)) / denominator;
+    float uB = (dx1 * (p1->y - p3->y) - dy1 * (p1->x - p3->x)) / denominator;
 
     // If uA and uB are between 0-1, lines are colliding
     return uA >= 0 && uA <= 1 && uB >= 0 && uB <= 1;
@@ -63,6 +98,114 @@ bool LineInRect(const SDL_Point * p1, const SDL_Point * p2, const SDL_Rect * r)
     bool bottom     = LineLineIntersection(p1, p2, &ll, &lr);
 
     return left || right || top || bottom;
+}
+
+/// Returns true if the line is fully or partially inside rect `r`. In either
+/// case `c1` and `c2` are set, and represent the portion of the line that's
+/// inside `r`.
+bool ClipLineInRect(const SDL_Point * p1, const SDL_Point * p2, // The line.
+                    const SDL_Rect * r, // The rect.
+                    SDL_Point * c1, SDL_Point * c2) // The clipped line.
+{
+    bool p1inside = SDL_PointInRect(p1, r);
+    bool p2inside = SDL_PointInRect(p2, r);
+
+    if ( p1inside && p2inside )
+    {
+        // Both points are in the rect. Easy-peasy.
+        *c1 = *p1;
+        *c2 = *p2;
+        return true;
+    }
+
+    int minX = r->x;
+    int minY = r->y;
+    int maxX = r->x + r->w;
+    int maxY = r->y + r->h;
+
+    // A large number of lines are probably not visible, so check this
+    // now before s#!t gets complicated.
+    if ( !p1inside && !p2inside )
+    {
+        if (   (p1->y < minY && p2->y < minY)
+            || (p1->y > maxY && p2->y > maxX)
+            || (p1->x < minX && p2->x < minX)
+            || (p1->x > maxX && p2->x > maxX) )
+        {
+            // The line cannot cross the visible rect at all.
+            return false;
+        }
+    }
+
+    // The rect's corners.
+    SDL_Point corners[4] =
+    {
+        { minX, minY }, // UL
+        { maxX, minY }, // UR
+        { minX, maxY }, // LL
+        { maxX, maxY }  // LR
+    };
+
+    struct { SDL_Point a, b; } sides[4] = {
+        { corners[0], corners[1] },
+        { corners[0], corners[2] },
+        { corners[1], corners[3] },
+        { corners[2], corners[3] },
+    };
+
+    // At this point, one or neither of the points is inside the visible rect.
+
+    if ( p1inside || p2inside )
+    {
+        // There should be one and only one intersected side.
+        for ( int i = 0; i < 4; i++ )
+        {
+            SDL_Point intersection;
+            if ( LineLineIntersection2(p1, p2,
+                                       &sides[i].a, &sides[i].b,
+                                       &intersection) )
+            {
+                *c1 = intersection;
+                if ( p1inside )
+                    *c2 = *p1;
+                else
+                    *c2 = *p2;
+
+                return true;
+            }
+        }
+
+        printf("Shouldn't reach here!\n");
+    }
+
+    // Both of the points are outside the visible rect, but in a position
+    // where the line might cross the rect.
+
+    int numIntersections = 0; // Should be either 0 or 2...
+    SDL_Point intersections[2];
+
+    for ( int i = 0; i < 4; i++ )
+    {
+        if ( LineLineIntersection2(p1, p2,
+                                   &sides[i].a, &sides[i].b,
+                                   &intersections[numIntersections]) )
+        {
+            numIntersections++;
+        }
+    }
+
+    if ( numIntersections == 0 )
+        return false; // The line didn't cross the view.
+
+    if ( numIntersections == 2 )
+    {
+        *c1 = intersections[0];
+        *c2 = intersections[1];
+        return true;
+    }
+
+    printf("Shouldn't reach here 2!\n");
+    return false;
 }
 
 void EnclosePoint(const SDL_Point * point, Box * box)

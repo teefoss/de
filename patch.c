@@ -300,11 +300,10 @@ void CreateTextureSDLTexture(Texture * texture)
 
 void RenderTextureInRect(const char * name, const SDL_Rect * rect)
 {
-    ASSERT(name != NULL);
-    ASSERT(name[0] != '-');
+    if ( strlen(name) == 0 )
+        return;
     
     Texture * texture = FindTexture(name);
-    ASSERT(texture != NULL);
 
     if ( texture->texture == NULL )
         CreateTextureSDLTexture(texture);

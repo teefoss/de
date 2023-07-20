@@ -44,10 +44,10 @@ Array * NewArray(int slots, size_t esize, int resize)
 }
 
 void FreeArray(Array * arr) {
-    ASSERT(arr->data);
     ASSERT(arr);
 
-    free(arr->data);
+    if ( arr->data )
+        free(arr->data);
     free(arr);
 }
 

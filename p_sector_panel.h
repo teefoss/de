@@ -8,6 +8,9 @@
 #ifndef sector_panel_h
 #define sector_panel_h
 
+#include "m_line.h"
+
+SectorDef GetBaseSectordef(void);
 void LoadSectorPanel(void);
 void OpenSectorPanel(void);
 

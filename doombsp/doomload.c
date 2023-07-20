@@ -85,6 +85,8 @@ void NB_LoadMap(void)
 
     for ( int i = 0; i < map.lines->count; i++, line++ )
     {
+        if ( line->deleted )
+            continue;
         line->p1.x =  vertices[line->v1].origin.x;
         line->p1.y = -vertices[line->v1].origin.y; // SDL to NeXT
         line->p2.x =  vertices[line->v2].origin.x;
@@ -113,6 +115,9 @@ void NB_LoadMap(void)
 
     for ( int i = 0; i < map.things->count; i++, thing++ )
     {
+        if ( thing->deleted )
+            continue;
+        
         Thing rounded = *thing;
         rounded.origin.x &= -16;
         rounded.origin.y &= -16;

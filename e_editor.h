@@ -9,6 +9,7 @@
 #define edit_h
 
 #include "wad.h"
+#include "m_line.h"
 #include <stdbool.h>
 
 #define DOOM1_PATH "doom1/"
@@ -27,6 +28,8 @@ typedef struct
     Game game;  // which game the level is for.
     Wad * iwad; // aka "resource" WAD.
     Wad * pwad; // user-created WAD being edited.
+    
+    int numSelectedLines;
 } Editor;
 
 extern Editor editor;
@@ -35,6 +38,12 @@ void InitEditor(void);
 void EditorLoop(void);
 void CleanupEditor(void);
 void RenderEditor(void);
+
+void SelectLine(int index, Side side);
+
+void DeselectAllLines(void);
 void DeselectAllObjects(void);
+
+void AutoScrollToPoint(SDL_Point worldPoint);
 
 #endif /* edit_h */

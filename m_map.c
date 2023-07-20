@@ -11,12 +11,35 @@
 #include "common.h"
 #include "e_geometry.h"
 #include "e_undo.h"
+#include "e_map_view.h"
+#include "e_editor.h"
+#include "p_line_panel.h"
 
 #include <limits.h>
 
 Map map;
 
-bool GetClosestSide(const SDL_Point * point, Side * out)
+bool VertexOnLine(const Vertex * vertex, const Line * line)
+{
+    Vertex * vertices = map.vertices->data;
+    float x1 = vertices[line->v1].origin.x;
+    float x2 = vertices[line->v2].origin.x;
+    float y1 = vertices[line->v1].origin.y;
+    float y2 = vertices[line->v2].origin.y;
+    float x = vertex->origin.x;
+    float y = vertex->origin.y;
+
+    if ( (x == x1 && y == y1) || (x == x2 && y == y2) )
+        return false;
+
+    float ab = sqrtf((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+    float ap = sqrtf((x - x1) * (x - x1) + (y - y1) * (y - y1));
+    float pb = sqrtf((x2 - x) * (x2 - x) + (y2 - y) * (y2 - y));
+
+    return fabsf(ap + pb - ab) < 0.00001f;
+}
+
+bool GetClosestSide(const SDL_Point * point, Sidedef * out)
 {
     float   frac, distance, xintercept;
     int     bestline = -1;
@@ -114,24 +137,18 @@ bool GetClosestSide(const SDL_Point * point, Side * out)
 }
 
 
-#define BOUNDS_BORDER 128
-
 SDL_Rect GetMapBounds(void)
 {
     if ( map.boundsDirty )
     {
-        int left = INT_MAX;
-        int top = INT_MAX;
-        int right = INT_MIN;
-        int bottom = INT_MIN;
-
-        int max_y = INT_MIN;
+        float left = MAXFLOAT;
+        float top = MAXFLOAT;
+        float right = -MAXFLOAT;
+        float bottom = -MAXFLOAT;
 
         Vertex * v = map.vertices->data;
         for ( int i = 0; i < map.vertices->count; i++, v++ )
         {
-            if ( v->origin.y > max_y )
-                max_y = v->origin.y;
             if ( v->origin.x < left )
                 left = v->origin.x;
             if ( v->origin.y < top )
@@ -149,15 +166,15 @@ SDL_Rect GetMapBounds(void)
             .h = bottom - top + BOUNDS_BORDER * 2
         };
 
-        map.boundsDirty = false;
-    }
+        if ( map.bounds.w < 0 )
+        {
+            map.bounds.x = 0;
+            map.bounds.y = 0;
+            map.bounds.w = 0;
+            map.bounds.h = 0;
+        }
 
-    if ( map.bounds.w < 0 )
-    {
-        map.bounds.x = 0;
-        map.bounds.y = 0;
-        map.bounds.w = 0;
-        map.bounds.h = 0;
+        map.boundsDirty = false;
     }
 
     return map.bounds;
@@ -198,16 +215,13 @@ void CreateMap(const char * label)
     GetMapBounds();
 }
 
-void LoadMap(const Wad * wad, const char * lumpLabel)
+bool LoadMap(const Wad * wad, const char * lumpLabel)
 {
     strncpy(map.label, lumpLabel, sizeof(map.label));
 
     int l = GetIndexOfLumpNamed(wad, lumpLabel);
     if ( l == -1 )
-    {
-        fprintf(stderr, "Bad map label '%s'\n", lumpLabel);
-        exit(EXIT_FAILURE);
-    }
+        return false;
 
     int numVertices = 0;
     int numLines = 0;
@@ -282,7 +296,7 @@ void LoadMap(const Wad * wad, const char * lumpLabel)
             if ( lineData[i].sidenum[s] == -1 )
                 continue;
 
-            Side * side = &line.sides[s];
+            Sidedef * side = &line.sides[s];
             memset(side, 0, sizeof(*side));
 
             mapsidedef_t * mside = &sidedefData[lineData[i].sidenum[s]];
@@ -313,6 +327,45 @@ void LoadMap(const Wad * wad, const char * lumpLabel)
 
     map.boundsDirty = true;
     GetMapBounds();
+
+    return true;
+}
+
+void CheckMap(void)
+{
+    printf("\nRunning map check...\n");
+    int numProblems = 0;
+
+    //
+    // Check for overlapping vertices.
+    //
+
+    bool * overlappingVertices = calloc(map.vertices->count, sizeof(bool));
+
+    for ( int i = 0; i < map.vertices->count; i++ )
+    {
+        SDL_Point vi = ((Vertex *)Get(map.vertices, i))->origin;
+
+        for ( int j = i + 1; j < map.vertices->count; j++ )
+        {
+            SDL_Point vj = ((Vertex *)Get(map.vertices, j))->origin;
+
+            if ( vi.x == vj.x && vi.y == vj.y )
+            {
+                numProblems++;
+                overlappingVertices[i] = true; // Mark both as overlapping.
+                overlappingVertices[j] = true;
+                printf("Overlapping Vertex at %d, %d!\n", vi.x, vi.y);
+            }
+        }
+    }
+
+    free(overlappingVertices);
+
+    if ( numProblems == 0 )
+        printf("... no problems!\n");
+    else
+        printf("... check complete: found %d problems.\n", numProblems);
 }
 
 #pragma mark -
@@ -338,11 +391,14 @@ int NewVertex(const SDL_Point * point)
     return map.vertices->count - 1;
 }
 
-Line * NewLine(const SDL_Point * p1, const SDL_Point * p2)
+Line * NewLine(const Line * data, const SDL_Point * p1, const SDL_Point * p2)
 {
     Line * line;
     int availableIndex = -1;
 
+    // See if we can reuse an existing line.
+    // (The user should be overlapping one line onto another, so this
+    // effectively cancels the action.)
     for ( int i = 0; i < map.lines->count; i++ )
     {
         line = Get(map.lines, i);
@@ -374,9 +430,14 @@ Line * NewLine(const SDL_Point * p1, const SDL_Point * p2)
         line = Push(map.lines, &new);
     }
 
-    memset(line, 0, sizeof(*line));
+    *line = *data;
+    line->deleted = false;
+
     line->v1 = NewVertex(p1);
     line->v2 = NewVertex(p2);
+
+    map.boundsDirty = true;
+
     return line;
 }
 
@@ -385,6 +446,8 @@ Thing * NewThing(const Thing * thing, const SDL_Point * point)
     Thing new = *thing;
     new.origin = *point;
     new.deleted = false;
+
+    map.boundsDirty = true;
 
     return Push(map.things, &new);
 }
@@ -412,6 +475,68 @@ void FlipSelectedLines(void)
     }
 }
 
+/// Merge all overlapping vertices.
+void MergeVertices(void)
+{
+    Vertex * vertices = map.vertices->data;
+
+    for ( int i = 0; i < map.vertices->count; i++ )
+    {
+        Vertex * v1 = &vertices[i];
+        if ( v1->removed )
+            continue;
+
+        for ( int j = i + 1; j < map.vertices->count; j++ )
+        {
+            Vertex * v2 = &vertices[j];
+            if ( v2->removed )
+                continue;
+
+            if ( PointsEqual(&v1->origin, &v2->origin) )
+            {
+                // Update lines that use this points.
+                for ( int k = 0; k < map.lines->count; k++ )
+                {
+                    Line * line = Get(map.lines, k);
+
+                    if ( line->deleted )
+                        continue;
+
+                    if ( line->v1 == j )
+                    {
+                        v1->referenceCount++;
+                        line->v1 = i;
+                    }
+                    else if ( line->v2 == j)
+                    {
+                        v1->referenceCount++;
+                        line->v2 = i;
+                    }
+                }
+
+                v2->removed = true;
+            }
+        }
+    }
+}
+
+void SplitLine(Line * line, const SDL_Point * gridPoint)
+{
+    if ( line->deleted )
+        return;
+    
+    Vertex * vertices = map.vertices->data;
+    SDL_Point p1 = vertices[line->v1].origin;
+    SDL_Point p2 = vertices[line->v2].origin;
+
+    line->deleted = true;
+    line->selected = DESELECTED;
+
+    NewLine(line, &p1, gridPoint);
+    NewLine(line, gridPoint, &p2);
+    return;
+}
+
 #pragma mark - DWD
 
 static bool ReadLine(FILE * dwd, SDL_Point * p1, SDL_Point *p2, Line * line)
@@ -427,7 +552,7 @@ static bool ReadLine(FILE * dwd, SDL_Point * p1, SDL_Point *p2, Line * line)
 
     for ( int i = 0; i < numSides; i++ )
     {
-        Side * side = &line->sides[i];
+        Sidedef * side = &line->sides[i];
 
         if ( fscanf(dwd, "    %d (%d : %s / %s / %s )\n",
                     &side->offsetY,
@@ -470,7 +595,7 @@ static void WriteLine(FILE * dwd, Line * line)
 
     for ( int i = 0; i < numSides; i++ )
     {
-        Side * side = &line->sides[i];
+        Sidedef * side = &line->sides[i];
 
         if ( strlen(side->top) == 0 )
             strcpy(side->top, "-");
