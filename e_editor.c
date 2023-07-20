@@ -370,7 +370,10 @@ void CreateLine(void)
 
     SaveUndoState();
 
-    Line * line = NewLine(&baseLine, &createLine.start, &createLine.end);
+    Line * line = NewLine(&baseLine,
+                          &createLine.start,
+                          &createLine.end,
+                          true);
 
     // Find the sector on the front.
     line->sides[SIDE_FRONT].sectorDef = GetBaseSectordef();
@@ -634,7 +637,7 @@ SelectionType SelectObject(bool openPanel)
     return SELECTION_NONE;
 }
 
-void CopyObjects(void)
+void CopySelectedObjects(void)
 {
     Clear(lineCopies);
     Clear(thingCopies);
@@ -681,18 +684,11 @@ void PasteObjects(void)
         Line * line = Get(lineCopies, i);
         SDL_Point p1 = { line->p1.x + 16, line->p1.y + 16 };
         SDL_Point p2 = { line->p2.x + 16, line->p2.y + 16 };
-        Line * new = NewLine(NULL, &p1, &p2); // TODO: clean up here now that NewLine is passed data.
-
-        // Copy everything but the vertex indices.
-        int v1 = new->v1; // Save
-        int v2 = new->v2;
-        *new = *line; // Copy
-        new->v1 = v1; // Restore
-        new->v2 = v2;
+        Line * new = NewLine(line, &p1, &p2, false);
 
         Vertex * vertices = map.vertices->data;
-        vertices[v1].selected = true;
-        vertices[v2].selected = true;
+        vertices[new->v1].selected = true;
+        vertices[new->v2].selected = true;
     }
 
     for ( int i = 0; i < thingCopies->count; i++ )
@@ -703,8 +699,7 @@ void PasteObjects(void)
     }
 }
 
-/// Delete all selected objects.
-void DeleteObjects(void)
+void DeleteSelectedObjects(void)
 {
     SaveUndoState();
 
@@ -867,7 +862,7 @@ void ProcessEditorEvent(const SDL_Event * event)
 
                 case SDLK_c:
                     if ( COMMAND )
-                        CopyObjects();
+                        CopySelectedObjects();
                     else
                         CenterSelectedObjects();
                     break;
@@ -875,8 +870,8 @@ void ProcessEditorEvent(const SDL_Event * event)
                 case SDLK_x:
                     if ( COMMAND )
                     {
-                        CopyObjects();
-                        DeleteObjects();
+                        CopySelectedObjects();
+                        DeleteSelectedObjects();
                     }
                     break;
 
@@ -898,7 +893,7 @@ void ProcessEditorEvent(const SDL_Event * event)
                     break;
 
                 case SDLK_BACKSPACE:
-                    DeleteObjects();
+                    DeleteSelectedObjects();
                     break;
 
 #ifdef DRAW_BLOCK_MAP

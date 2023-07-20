@@ -50,7 +50,10 @@ void SaveDWD(void);
 bool VertexOnLine(const Vertex * vertex, const Line * line);
 SDL_Rect GetMapBounds(void);
 void TranslateCoord(int * y, const SDL_Rect * bounds);
-Line * NewLine(const Line * data, const SDL_Point * p1, const SDL_Point * p2);
+Line * NewLine(const Line * data,
+               const SDL_Point * p1,
+               const SDL_Point * p2,
+               bool merge);
 void SplitLine(Line * line, const SDL_Point * gridPoint);
 Thing * NewThing(const Thing * thing, const SDL_Point * point);
 void FlipSelectedLines(void);

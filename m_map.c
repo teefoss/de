@@ -371,17 +371,20 @@ void CheckMap(void)
 #pragma mark -
 
 /// Adds a new vertex to `map.vertices` and returns its index.
-int NewVertex(const SDL_Point * point)
+int NewVertex(const SDL_Point * point, bool merge)
 {
     Vertex * v = map.vertices->data;
     int i = 0;
 
-    for ( ; i < map.vertices->count; i++, v++ )
+    if ( merge )
     {
-        if ( v->origin.x == point->x && v->origin.y == point->y )
+        for ( ; i < map.vertices->count; i++, v++ )
         {
-            v->referenceCount++;
-            return i;
+            if ( v->origin.x == point->x && v->origin.y == point->y )
+            {
+                v->referenceCount++;
+                return i;
+            }
         }
     }
 
@@ -391,31 +394,37 @@ int NewVertex(const SDL_Point * point)
     return map.vertices->count - 1;
 }
 
-Line * NewLine(const Line * data, const SDL_Point * p1, const SDL_Point * p2)
+Line * NewLine(const Line * data,
+               const SDL_Point * p1,
+               const SDL_Point * p2,
+               bool merge)
 {
     Line * line;
     int availableIndex = -1;
 
-    // See if we can reuse an existing line.
-    // (The user should be overlapping one line onto another, so this
-    // effectively cancels the action.)
-    for ( int i = 0; i < map.lines->count; i++ )
+    if ( merge )
     {
-        line = Get(map.lines, i);
-
-        if ( line->deleted )
+        // See if we can reuse an existing line.
+        // (The user should not be overlapping one line onto another, so this
+        // effectively cancels the action.)
+        for ( int i = 0; i < map.lines->count; i++ )
         {
-            availableIndex = i;
-        }
-        else
-        {
-            SDL_Point a, b;
-            GetLinePoints(i, &a, &b);
+            line = Get(map.lines, i);
 
-            if (   (PointsEqual(&a, p1) && PointsEqual(&b, p2))
-                || (PointsEqual(&a, p2) && PointsEqual(&b, p1)) )
+            if ( line->deleted )
             {
-                return line; // There already a line here, do nothing.
+                availableIndex = i;
+            }
+            else
+            {
+                SDL_Point a, b;
+                GetLinePoints(i, &a, &b);
+
+                if (   (PointsEqual(&a, p1) && PointsEqual(&b, p2))
+                    || (PointsEqual(&a, p2) && PointsEqual(&b, p1)) )
+                {
+                    return line; // There already a line here, do nothing.
+                }
             }
         }
     }
@@ -433,8 +442,8 @@ Line * NewLine(const Line * data, const SDL_Point * p1, const SDL_Point * p2)
     *line = *data;
     line->deleted = false;
 
-    line->v1 = NewVertex(p1);
-    line->v2 = NewVertex(p2);
+    line->v1 = NewVertex(p1, merge);
+    line->v2 = NewVertex(p2, merge);
 
     map.boundsDirty = true;
 
@@ -532,8 +541,8 @@ void SplitLine(Line * line, const SDL_Point * gridPoint)
     line->deleted = true;
     line->selected = DESELECTED;
 
-    NewLine(line, &p1, gridPoint);
-    NewLine(line, gridPoint, &p2);
+    NewLine(line, &p1, gridPoint, true);
+    NewLine(line, gridPoint, &p2, true);
     return;
 }
 
