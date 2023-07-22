@@ -13,5 +13,6 @@
 SectorDef GetBaseSectordef(void);
 void LoadSectorPanel(void);
 void OpenSectorPanel(void);
+void SectorPanelApplyChange(void);
 
 #endif /* sector_panel_h */

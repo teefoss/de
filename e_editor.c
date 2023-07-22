@@ -13,16 +13,17 @@
 #include "m_map.h"
 #include "e_geometry.h"
 #include "e_undo.h"
+#include "e_defaults.h"
+#include "e_sector.h"
 #include "text.h"
 #include "p_panel.h"
 #include "p_line_panel.h"
+#include "p_progress_panel.h"
+#include "p_sector_panel.h"
+#include "p_sector_special_panel.h"
 #include "p_thing_panel.h"
 #include "p_texture_panel.h"
-#include "p_progress_panel.h"
 #include "patch.h"
-#include "e_defaults.h"
-#include "e_sector.h"
-#include "p_sector_panel.h"
 #include "flat.h"
 #include "doombsp.h"
 #include "r_main.h"
@@ -1161,6 +1162,7 @@ void InitEditor(void)
     LoadThingDefinitions(); // Needs thing palette to be loaded first.
     LoadFlats(editor.iwad);
     LoadSectorPanel();
+    LoadSectorSpecialsPanel();
 
     keys = SDL_GetKeyboardState(NULL);
 
