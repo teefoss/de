@@ -217,22 +217,22 @@ void HandleDragObjectsEvent(const SDL_Event * event)
         // If dragging a vertex onto a line, split it.
 
         Array * selectedVertices = NewArray(0, sizeof(Vertex), 1);
-
-        // FIXME: Don't use possibly invalidated pointers!
         Vertex * v;
-        FOR_EACH(v, map.vertices)
+
+        for ( int i = 0; i < map.vertices->count; i++ )
         {
+            v = Get(map.vertices, i);
             if ( v->selected && !v->removed )
                 Push(selectedVertices, v);
         }
 
-        // FIXME: Don't use possibly invalidated pointers!
-        Line * l;
-        FOR_EACH(l, map.lines)
+        for ( int i = 0; i < map.lines->count; i++ )
         {
-            FOR_EACH(v, selectedVertices)
+            Line * l = Get(map.lines, i);
+
+            for ( int j = 0; j < selectedVertices->count; j++ )
             {
-                
+                v = Get(selectedVertices, j);
                 if ( VertexOnLine(v, l) )
                 {
                     SDL_Point vertexGridPoint = GridPoint(&v->origin);

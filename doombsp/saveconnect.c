@@ -463,10 +463,11 @@ void ProcessConnections (void)
     // make a list of only the solid lines
     //
     lines = NewArray(0, sizeof(bline), 1);
-	
-	wl = Get(linestore_i, 0);
+
 	for ( i=0 ; i<wlcount ; wl++,i++)
 	{
+        wl = Get(linestore_i, i);
+
 		if (wl->flags & ML_TWOSIDED)
 			continue;			// don't add two sided lines
 

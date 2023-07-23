@@ -379,9 +379,11 @@ void ProcessLineSideDefs (void)
     sdefstore_i = NewArray(0, sizeof(mapsidedef_t), 1);
 
 	count = linestore_i->count;
-	wl = Get(linestore_i, 0);
-	for (i=0 ; i<count ; i++, wl++)
+
+	for (i=0 ; i<count ; i++)
 	{
+        wl = Get(linestore_i, i);
+
 		ld.v1 = UniqueVertex(wl->p1.x, wl->p1.y);
 		ld.v2 = UniqueVertex(wl->p2.x, wl->p2.y);
 		ld.flags = wl->flags;

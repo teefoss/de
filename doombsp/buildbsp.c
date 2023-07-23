@@ -383,10 +383,11 @@ void MakeSegs(void)
     segstore_i = NewArray(0, sizeof(line_t), 1);
 	
 	int count = linestore_i->count;
-	Line * wl = Get(linestore_i, 0);
 
-	for ( int i = 0; i < count; i++, wl++ )
+	for ( int i = 0; i < count; i++ )
 	{
+        Line * wl = Get(linestore_i, i);
+
         line_t li;
 		li.p1 = wl->p1;
 		li.p2 = wl->p2;
