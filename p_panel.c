@@ -135,15 +135,11 @@ void FreePanel(const Panel * panel)
     SDL_DestroyTexture(panel->texture);
 }
 
-Panel LoadPanel(const char * path)
+void LoadPanelConsole(Panel * panel, const char * path)
 {
-    Panel panel = { 0 };
-
     FILE * file = fopen(path, "rb");
-    if ( file == NULL ) {
-        printf("Error: '%s' does not exist\n", path);
-        return panel;
-    }
+    if ( file == NULL )
+        Error("Error: '%s' does not exist\n", path);
 
     u8 width;
     u8 height;
@@ -152,7 +148,7 @@ Panel LoadPanel(const char * path)
 
     u16 * data = malloc(sizeof(*data) * width * height);
     fread(data, sizeof(*data), width * height, file);
-    panel.consoleData = data;
+    panel->consoleData = data;
 
     fclose(file);
 
@@ -163,10 +159,7 @@ Panel LoadPanel(const char * path)
                                               height * FONT_HEIGHT);
 
     if ( texture == NULL )
-    {
-        printf("Error: could not load line panel (%s)\n", SDL_GetError());
-        return panel;
-    }
+        Error("Error: could not load line panel (%s)\n", SDL_GetError());
 
     SDL_SetRenderTarget(renderer, texture);
 
@@ -177,19 +170,17 @@ Panel LoadPanel(const char * path)
             BufferCell cell = GetCell(data[y * width + x]);
             textColor = cell.foreground;
             backgroundColor = cell.background;
-            UpdatePanelConsole(&panel, x, y, cell.character, false);
+            UpdatePanelConsole(panel, x, y, cell.character, false);
         }
     }
 
     SDL_SetRenderTarget(renderer, NULL);
 
-    panel.width = width;
-    panel.height = height;
-    panel.location.w = width * FONT_WIDTH;
-    panel.location.h = height * FONT_HEIGHT;
-    panel.texture = texture;
-
-    return panel;
+    panel->width = width;
+    panel->height = height;
+    panel->location.w = width * FONT_WIDTH;
+    panel->location.h = height * FONT_HEIGHT;
+    panel->texture = texture;
 }
 
 SDL_Rect PanelRenderLocation(const Panel * panel)

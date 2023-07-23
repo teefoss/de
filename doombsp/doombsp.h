@@ -1,7 +1,7 @@
 #ifndef DOOMBSP_H
 #define DOOMBSP_H
 
-#include "cmdlib.h"
+#include "common.h"
 #include "m_line.h"
 #include "doomdata.h"
 #include "array.h"

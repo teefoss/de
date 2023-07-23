@@ -255,16 +255,15 @@ void RenderThingPalette(void)
 
 void LoadThingPanel(void)
 {
-    thingPanel = LoadPanel(PANEL_DATA_DIRECTORY"thing.panel");
-    thingPanel.location.x = PANEL_SCREEN_MARGIN;
-    thingPanel.location.y = PANEL_SCREEN_MARGIN;
+    LoadPanelConsole(&thingPanel, PANEL_DATA_DIRECTORY"thing.panel");
     thingPanel.processEvent = ProcessThingPanelEvent;
     thingPanel.render = RenderThingPanel;
     thingPanel.items = items;
     thingPanel.numItems = THP_COUNT;
     thingPanel.selection = 1;
 
-    thingCategoryPanel = LoadPanel(PANEL_DATA_DIRECTORY"thing_category.panel");
+    LoadPanelConsole(&thingCategoryPanel,
+              PANEL_DATA_DIRECTORY"thing_category.panel");
     thingCategoryPanel.location.y = 0;
     thingCategoryPanel.processEvent = ProcessThingCategoryPanelEvent;
     thingCategoryPanel.numItems = THING_CATEGORY_COUNT;
@@ -278,11 +277,10 @@ void LoadThingPanel(void)
         categoryItems[i].width = 20;
     }
 
-    thingPalette = LoadPanel(PANEL_DATA_DIRECTORY "thing_palette.panel");
-    thingPalette.location.y = 0;
+    LoadPanelConsole(&thingPalette,
+                     PANEL_DATA_DIRECTORY "thing_palette.panel");
     thingPalette.selection = -1; // No items in the thing palette
     thingPalette.render = RenderThingPalette;
-    thingPalette.selection = -1;
 
     thingPaletteRectOffsets.x = 16;
     thingPaletteRectOffsets.y = 32;

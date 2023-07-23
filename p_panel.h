@@ -90,7 +90,7 @@ extern Panel * rightPanels[MAX_PANELS];
 extern int topPanel;
 extern int mousePanel;
 
-Panel LoadPanel(const char * path);
+void LoadPanelConsole(Panel * panel, const char * path);
 Panel NewPanel(int x, int y, int width, int height, int numItems);
 void FreePanel(const Panel * panel);
 bool ProcessPanelEvent(Panel * panel, const SDL_Event * event);

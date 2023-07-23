@@ -6,7 +6,7 @@
 //
 
 #include "p_sector_panel.h"
-#include "p_sector_special_panel.h"
+#include "p_sector_specials_panel.h"
 #include "p_panel.h"
 
 #include "array.h"
@@ -541,9 +541,10 @@ void RenderFlatsPanel(void)
 
 void LoadSectorPanel(void)
 {
-    sectorPanel = LoadPanel(PANEL_DATA_DIRECTORY "sector.panel");
-    sectorPanel.location.x = PANEL_SCREEN_MARGIN;
-    sectorPanel.location.y = PANEL_SCREEN_MARGIN;
+    LoadPanelConsole(&sectorPanel, PANEL_DATA_DIRECTORY "sector.panel");
+
+//    sectorPanel.location.x = PANEL_SCREEN_MARGIN;
+//    sectorPanel.location.y = PANEL_SCREEN_MARGIN;
     sectorPanel.processEvent = ProcessSectorPanelEvent;
     sectorPanel.render = RenderSectorPanel;
     sectorPanel.items = items;
@@ -551,7 +552,7 @@ void LoadSectorPanel(void)
     sectorPanel.selection = 1;
     sectorPanel.textEditingCompletionHandler = TextInputCompletionHandler;
 
-    flatsPanel = LoadPanel(PANEL_DATA_DIRECTORY "flat_palette.panel");
+    LoadPanelConsole(&flatsPanel, PANEL_DATA_DIRECTORY "flat_palette.panel");
     flatsPanel.render = RenderFlatsPanel;
     flatsPanel.processEvent = ProcessFlatsPanelEvent;
 

@@ -276,7 +276,7 @@ static void DrawLines(void)
         if ( l->selected )
             color = DefaultColor(SELECTION);
         else if ( l->special > 0 )
-            color = DefaultColor(DEF_COLOR_LINE_TWO_SIDED);
+            color = DefaultColor(DEF_COLOR_LINE_SPECIAL);
         else if ( l->flags & ML_TWOSIDED )
             color = DefaultColor(DEF_COLOR_LINE_TWO_SIDED);
         else

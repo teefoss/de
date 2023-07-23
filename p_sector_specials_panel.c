@@ -1,11 +1,11 @@
 //
-//  p_sector_special_panel.c
+//  p_sector_specials_panel.c
 //  de
 //
 //  Created by Thomas Foster on 7/22/23.
 //
 
-#include "p_sector_special_panel.h"
+#include "p_sector_specials_panel.h"
 #include "p_panel.h"
 #include "p_sector_panel.h"
 #include "e_editor.h"
@@ -118,13 +118,15 @@ void LoadSectorSpecialsPanel(void)
 {
     if ( editor.game == GAME_DOOM1 )
     {
-        sectorSpecialsPanel = LoadPanel(PANEL_DATA_DIRECTORY "sector_specials.panel");
+        LoadPanelConsole(&sectorSpecialsPanel,
+                         PANEL_DATA_DIRECTORY "sector_specials.panel");
         sectorSpecialsPanel.numItems = SDL_arraysize(specialItems);
         sectorSpecialsPanel.items = specialItems;
     }
     else
     {
-        sectorSpecialsPanel = LoadPanel(PANEL_DATA_DIRECTORY "sector_specials2.panel");
+        LoadPanelConsole(&sectorSpecialsPanel,
+                  PANEL_DATA_DIRECTORY "sector_specials2.panel");
         sectorSpecialsPanel.numItems = SDL_arraysize(specialItems2);
         sectorSpecialsPanel.items = specialItems2;
     }
@@ -135,7 +137,5 @@ void LoadSectorSpecialsPanel(void)
         sectorSpecialsPanel.items[i].width = 23;
     }
 
-    sectorSpecialsPanel.location.x = sectorPanel.location.x + 2 * FONT_WIDTH;
-    sectorSpecialsPanel.location.y = sectorPanel.location.y + 18 * FONT_HEIGHT;
     sectorSpecialsPanel.processEvent = ProcessSpecialPanelEvent;
 }

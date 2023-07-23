@@ -25,6 +25,8 @@ int maxPaletteTopY; // Calculated during init.
 bool draggingScrollHandle;
 
 char * currentTexture;
+
+// Size of selected texture
 int currentWidth;
 int currentHeight;
 LineProperty texturePosition; // Whether we're selecting top/middle/bottom
@@ -89,23 +91,6 @@ static void ScrollToSelected(void)
     }
 }
 
-void OpenTexturePanel(char * texture, LineProperty property)
-{
-    currentTexture = texture;
-    texturePosition = property;
-
-    Texture * t = FindTexture(texture);
-    if ( t )
-    {
-        currentWidth = t->rect.w;
-        currentHeight = t->rect.h;
-    }
-
-    OpenPanel(&texturePanel, NULL);
-
-    ScrollToSelected();
-}
-
 static bool IsFilteredOut(Texture * texture)
 {
     if ( filter.width > 0 && texture->rect.w != filter.width )
@@ -154,6 +139,32 @@ static void UpdatePaletteTextureLocations(void)
     maxPaletteTopY = maxTextureY + PALETTE_ITEM_MARGIN - paletteRectRelative.h;
 //    printf("max palette top y: %d\n", maxPaletteTopY);
 }
+
+
+void OpenTexturePanel(char * texture, LineProperty property)
+{
+    currentTexture = texture;
+    texturePosition = property;
+
+    Texture * t = FindTexture(texture);
+    if ( t )
+    {
+        currentWidth = t->rect.w;
+        currentHeight = t->rect.h;
+    }
+
+    OpenPanel(&texturePanel, NULL);
+
+    ScrollToSelected();
+
+    filter.width = 0;
+    filter.height = 0;
+    filter.name[0] = '\0';
+
+    UpdatePaletteTextureLocations();
+}
+
+
 
 void SetTopYFromScrollBar(void)
 {
@@ -444,8 +455,7 @@ void RenderTexturePanel(void)
 
 void LoadTexturePanel(void)
 {
-    texturePanel = LoadPanel(PANEL_DATA_DIRECTORY"texture.panel");
-    texturePanel.location.y = 0;
+    LoadPanelConsole(&texturePanel, PANEL_DATA_DIRECTORY"texture.panel");
     texturePanel.render = RenderTexturePanel;
     texturePanel.processEvent = ProcessTexturePanelEvent;
     texturePanel.textEditingCompletionHandler = FinishTextEditing;

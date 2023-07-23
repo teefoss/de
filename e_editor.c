@@ -20,7 +20,7 @@
 #include "p_line_panel.h"
 #include "p_progress_panel.h"
 #include "p_sector_panel.h"
-#include "p_sector_special_panel.h"
+#include "p_sector_specials_panel.h"
 #include "p_thing_panel.h"
 #include "p_texture_panel.h"
 #include "patch.h"
@@ -1293,7 +1293,6 @@ void EditorFrame(float dt)
     {
         for ( int i = topPanel; i >= 0; i-- )
         {
-            //            if ( topPanel >= 0 )
             if ( ProcessPanelEvent(rightPanels[i], &event) )
                 goto nextEvent;
         }

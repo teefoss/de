@@ -88,8 +88,27 @@ static PanelItem specialCategoryItems[] =
 
 static PanelItem specialItems[NUM_SPECIAL_ROWS]; // Inited in LoadLinePanels()
 
-Panel linePanel;
-Panel lineSpecialCategoryPanel;
+static void TextEditingCompletionHandler(void);
+static bool ProcessLinePanelEvent(const SDL_Event * event);
+static void RenderLinePanel(void);
+
+static bool ProcessSpecialCategoriesPanelEvent(const SDL_Event * event);
+
+Panel linePanel = {
+    .items = linePanelItems,
+    .numItems = LP_NUM_ITEMS,
+    .selection = 1,
+    .textEditingCompletionHandler = TextEditingCompletionHandler,
+    .processEvent = ProcessLinePanelEvent,
+    .render = RenderLinePanel
+};
+
+Panel lineSpecialCategoryPanel = {
+    .items = specialCategoryItems,
+    .render = NULL,
+    .processEvent = ProcessSpecialCategoriesPanelEvent,
+};
+
 Panel lineSpecialPanel;
 
 // When a line is selected, it is copied here. When any property is changed,
@@ -543,7 +562,8 @@ static bool ProcessSpecialCategoriesPanelEvent(const SDL_Event * event)
     {
         if ( lineSpecialCategoryPanel.selection == 0 )
         {
-            ((Line *)linePanel.data)->special = 0;
+            baseLine.special = 0;
+            LinePanelApplyChange(LINE_SPECIAL);
             topPanel--;
         }
         else
@@ -569,7 +589,8 @@ static bool ProcessSpecialPanelEvent(const SDL_Event * event)
         i += firstSpecial;
         i += lineSpecialPanel.selection;
 
-        ((Line *)linePanel.data)->special = specials[i].id;
+        baseLine.special = specials[i].id;
+        LinePanelApplyChange(LINE_SPECIAL);
         topPanel -= 1;
         return true;
     }
@@ -772,27 +793,15 @@ static void RenderLinePanel(void)
 
 void LoadLinePanels(const char * dspPath)
 {
-    linePanel = LoadPanel(PANEL_DATA_DIRECTORY "line.panel");
-//    linePanel.location.x = PANEL_SCREEN_MARGIN;
-    linePanel.location.y = 0;
-    linePanel.items = linePanelItems;
-    linePanel.numItems = LP_NUM_ITEMS;
-    linePanel.render = RenderLinePanel;
-    linePanel.processEvent = ProcessLinePanelEvent;
-    linePanel.selection = 1;
-    linePanel.textEditingCompletionHandler = TextEditingCompletionHandler;
+    LoadPanelConsole(&linePanel, PANEL_DATA_DIRECTORY "line.panel");
 
     printf("Loading line specials from %s...\n", dspPath);
     LoadSpecials(dspPath);
 
-    lineSpecialCategoryPanel = LoadPanel(PANEL_DATA_DIRECTORY"special_categories.panel");
-    lineSpecialCategoryPanel.items = specialCategoryItems;
+    LoadPanelConsole(&lineSpecialCategoryPanel,
+                     PANEL_DATA_DIRECTORY"special_categories.panel");
+
     lineSpecialCategoryPanel.numItems = numCategories + 1;
-//    specialCategoriesPanel.parent = &linePanel;
-//    specialCategoriesPanel.location.x = 0;
-    lineSpecialCategoryPanel.location.y = 0;
-    lineSpecialCategoryPanel.render = NULL;
-    lineSpecialCategoryPanel.processEvent = ProcessSpecialCategoriesPanelEvent;
 
     if ( numCategories != NUM_SPECIAL_CATEGORIES )
         printf("!!! warning: numCategories != NUM_SPECIAL_CATEGORIES\n");

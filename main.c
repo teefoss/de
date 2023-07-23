@@ -26,17 +26,10 @@
 #include <stdbool.h>
 
 // Bugs List
-// FIXME: closing texture pal should clear filters.
-// FIXME: texture palette items location messed up.
 
 // TODO List
-// TODO: line.c
-// TODO: 'Remove Texture' button in texture palette
 // TODO: 'New Texture' button in texture palette
 // TODO: 'Edit Texture' button in texture palette
-// TODO: Display size in texture palette
-// TODO: Thing palette: "all", with filter?
-// TODO: LoadPanel -> LoadPanelConsole, move data init to global struct init.
 // TODO: selection hover in texture palette
 // TODO: player starts sprites: use correct palette colors
 // TODO: texture palette wide enough for 4 x 64 width textures, and resize vert.
