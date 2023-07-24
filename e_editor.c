@@ -1234,6 +1234,7 @@ void RenderEditor(void)
 
     SDL_RenderSetViewport(renderer, NULL);
 
+    // Gray background
     SDL_Rect statusBarRect = { 0, frame.h - FONT_HEIGHT, frame.w, FONT_HEIGHT };
     SDL_SetRenderDrawColor(renderer, 170, 170, 170, 255);
     SDL_RenderFillRect(renderer, &statusBarRect);
@@ -1243,7 +1244,7 @@ void RenderEditor(void)
     SDL_Point gridPoint = GridPoint(&worldMouse);
 
     const char * format = "Position: %5d, %5d   Grid: %2d";
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
+    SDL_SetRenderDrawColor(renderer, 170, 170, 170, 255); // TODO: Find a better way!
     int viewInfoW = RenderString(0, 0, format, gridPoint.x, -gridPoint.y, gridSize);
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     RenderString(frame.w - viewInfoW - 8, 0, format, gridPoint.x, -gridPoint.y, gridSize);

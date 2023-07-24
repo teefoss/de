@@ -176,7 +176,7 @@ int RunEditor(const char * wadPath, char * mapName)
 
     if ( !LoadMap(editor.pwad, mapName) )
         CreateMap(mapName);
-    InitWindow(1200, 1200); // TODO: save user's favorite window size and position.
+    InitWindow(800, 800); // TODO: save user's favorite window size and position.
 
     Capitalize(mapName);
     SDL_SetWindowTitle(window, mapName);
