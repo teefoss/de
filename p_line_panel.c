@@ -767,27 +767,7 @@ static void RenderLinePanel(void)
         SetPanelRenderColor(15);
         PANEL_RENDER_STRING(items[LP_TAG].x, items[LP_TAG].y, "%d", line->tag);
     }
-
-//    SDL_RenderSetViewport(renderer, NULL);
 }
-
-//static void RenderSpecialCategoriesPanel(void)
-//{
-//    RenderPanelTexture(&specialCategoriesPanel);
-//    RenderPanelSelection(&specialCategoriesPanel);
-//}
-
-//static void RenderSpecialsPanel(void)
-//{
-//    RenderPanelTexture(&specialsPanel);
-//
-//    SDL_Rect panelLocation = PanelRenderLocation(&specialsPanel);
-//    SDL_RenderSetViewport(renderer, &panelLocation);
-//
-//    RenderPanelSelection(&specialsPanel);
-//
-//    SDL_RenderSetViewport(renderer, NULL);
-//}
 
 #pragma mark -
 

@@ -7,6 +7,7 @@
 
 #include "p_sector_panel.h"
 #include "p_sector_specials_panel.h"
+#include "p_flats_panel.h"
 #include "p_panel.h"
 
 #include "array.h"
@@ -21,7 +22,6 @@
 #define LIGHT_METER_TICK 8 // Each meter tick is 8 light levels.
 
 Panel sectorPanel;
-Panel flatsPanel;
 
 SectorDef baseSectordef = {
     .floorHeight = 0,
@@ -29,16 +29,6 @@ SectorDef baseSectordef = {
     .lightLevel = 255,
 };
 
-static enum { SELECTING_FLOOR, SELECTING_CEILING } flatSelection;
-
-static SDL_Rect paletteRectRelative;
-
-static Scrollbar scrollBar = {
-    .type = SCROLLBAR_VERTICAL,
-    .location = 34,
-    .min = 2,
-    .max = 36
-};
 
 static int headroom;
 
@@ -119,36 +109,6 @@ void OpenSectorPanel(void)
     }
 }
 
-static void UpdateFlatLocations(void)
-{
-    Flat * flat = flats->data;
-
-    int x = PALETTE_ITEM_MARGIN;
-    int y = PALETTE_ITEM_MARGIN;
-    int maxY = 0;
-
-    for ( int i = 0; i < flats->count; i++, flat++ )
-    {
-        // TODO: if filtered out, continue
-
-        if ( x + 64 > paletteRectRelative.w - PALETTE_ITEM_MARGIN )
-        {
-            // Start a new row.
-            x = PALETTE_ITEM_MARGIN;
-            y += 64 + PALETTE_ITEM_MARGIN;
-        }
-
-        flat->rect.x = x;
-        flat->rect.y = y;
-
-        x += 64 + PALETTE_ITEM_MARGIN;
-
-        maxY = flat->rect.y + 64;
-    }
-
-    scrollBar.maxScrollPosition = maxY + PALETTE_ITEM_MARGIN - paletteRectRelative.h;
-}
-
 #pragma mark -
 
 static void TextInputCompletionHandler(void)
@@ -188,15 +148,11 @@ bool ProcessSectorPanelEvent(const SDL_Event * event)
         switch ( sectorPanel.selection )
         {
             case SP_FLOOR_FLAT:
-                flatSelection = SELECTING_FLOOR;
-                OpenPanel(&flatsPanel, NULL);
-                ScrollToSelected();
+                OpenFlatsPanel(SELECTING_FLOOR);
                 break;
 
             case SP_CEILING_FLAT:
-                flatSelection = SELECTING_CEILING;
-                OpenPanel(&flatsPanel, NULL);
-                ScrollToSelected();
+                OpenFlatsPanel(SELECTING_CEILING);
                 break;
 
             case SP_FLOOR_HEIGHT:
@@ -370,173 +326,6 @@ void RenderSectorPanel(void)
                         "%s", GetSpecialName(sector->special));
 }
 
-#pragma mark - FLATS PANEL
-
-static void ScrollToSelected(void)
-{
-    Flat * flat;
-    FOR_EACH(flat, flats)
-    {
-        if ( (flatSelection == SELECTING_FLOOR
-            && strcmp(flat->name, baseSectordef.floorFlat) == 0 )
-            ||
-            (flatSelection == SELECTING_CEILING
-                && strcmp(flat->name, baseSectordef.ceilingFlat) == 0) )
-        {
-            scrollBar.scrollPosition = flat->rect.y - PALETTE_ITEM_MARGIN;
-        }
-    }
-}
-
-static bool ProcessFlatsPanelEvent(const SDL_Event * event)
-{
-    switch ( event->type )
-    {
-        case SDL_MOUSEBUTTONDOWN:
-        {
-            if ( event->button.button == SDL_BUTTON_LEFT )
-            {
-                if ( GetPositionInScrollbar(&scrollBar,
-                                            flatsPanel.textLocation.x,
-                                            flatsPanel.textLocation.y) != -1 )
-                {
-                    scrollBar.isDragging = true;
-                    ScrollToPosition(&scrollBar, flatsPanel.textLocation.y);
-                    return true;
-                }
-
-                else if ( SDL_PointInRect(&flatsPanel.mouseLocation,
-                                          &paletteRectRelative) )
-                {
-                    SDL_Point loc = flatsPanel.mouseLocation;
-
-                    // Convert to palette space
-                    loc.x -= paletteRectRelative.x;
-                    loc.y -= paletteRectRelative.y;
-                    loc.y += scrollBar.scrollPosition;
-
-                    Flat * flat = flats->data;
-                    for ( int i = 0; i < flats->count; i++, flat++ )
-                    {
-                        // TODO: if is filtered out, continue
-
-                        if ( SDL_PointInRect(&loc, &flat->rect) )
-                        {
-                            if ( flatSelection == SELECTING_FLOOR )
-                            {
-                                GetFlatName(i, baseSectordef.floorFlat);
-                                SectorPanelApplyChange();
-                            }
-                            else if ( flatSelection == SELECTING_CEILING )
-                            {
-                                GetFlatName(i, baseSectordef.ceilingFlat);
-                                SectorPanelApplyChange();
-                            }
-
-                            if ( event->button.clicks == 2 )
-                                topPanel--;
-                        }
-                    }
-                }
-
-                return true;
-            }
-
-            return false;
-        }
-
-        case SDL_MOUSEMOTION:
-            if ( scrollBar.isDragging )
-            {
-                ScrollToPosition(&scrollBar, flatsPanel.textLocation.y);
-                return true;
-            }
-            return false;
-
-        case SDL_MOUSEBUTTONUP:
-            if ( event->button.button == SDL_BUTTON_LEFT
-                && scrollBar.isDragging )
-            {
-                scrollBar.isDragging = false;
-                return true;
-            }
-            return false;
-
-        case SDL_MOUSEWHEEL:
-            scrollBar.scrollPosition += event->wheel.y * 16;
-            CLAMP(scrollBar.scrollPosition, 0, scrollBar.maxScrollPosition);
-            return true;
-
-        default:
-            return false;
-    }
-}
-
-void RenderFlatsPanel(void)
-{
-    SDL_Rect flatPanelLocation = paletteRectRelative;
-    flatPanelLocation.x += flatsPanel.location.x;
-    flatPanelLocation.y += flatsPanel.location.y;
-
-    // Palette Outline
-
-    SDL_SetRenderDrawColor(renderer, 128, 128, 128, 255);
-    SDL_RenderDrawRect(renderer, &paletteRectRelative);
-
-    // Palette
-
-    SDL_RenderSetViewport(renderer, &flatPanelLocation);
-
-    int top = scrollBar.scrollPosition;
-    int bottom = top + paletteRectRelative.h;
-
-    // Render visible flats.
-    Flat * flat = flats->data;
-    for ( int i = 0; i < flats->count; i++, flat++ )
-    {
-        if (   flat->rect.y + flat->rect.h >= top
-            && flat->rect.y < bottom )
-        {
-            SDL_Rect dest = flat->rect;
-            dest.y -= scrollBar.scrollPosition;
-            SDL_RenderCopy(renderer, flat->texture, NULL, &dest);
-
-            if ( (flatSelection == SELECTING_FLOOR
-                && strncmp(baseSectordef.floorFlat, flat->name, 8) == 0)
-                ||
-                (flatSelection == SELECTING_CEILING
-                && strncmp(baseSectordef.ceilingFlat, flat->name, 8) == 0) )
-            {
-                // TODO: factor out (texture palette is the same)
-                SDL_Rect box = flat->rect;
-                box.y -= scrollBar.scrollPosition;
-
-                int margin = SELECTION_BOX_MARGIN;
-                box.x -= margin;
-                box.y -= margin;
-                box.w += margin * 2;
-                box.h += margin * 2;
-
-                // TODO: this should be a default
-                SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-                DrawRect(&(SDL_FRect){ box.x, box.y, box.w, box.h },
-                         SELECTION_BOX_THICKNESS);
-            }
-        }
-    }
-
-    SDL_RenderSetViewport(renderer, &flatsPanel.location);
-
-    // Scrollbar
-
-    int x = scrollBar.location * FONT_WIDTH;
-    float percent = (float)scrollBar.scrollPosition / scrollBar.maxScrollPosition;
-    int barHeight = (scrollBar.max - scrollBar.min) * FONT_HEIGHT;
-    int y = scrollBar.min * FONT_HEIGHT + barHeight * percent;
-    SetPanelRenderColor(15);
-    RenderChar(x, y, 8);
-}
-
 #pragma mark -
 
 void LoadSectorPanel(void)
@@ -551,16 +340,4 @@ void LoadSectorPanel(void)
     sectorPanel.numItems = SP_NUM_ITEMS;
     sectorPanel.selection = 1;
     sectorPanel.textEditingCompletionHandler = TextInputCompletionHandler;
-
-    LoadPanelConsole(&flatsPanel, PANEL_DATA_DIRECTORY "flat_palette.panel");
-    flatsPanel.render = RenderFlatsPanel;
-    flatsPanel.processEvent = ProcessFlatsPanelEvent;
-
-    // The palette rect relative to the flat panel.
-    paletteRectRelative.x = 2 * FONT_WIDTH;
-    paletteRectRelative.y = 1 * FONT_HEIGHT;
-    paletteRectRelative.w = 32 * FONT_WIDTH;
-    paletteRectRelative.h = FONT_HEIGHT * 37;
-
-    UpdateFlatLocations();
 }

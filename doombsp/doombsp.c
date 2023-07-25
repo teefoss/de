@@ -12,6 +12,11 @@ void DoomBSP(void)
     draw = false; // TODO: use a key modifier to show the build process window.
     bool replace;
 
+    if ( CheckMap() > 0 ) {
+        printf("Cancelled build due to map errors!\n");
+        return;
+    }
+
     int index = GetIndexOfLumpNamed(editor.pwad, map.label);
     if ( index == -1 )
     {

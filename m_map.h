@@ -39,7 +39,8 @@ void CreateMap(const char * label);
 bool LoadMap(const Wad * wad, const char * lumpLabel);
 
 /// Run a diagnostic to check for problems.
-void CheckMap(void);
+/// - returns: The number of problems found.
+int CheckMap(void);
 
 /// Load map from .dwd file.
 void LoadDWD(const char * mapName);

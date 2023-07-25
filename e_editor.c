@@ -21,6 +21,7 @@
 #include "p_progress_panel.h"
 #include "p_sector_panel.h"
 #include "p_sector_specials_panel.h"
+#include "p_flats_panel.h"
 #include "p_thing_panel.h"
 #include "p_texture_panel.h"
 #include "patch.h"
@@ -1163,6 +1164,7 @@ void InitEditor(void)
     LoadFlats(editor.iwad);
     LoadSectorPanel();
     LoadSectorSpecialsPanel();
+    LoadFlatsPanel();
 
     keys = SDL_GetKeyboardState(NULL);
 

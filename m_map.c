@@ -331,7 +331,7 @@ bool LoadMap(const Wad * wad, const char * lumpLabel)
     return true;
 }
 
-void CheckMap(void)
+int CheckMap(void)
 {
     printf("\nRunning map check...\n");
     int numProblems = 0;
@@ -362,10 +362,35 @@ void CheckMap(void)
 
     free(overlappingVertices);
 
+    if ( map.things->count == 0 )
+    {
+        numProblems++;
+        printf("Map has no things!\n");
+    }
+    else
+    {
+        bool hasPlayerOneStart = false;
+
+        for ( int i = 0; i < map.things->count; i++ )
+        {
+            Thing * thing = Get(map.things, i);
+            if ( thing->type == 1 )
+                hasPlayerOneStart = true;
+        }
+
+        if ( !hasPlayerOneStart )
+        {
+            printf("Map has no Player 1 start!\n");
+            numProblems++;
+        }
+    }
+
     if ( numProblems == 0 )
         printf("... no problems!\n");
     else
         printf("... check complete: found %d problems.\n", numProblems);
+
+    return numProblems;
 }
 
 #pragma mark -

@@ -99,7 +99,8 @@ static bool IsFilteredOut(Texture * texture)
     if ( filter.height > 0 && texture->rect.h != filter.height )
         return true;
 
-    if ( filter.name[0] != '\0' && strcasestr(texture->name, filter.name) == NULL )
+    if ( filter.name[0] != '\0'
+        && strcasestr(texture->name, filter.name) == NULL )
         return true;
 
     return false;

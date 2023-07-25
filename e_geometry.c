@@ -127,10 +127,10 @@ bool ClipLineInRect(const SDL_Point * p1, const SDL_Point * p2, // The line.
     // now before s#!t gets complicated.
     if ( !p1inside && !p2inside )
     {
-        if (   (p1->y < minY && p2->y < minY)
-            || (p1->y > maxY && p2->y > maxX)
-            || (p1->x < minX && p2->x < minX)
-            || (p1->x > maxX && p2->x > maxX) )
+        if (   (p1->y <= minY && p2->y <= minY)
+            || (p1->y >= maxY && p2->y >= maxY)
+            || (p1->x <= minX && p2->x <= minX)
+            || (p1->x >= maxX && p2->x >= maxX) )
         {
             // The line cannot cross the visible rect at all.
             return false;
