@@ -1172,7 +1172,7 @@ void InitEditor(void)
     visibleRectTarget.y = visibleRect.y;
 
     // TODO: add some test that VSYNC is working, otherwise limit framerate.
-    // FIXME: get smooth scrolling and non-laggy mouse movement
+    // FIXME: get smooth scrolling and non-laggy mouse positing updating.
 
     // FIXME: Get rid of this for now.
 //    SDL_SetEventFilter(WindowResizeEventFilter, NULL);
@@ -1277,7 +1277,7 @@ void RenderEditor(void)
     //
 
     for ( int i = 0; i <= topPanel; i++ )
-        RenderPanel(rightPanels[i]);
+        RenderPanel(panelStack[i]);
 
     SDL_RenderPresent(renderer);
 }
@@ -1296,7 +1296,7 @@ void EditorFrame(float dt)
     {
         for ( int i = topPanel; i >= 0; i-- )
         {
-            if ( ProcessPanelEvent(rightPanels[i], &event) )
+            if ( ProcessPanelEvent(panelStack[i], &event) )
                 goto nextEvent;
         }
 

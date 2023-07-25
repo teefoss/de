@@ -86,7 +86,7 @@ typedef struct panel
     void (* textEditingCompletionHandler)(void);
 } Panel;
 
-extern Panel * rightPanels[MAX_PANELS];
+extern Panel * panelStack[MAX_PANELS];
 extern int topPanel;
 extern int mousePanel;
 

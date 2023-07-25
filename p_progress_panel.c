@@ -18,7 +18,7 @@ static float progress;
 
 void OpenProgressPanel(const char * _title)
 {
-    rightPanels[++topPanel] = &progressPanel;
+    panelStack[++topPanel] = &progressPanel;
     progress = 0.0f;
     strncpy(title, _title, sizeof(title));
     info[0] = '\0';

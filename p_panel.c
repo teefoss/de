@@ -13,12 +13,9 @@
 
 #include <string.h>
 
-Panel * rightPanels[MAX_PANELS];
+Panel * panelStack[MAX_PANELS];
 int topPanel = -1;
 int mousePanel = -1; // Panel mouse is currently over.
-
-float rightTrayX;
-bool rightTrayIsOpen;
 
 int textColor = 15;
 int backgroundColor = 1;
@@ -48,7 +45,7 @@ void SetPanelRenderColor(int index)
 
 void OpenPanel(Panel * panel, void * data)
 {
-    rightPanels[++topPanel] = panel;
+    panelStack[++topPanel] = panel;
 
     // Place it in the middle of the editor window.
     SDL_Rect windowFrame = GetWindowFrame();
@@ -56,11 +53,6 @@ void OpenPanel(Panel * panel, void * data)
     panel->location.y = (windowFrame.h - panel->location.h) / 2;
 
     panel->data = data;
-}
-
-void ClosePanel(void)
-{
-    rightTrayIsOpen = false;
 }
 
 void UpdatePanelConsole(const Panel * panel, int x, int y, u8 ch, bool setTarget)
@@ -426,7 +418,7 @@ bool ProcessPanelEvent(Panel * panel, const SDL_Event * event)
 int GetPanelStackPosition(const Panel * panel)
 {
     for ( int i = 0; i <= topPanel; i++ )
-        if ( rightPanels[i] == panel )
+        if ( panelStack[i] == panel )
             return i;
 
     return -1;
@@ -449,7 +441,7 @@ void UpdatePanelMouse(const SDL_Point * windowMouse)
 {
     for ( int panelIndex = topPanel; panelIndex >= 0; panelIndex-- )
     {
-        Panel * panel = rightPanels[panelIndex];
+        Panel * panel = panelStack[panelIndex];
         SDL_Rect rect = PanelRenderLocation(panel);
         panel->selection = -1;
         mousePanel = -1;
