@@ -8,6 +8,7 @@
 #include "p_texture_panel.h"
 
 #include "patch.h"
+#include "p_stack.h"
 #include "p_line_panel.h"
 #include "text.h"
 
@@ -208,7 +209,7 @@ void DoTexturePanelAction(void)
 
         case TP_REMOVE:
             strcpy(currentTexture, "-");
-            topPanel--;
+            CloseTopPanel();
             UpdateLinePanelContent();
             LinePanelApplyChange(texturePosition);
             break;
@@ -306,7 +307,7 @@ bool ProcessTexturePanelEvent(const SDL_Event * event)
                             UpdateLinePanelContent();
 
                             if ( event->button.clicks == 2 )
-                                topPanel--;
+                                CloseTopPanel();
                         }
                     }
                 }

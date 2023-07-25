@@ -9,6 +9,7 @@
 
 #include "p_sector_panel.h"
 #include "p_panel.h"
+#include "p_stack.h"
 #include "m_line.h"
 #include "flat.h"
 
@@ -190,7 +191,7 @@ static bool ProcessFlatsPanelEvent(const SDL_Event * event)
                             }
 
                             if ( event->button.clicks == 2 )
-                                topPanel--;
+                                CloseTopPanel();
                         }
                     }
                 }

@@ -17,6 +17,7 @@
 #include "e_sector.h"
 #include "text.h"
 #include "p_panel.h"
+#include "p_stack.h"
 #include "p_line_panel.h"
 #include "p_progress_panel.h"
 #include "p_sector_panel.h"
@@ -120,7 +121,7 @@ void DeselectAllObjects(void)
         things[i].selected = false;
     }
 
-    topPanel = -1; // Close all panels.
+    CloseAllPanels();
 }
 
 #pragma mark - AUTOSCROLL
@@ -1272,12 +1273,7 @@ void RenderEditor(void)
 
     SDL_RenderSetViewport(renderer, NULL);
 
-    //
-    // Panels
-    //
-
-    for ( int i = 0; i <= topPanel; i++ )
-        RenderPanel(panelStack[i]);
+    RenderPanelStack();
 
     SDL_RenderPresent(renderer);
 }
@@ -1294,17 +1290,10 @@ void EditorFrame(float dt)
     SDL_Event event;
     while ( SDL_PollEvent(&event) )
     {
-        for ( int i = topPanel; i >= 0; i-- )
-        {
-            if ( ProcessPanelEvent(panelStack[i], &event) )
-                goto nextEvent;
-        }
-
-        StateHandleEvent(&event);
+        if ( !PanelStackProcessEvent(&event) )
+            StateHandleEvent(&event);
 
         // TODO: handle quit separately here.
-    nextEvent:
-        ;
     }
 
     UpdatePanelMouse(&windowMouse);

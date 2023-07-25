@@ -6,6 +6,7 @@
 //
 
 #include "p_thing_panel.h"
+#include "p_stack.h"
 #include "doomdata.h"
 #include "patch.h"
 #include "m_map.h"

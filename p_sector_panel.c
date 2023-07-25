@@ -9,6 +9,7 @@
 #include "p_sector_specials_panel.h"
 #include "p_flats_panel.h"
 #include "p_panel.h"
+#include "p_stack.h"
 
 #include "array.h"
 #include "m_map.h"

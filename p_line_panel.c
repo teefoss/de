@@ -6,6 +6,7 @@
 //
 
 #include "p_line_panel.h"
+#include "p_stack.h"
 #include "m_map.h"
 #include "text.h"
 #include "e_map_view.h"
@@ -562,16 +563,14 @@ static bool ProcessSpecialCategoriesPanelEvent(const SDL_Event * event)
     {
         if ( lineSpecialCategoryPanel.selection == 0 )
         {
+            // Clicked on 'None'
             baseLine.special = 0;
             LinePanelApplyChange(LINE_SPECIAL);
-            topPanel--;
+            CloseTopPanel();
         }
         else
         {
-            // If the special panel is already open, close it first.
-            if ( GetPanelStackPosition(&lineSpecialPanel) < topPanel )
-                topPanel--;
-
+            // Clicked on a line special category.
             OpenSpecialsPanel();
         }
 
@@ -591,7 +590,7 @@ static bool ProcessSpecialPanelEvent(const SDL_Event * event)
 
         baseLine.special = specials[i].id;
         LinePanelApplyChange(LINE_SPECIAL);
-        topPanel -= 1;
+        CloseTopPanel();
         return true;
     }
 

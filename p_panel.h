@@ -86,9 +86,6 @@ typedef struct panel
     void (* textEditingCompletionHandler)(void);
 } Panel;
 
-extern Panel * panelStack[MAX_PANELS];
-extern int topPanel;
-extern int mousePanel;
 
 void LoadPanelConsole(Panel * panel, const char * path);
 Panel NewPanel(int x, int y, int width, int height, int numItems);
@@ -120,10 +117,6 @@ bool ShouldRenderInactiveTextField(const Panel * panel, int itemIndex);
 
 /// Caller should fill panel->text prior to calling.
 void StartTextEditing(Panel * panel, int itemIndex, void * value, int type);
-
-void OpenPanel(Panel * panel, void * data);
-void ClosePanel(void);
-int GetPanelStackPosition(const Panel * panel);
 
 bool IsMouseActionEvent(const SDL_Event * event, const Panel * panel);
 bool IsActionEvent(const SDL_Event * event, const Panel * panel);

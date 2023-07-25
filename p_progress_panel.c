@@ -7,6 +7,7 @@
 
 #include "p_progress_panel.h"
 #include "p_panel.h"
+#include "p_stack.h"
 
 #define MAX_STR 44
 
@@ -18,7 +19,7 @@ static float progress;
 
 void OpenProgressPanel(const char * _title)
 {
-    panelStack[++topPanel] = &progressPanel;
+    OpenPanel(&progressPanel, NULL);
     progress = 0.0f;
     strncpy(title, _title, sizeof(title));
     info[0] = '\0';
@@ -62,9 +63,4 @@ void LoadProgressPanel(void)
 {
     LoadPanelConsole(&progressPanel, PANEL_DATA_DIRECTORY"progress.panel");
     progressPanel.render = RenderProgressPanel;
-}
-
-void CloseProgressPanel(void)
-{
-    --topPanel;
 }

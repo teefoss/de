@@ -7,6 +7,7 @@
 
 #include "p_sector_specials_panel.h"
 #include "p_panel.h"
+#include "p_stack.h"
 #include "p_sector_panel.h"
 #include "e_editor.h"
 
@@ -106,7 +107,7 @@ static bool ProcessSpecialPanelEvent(const SDL_Event * event)
         int id = sectorSpecials[sectorSpecialsPanel.selection].id;
         baseSectordef.special = id;
         SectorPanelApplyChange();
-        topPanel--;
+        CloseTopPanel();
         return true;
     }
 
