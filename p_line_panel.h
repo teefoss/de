@@ -12,13 +12,6 @@
 #include "m_map.h"
 #include <stdbool.h>
 
-typedef struct
-{
-    int id;
-    char name[80];
-    char * shortName;
-} LineSpecial;
-
 extern Panel linePanel;
 extern Line baseLine;
 
