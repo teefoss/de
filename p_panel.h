@@ -71,8 +71,6 @@ typedef struct panel
     SDL_Texture * texture;
     u16 * consoleData;
 
-    void * data; // Reference to data used by panel. E.g. map line, thing.
-
     // For the panel's text editing state.
     bool isTextEditing;
     enum { VALUE_INT, VALUE_STRING } valueType;
@@ -94,17 +92,14 @@ bool ProcessPanelEvent(Panel * panel, const SDL_Event * event);
 void RenderPanelTexture(const Panel * panel);
 void RenderPanel(const Panel * panel);
 
-//
-// Set foreground and background panel palette colors.
-//
-void SetTextColor(int index);
-void SetBackgroundColor(int index);
+
 void SetPanelColor(int text, int background);
 
 /// Update the panel's console buffer at `x`, `y`.
-void PanelPrint(const Panel * panel, int x, int y, const char * string);
+void ConsolePrint(const Panel * panel, int x, int y, const char * string);
 
-void UpdatePanelConsole(const Panel * panel, int x, int y, u8 ch, bool setTarget);
+/// Write `ch` to panel console at `x`, `y` and update texture.
+void UpdatePanelConsole(const Panel * panel, int x, int y, u8 ch);
 
 /// Render a gray bar on the panel's current selection.
 void RenderPanelSelection(const Panel * panel);
@@ -119,7 +114,7 @@ bool ShouldRenderInactiveTextField(const Panel * panel, int itemIndex);
 void StartTextEditing(Panel * panel, int itemIndex, void * value, int type);
 
 bool IsMouseActionEvent(const SDL_Event * event, const Panel * panel);
-bool IsActionEvent(const SDL_Event * event, const Panel * panel);
+bool DidClickOnItem(const SDL_Event * event, const Panel * panel);
 void UpdatePanelMouse(const SDL_Point * windowMouse);
 
 #pragma mark - SCROLLBAR
@@ -129,7 +124,7 @@ typedef struct {
     int location; // The row or col of the scroll bar.
 
     // The span of the scroll bar. (x if horizontal, y if vertical)
-    int max;
+    int max; // in text coordinates
     int min;
 
     bool isDragging;
@@ -142,5 +137,6 @@ typedef struct {
 /// - returns: the position or -1 if x, y is outside the scrollbar.
 int GetPositionInScrollbar(const Scrollbar * scrollbar, int x, int y);
 void ScrollToPosition(Scrollbar * scrollbar, int position);
+int GetScrollbarHandlePosition(Scrollbar * scrollbar, int textPosition);
 
 #endif /* panel_h */

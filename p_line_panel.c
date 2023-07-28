@@ -174,7 +174,7 @@ void OpenLinePanel(Line * line)
 
     baseLine = *line;
 
-    OpenPanel(&linePanel, NULL);
+    OpenPanel(&linePanel);
     UpdateLinePanelContent();
 }
 
@@ -248,6 +248,7 @@ void LinePanelApplyChange(LineProperty property)
 
 #pragma mark -
 
+/// Load specials from .dsp file.
 static void LoadSpecials(const char * path)
 {
 //    const char * path = "doom_dsp/linespecials.dsp";
@@ -336,38 +337,6 @@ LineSpecial * FindSpecial(int id)
             return &specials[i];
     
     return NULL;
-}
-
-void UpdateVisibleSpecials(void)
-{
-    SpecialCategory * cat = &categories[selectedCategory];
-
-    int last = cat->startIndex + cat->count - 1;
-
-    int specialIndex = cat->startIndex + firstSpecial;
-
-    for ( int i = 0; i < NUM_SPECIAL_ROWS; i++ )
-    {
-        PanelItem * item = &specialItems[i];
-
-        for ( int x = item->x - 2; x < item->x + item->width; x++ )
-            PanelPrint(&lineSpecialPanel, x, item->y, " "); // Clear line.
-
-        if ( specialIndex <= last )
-        {
-            if ( ((Line *)linePanel.data)->special == specials[specialIndex].id )
-                UpdatePanelConsole(&lineSpecialPanel,
-                            specialItems[i].x - 2,
-                            specialItems[i].y, 7, true);
-
-            PanelPrint(&lineSpecialPanel,
-                       specialItems[i].x,
-                       specialItems[i].y,
-                       specials[specialIndex].shortName);
-
-            specialIndex++;
-        }
-    }
 }
 
 int SuggestTag(void)
@@ -466,7 +435,7 @@ static void LinePanelAction(int selection)
             }
             break;
         case LP_SPECIAL:
-            OpenPanel(&lineSpecialCategoryPanel, NULL);
+            OpenPanel(&lineSpecialCategoryPanel);
             break;
         case LP_TAG:
             StartTextEditing(&linePanel, LP_TAG, &baseLine.tag, VALUE_INT);
@@ -532,7 +501,7 @@ void OpenSpecialsPanel(void)
     {
         for ( int x = 0; x < lineSpecialPanel.width; x++ )
         {
-            PanelPrint(&lineSpecialPanel, x, y, " ");
+            ConsolePrint(&lineSpecialPanel, x, y, " ");
         }
     }
 
@@ -544,22 +513,21 @@ void OpenSpecialsPanel(void)
         item->width = cat->maxShortNameLength;
 
         SetPanelColor(15, 1);
-        PanelPrint(&lineSpecialPanel,
+        ConsolePrint(&lineSpecialPanel,
                    item->x,
                    item->y,
                    specials[i + cat->startIndex].shortName);
     }
 
-//    specialsPanel.render = RenderSpecialsPanel;
+
     lineSpecialPanel.processEvent = ProcessSpecialPanelEvent;
 
-//    rightPanels[++topPanel] = &lineSpecialPanel;
-    OpenPanel(&lineSpecialPanel, NULL);
+    OpenPanel(&lineSpecialPanel);
 }
 
 static bool ProcessSpecialCategoriesPanelEvent(const SDL_Event * event)
 {
-    if ( IsActionEvent(event, &lineSpecialCategoryPanel) )
+    if ( DidClickOnItem(event, &lineSpecialCategoryPanel) )
     {
         if ( lineSpecialCategoryPanel.selection == 0 )
         {
@@ -582,7 +550,7 @@ static bool ProcessSpecialCategoriesPanelEvent(const SDL_Event * event)
 
 static bool ProcessSpecialPanelEvent(const SDL_Event * event)
 {
-    if ( IsActionEvent(event, &lineSpecialPanel) )
+    if ( DidClickOnItem(event, &lineSpecialPanel) )
     {
         int i = categories[selectedCategory].startIndex;
         i += firstSpecial;
@@ -599,14 +567,14 @@ static bool ProcessSpecialPanelEvent(const SDL_Event * event)
 
 void ItemPrint(const Panel * panel, int item, const char * string)
 {
-    PanelPrint(panel, panel->items[item].x, panel->items[item].y, string);
+    ConsolePrint(panel, panel->items[item].x, panel->items[item].y, string);
 
     // Clear remainder of item's space.
     int start = panel->items[item].x + (int)strlen(string);
     int end = panel->items[item].x + panel->items[item].width - 1;
 
     for ( int x = start; x <= end; x++ )
-        PanelPrint(panel, x, panel->items[item].y, " ");
+        ConsolePrint(panel, x, panel->items[item].y, " ");
 }
 
 void UpdateLinePanelContent(void)
@@ -637,8 +605,8 @@ void UpdateLinePanelContent(void)
         SetPanelColor(12, 1);
     }
 
-    PanelPrint(&linePanel, 2, 1, "                   ");
-    PanelPrint(&linePanel, 2, 1, title);
+    ConsolePrint(&linePanel, 2, 1, "                   ");
+    ConsolePrint(&linePanel, 2, 1, title);
 
     SetPanelColor(11, 1);
 
@@ -655,14 +623,14 @@ void UpdateLinePanelContent(void)
         if ( baseLine.flags & ML_TWOSIDED )
         {
             SetPanelColor(11, 1);
-            PanelPrint(&linePanel, x - 4, y, "( )");
+            ConsolePrint(&linePanel, x - 4, y, "( )");
             SetPanelColor(15, 1);
-            PanelPrint(&linePanel, x, y, "Back");
+            ConsolePrint(&linePanel, x, y, "Back");
         }
         else
         {
             SetPanelColor(8, 1);
-            PanelPrint(&linePanel, x - 4, y, "( ) Back");
+            ConsolePrint(&linePanel, x - 4, y, "( ) Back");
         }
     }
 }

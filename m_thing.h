@@ -24,6 +24,19 @@ typedef enum
     THING_CATEGORY_COUNT,
 } ThingCategory;
 
+typedef enum
+{
+    // Options are placed first so they mirror the actual MTF_ flags.
+    THING_PROPERTY_EASY,
+    THING_PROPERTY_MEDIUM,
+    THING_PROPERTY_HARD,
+    THING_PROPERTY_AMBUSH,
+    THING_PROPERTY_NETWORK,
+
+    THING_PROPERTY_ANGLE,
+    THING_PROPERTY_TYPE,
+} ThingProperty;
+
 // Thing Definition
 typedef struct
 {
@@ -49,7 +62,7 @@ typedef struct
 {
     int startIndex; // in thingDefs
     int count;
-    int paletteScale;
+    float paletteScale;
 } ThingCategoryInfo;
 
 extern ThingDef * thingDefs;

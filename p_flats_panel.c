@@ -105,25 +105,52 @@ static void UpdateFlatLocations(void)
 void OpenFlatsPanel(FlatSelection sel)
 {
     selection = sel;
-    OpenPanel(&flatsPanel, NULL);
+    OpenPanel(&flatsPanel);
     ScrollToSelected();
     filter[0] = '\0';
 
     UpdateFlatLocations();
 }
 
+static void StartFilterTextEditing(void)
+{
+    StartTextEditing(&flatsPanel,
+                     flatsPanel.selection,
+                     filter,
+                     VALUE_STRING);
+}
+
+static void DoFlatsPanelAction(void)
+{
+    switch ( flatsPanel.selection )
+    {
+        case FP_FILTER:
+            StartFilterTextEditing();
+            break;
+        case FP_NAME:
+            ScrollToSelected();
+            break;
+
+        default:
+            break;
+    }
+}
+
 static bool ProcessFlatsPanelEvent(const SDL_Event * event)
 {
+    if ( DidClickOnItem(event, &flatsPanel) )
+    {
+        DoFlatsPanelAction();
+        return true;
+    }
+
     switch ( event->type )
     {
         case SDL_KEYDOWN:
             switch ( event->key.keysym.sym )
             {
                 case SDLK_n:
-                    StartTextEditing(&flatsPanel,
-                                     FP_FILTER,
-                                     filter,
-                                     VALUE_STRING);
+                    StartFilterTextEditing();
                     return true;
                 case SDLK_BACKSPACE:
                     filter[0] = '\0';
@@ -138,30 +165,16 @@ static bool ProcessFlatsPanelEvent(const SDL_Event * event)
         {
             if ( event->button.button == SDL_BUTTON_LEFT )
             {
-                if ( flatsPanel.selection == FP_NAME )
-                {
-                    ScrollToSelected();
-                    return true;
-                }
-
-                if ( flatsPanel.selection == FP_FILTER )
-                {
-                    StartTextEditing(&flatsPanel,
-                                     flatsPanel.selection,
-                                     filter,
-                                     VALUE_STRING);
-                    return true;
-                }
-
                 if ( GetPositionInScrollbar(&scrollBar,
-                                                 flatsPanel.textLocation.x,
-                                                 flatsPanel.textLocation.y) != -1 )
+                                            flatsPanel.textLocation.x,
+                                            flatsPanel.textLocation.y) != -1 )
                 {
                     scrollBar.isDragging = true;
                     ScrollToPosition(&scrollBar, flatsPanel.textLocation.y);
                     return true;
                 }
 
+                // Clicked on a flat in the palette?
                 if ( SDL_PointInRect(&flatsPanel.mouseLocation,
                                           &paletteRectRelative) )
                 {
@@ -176,6 +189,8 @@ static bool ProcessFlatsPanelEvent(const SDL_Event * event)
                     for ( int i = 0; i < flats->count; i++, flat++ )
                     {
                         // TODO: if is filtered out, continue
+                        if ( IsFilteredOut(flat->name) )
+                            continue;
 
                         if ( SDL_PointInRect(&loc, &flat->rect) )
                         {

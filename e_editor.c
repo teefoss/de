@@ -51,6 +51,14 @@ typedef enum {
     SELECTION_SECTOR
 } SelectionType;
 
+typedef enum {
+    SCROLLING_NONE  = 0,
+    SCROLLING_UP    = 1,
+    SCROLLING_DOWN  = 2,
+    SCROLLING_LEFT  = 4,
+    SCROLLING_RIGHT = 8
+} ScrollDirection;
+
 Editor editor;
 
 static bool running = true;
@@ -64,6 +72,7 @@ static SDL_Keymod mods;
 static SDL_Point worldMouse;
 static SDL_Point windowMouse;
 u32 mouseButtons;
+static ScrollDirection scrollDirection;
 
 static SDL_Point dragStart;
 static bool didDragObjects;
@@ -608,13 +617,9 @@ SelectionType SelectObject(bool openPanel)
             {
                 thing->selected = true;
                 if ( openPanel )
-                {
-                    OpenPanel(&thingPanel, thing);
-                }
+                    OpenThingPanel(thing);
                 else
-                {
                     StartDraggingObjects();
-                }
             }
 
             return SELECTION_THING;
@@ -849,9 +854,23 @@ void ProcessEditorEvent(const SDL_Event * event)
                     break;
                 }
 
+                case SDLK_w:
+                    scrollDirection |= SCROLLING_UP;
+                    break;
+
+                case SDLK_a:
+                    scrollDirection |= SCROLLING_LEFT;
+                    break;
+
+                case SDLK_d:
+                    scrollDirection |= SCROLLING_RIGHT;
+                    break;
+
                 case SDLK_s:
                     if ( COMMAND )
                         DoomBSP();
+                    else
+                        scrollDirection |= SCROLLING_DOWN;
                     break;
 
                 case SDLK_f:
@@ -933,6 +952,26 @@ void ProcessEditorEvent(const SDL_Event * event)
             }
             break;
 
+        case SDL_KEYUP:
+            switch ( event->key.keysym.sym )
+            {
+                case SDLK_w:
+                    scrollDirection &= ~SCROLLING_UP;
+                    break;
+                case SDLK_a:
+                    scrollDirection &= ~SCROLLING_LEFT;
+                    break;
+                case SDLK_s:
+                    scrollDirection &= ~SCROLLING_DOWN;
+                    break;
+                case SDLK_d:
+                    scrollDirection &= ~SCROLLING_RIGHT;
+                    break;
+                default:
+                    break;
+            }
+            break;
+
         case SDL_MOUSEBUTTONDOWN:
             switch ( event->button.button )
             {
@@ -1005,15 +1044,11 @@ void ProcessEditorEvent(const SDL_Event * event)
     }
 }
 
-// TODO: Move this to PollEvent, so scrolling doesn't happen on, e.g., CTRL-S
 void ManualScrollView(float dt)
 {
     static float scrollSpeed = 0.0f;
 
-    if (   keys[SDL_SCANCODE_W]
-        || keys[SDL_SCANCODE_A]
-        || keys[SDL_SCANCODE_S]
-        || keys[SDL_SCANCODE_D] )
+    if ( scrollDirection )
     {
         scrollSpeed += (60.0f / scale) * dt;
         float max = (600.0f / scale) * dt;
@@ -1039,7 +1074,8 @@ void ManualScrollView(float dt)
 
     // UP
 
-    if ( keys[SDL_SCANCODE_W] && visibleRect.y > minY )
+    if ( (scrollDirection & SCROLLING_UP)
+        && visibleRect.y > minY )
     {
         visibleRect.y -= scrollSpeed;
         printf("visibleRect y: %f\n", visibleRect.y);
@@ -1047,7 +1083,8 @@ void ManualScrollView(float dt)
 
     // DOWN
 
-    if ( keys[SDL_SCANCODE_S] && visibleRect.y + visibleRect.h < maxY )
+    if ( (scrollDirection & SCROLLING_DOWN)
+        && visibleRect.y + visibleRect.h < maxY )
     {
         visibleRect.y += scrollSpeed;
         printf("visibleRect y: %f\n", visibleRect.y);
@@ -1055,7 +1092,8 @@ void ManualScrollView(float dt)
 
     // LEFT
 
-    if ( keys[SDL_SCANCODE_A] && visibleRect.x > minX )
+    if ( (scrollDirection & SCROLLING_LEFT)
+        && visibleRect.x > minX )
     {
         visibleRect.x -= scrollSpeed;
         printf("visibleRect x: %f\n", visibleRect.x);
@@ -1063,7 +1101,8 @@ void ManualScrollView(float dt)
 
     // RIGHT
 
-    if ( keys[SDL_SCANCODE_D] && visibleRect.x + visibleRect.w < maxX )
+    if ( (scrollDirection & SCROLLING_RIGHT)
+        && visibleRect.x + visibleRect.w < maxX )
     {
         visibleRect.x += scrollSpeed;
         printf("visibleRect x: %f\n", visibleRect.x);

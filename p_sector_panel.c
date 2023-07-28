@@ -96,7 +96,7 @@ SectorDef GetBaseSectordef(void)
 
 void OpenSectorPanel(void)
 {
-    OpenPanel(&sectorPanel, NULL);
+    OpenPanel(&sectorPanel);
 
     Line * line;
     FOR_EACH(line, map.lines)
@@ -140,76 +140,83 @@ static void TextInputCompletionHandler(void)
     }
 }
 
+void DoSectorPanelAction(void)
+{
+    SectorDef * def = &baseSectordef;
+
+    switch ( sectorPanel.selection )
+    {
+        case SP_FLOOR_FLAT:
+            OpenFlatsPanel(SELECTING_FLOOR);
+            break;
+
+        case SP_CEILING_FLAT:
+            OpenFlatsPanel(SELECTING_CEILING);
+            break;
+
+        case SP_FLOOR_HEIGHT:
+            StartTextEditing(&sectorPanel,
+                             SP_FLOOR_HEIGHT,
+                             &def->floorHeight,
+                             VALUE_INT);
+            break;
+
+        case SP_CEILING_HEIGHT:
+            StartTextEditing(&sectorPanel,
+                             SP_CEILING_HEIGHT,
+                             &def->ceilingHeight,
+                             VALUE_INT);
+            break;
+
+        case SP_HEADROOM:
+            StartTextEditing(&sectorPanel, SP_HEADROOM, &headroom, VALUE_INT);
+            break;
+
+        case SP_TAG:
+            StartTextEditing(&sectorPanel, SP_TAG, &def->tag, VALUE_INT);
+            break;
+
+        case SP_LIGHT:
+            StartTextEditing(&sectorPanel,
+                             SP_LIGHT,
+                             &def->lightLevel,
+                             VALUE_INT);
+            break;
+
+        case SP_SPECIAL:
+            OpenPanel(&sectorSpecialsPanel);
+            break;
+
+        case SP_SUGGEST:
+        {
+            Line * line = map.lines->data;
+            int maxTag = -1;
+            for ( int i = 0; i < map.lines->count; i++, line++ )
+            {
+                int numSides = line->flags & ML_TWOSIDED ? 2 : 1;
+                for ( int s = 0; s < numSides; s++ )
+                {
+                    if ( line->sides[s].sectorDef.tag > maxTag )
+                        maxTag = line->sides[s].sectorDef.tag;
+                }
+            }
+            def->tag = maxTag + 1;
+            SectorPanelApplyChange();
+            break;
+        }
+
+        default:
+            break;
+    }
+}
+
 bool ProcessSectorPanelEvent(const SDL_Event * event)
 {
     SectorDef * def = &baseSectordef;
 
-    if ( IsActionEvent(event, &sectorPanel) )
+    if ( DidClickOnItem(event, &sectorPanel) )
     {
-        switch ( sectorPanel.selection )
-        {
-            case SP_FLOOR_FLAT:
-                OpenFlatsPanel(SELECTING_FLOOR);
-                break;
-
-            case SP_CEILING_FLAT:
-                OpenFlatsPanel(SELECTING_CEILING);
-                break;
-
-            case SP_FLOOR_HEIGHT:
-                StartTextEditing(&sectorPanel,
-                                 SP_FLOOR_HEIGHT,
-                                 &def->floorHeight,
-                                 VALUE_INT);
-                break;
-
-            case SP_CEILING_HEIGHT:
-                StartTextEditing(&sectorPanel,
-                                 SP_CEILING_HEIGHT,
-                                 &def->ceilingHeight,
-                                 VALUE_INT);
-                break;
-
-            case SP_HEADROOM:
-                StartTextEditing(&sectorPanel, SP_HEADROOM, &headroom, VALUE_INT);
-                break;
-
-            case SP_TAG:
-                StartTextEditing(&sectorPanel, SP_TAG, &def->tag, VALUE_INT);
-                break;
-
-            case SP_LIGHT:
-                StartTextEditing(&sectorPanel,
-                                 SP_LIGHT,
-                                 &def->lightLevel,
-                                 VALUE_INT);
-                break;
-
-            case SP_SPECIAL:
-                OpenPanel(&sectorSpecialsPanel, NULL);
-                break;
-
-            case SP_SUGGEST:
-            {
-                Line * line = map.lines->data;
-                int maxTag = -1;
-                for ( int i = 0; i < map.lines->count; i++, line++ )
-                {
-                    int numSides = line->flags & ML_TWOSIDED ? 2 : 1;
-                    for ( int s = 0; s < numSides; s++ )
-                    {
-                        if ( line->sides[s].sectorDef.tag > maxTag )
-                            maxTag = line->sides[s].sectorDef.tag;
-                    }
-                }
-                def->tag = maxTag + 1;
-                SectorPanelApplyChange();
-                break;
-            }
-
-            default:
-                break;
-        }
+        DoSectorPanelAction();
         return true;
     }
 
@@ -217,9 +224,8 @@ bool ProcessSectorPanelEvent(const SDL_Event * event)
     {
         case SDL_MOUSEMOTION:
             if ( lightMeter.isDragging ) {
-                int position = GetPositionInScrollbar(&lightMeter,
-                                                      sectorPanel.textLocation.x,
-                                                      sectorPanel.textLocation.y);
+                int position = GetScrollbarHandlePosition(&lightMeter,
+                                                sectorPanel.textLocation.x);
                 def->lightLevel = position * LIGHT_METER_TICK;
                 def->lightLevel = SDL_clamp(def->lightLevel, 0, 255);
                 return true;
@@ -237,6 +243,7 @@ bool ProcessSectorPanelEvent(const SDL_Event * event)
                 if ( position != -1 )
                 {
                     lightMeter.isDragging = true;
+                    ScrollToPosition(&lightMeter, sectorPanel.textLocation.x);
                     def->lightLevel = position * LIGHT_METER_TICK;
                     return true;
                 }
@@ -245,7 +252,8 @@ bool ProcessSectorPanelEvent(const SDL_Event * event)
         }
 
         case SDL_MOUSEBUTTONUP:
-            if ( event->button.button == SDL_BUTTON_LEFT && lightMeter.isDragging )
+            if ( event->button.button == SDL_BUTTON_LEFT
+                && lightMeter.isDragging )
             {
                 lightMeter.isDragging = false;
                 SectorPanelApplyChange();
@@ -313,7 +321,7 @@ void RenderSectorPanel(void)
     RenderChar(x * FONT_WIDTH, lightMeter.location * FONT_HEIGHT, 8);
 
     // Flat names
-
+    SetPanelRenderColor(11);
     PANEL_RENDER_STRING(items[SP_FLOOR_FLAT].x,
                         items[SP_FLOOR_FLAT].y,
                         "%s", sector->floorFlat);
@@ -322,6 +330,7 @@ void RenderSectorPanel(void)
                         "%s", sector->ceilingFlat);
 
     // Special
+    SetPanelRenderColor(11);
     PANEL_RENDER_STRING(items[SP_SPECIAL].x,
                         items[SP_SPECIAL].y,
                         "%s", GetSpecialName(sector->special));

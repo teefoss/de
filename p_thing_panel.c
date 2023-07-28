@@ -15,7 +15,11 @@ Panel thingPanel;
 Panel thingCategoryPanel;
 Panel thingPalette;
 
+static Thing baseThing;
+
 static int category; // Selected category index.
+
+// TODO: check why this is not static...
 SDL_Rect thingPaletteRectOffsets; // The rect where things are displayed.
 
 enum
@@ -73,6 +77,12 @@ static PanelItem items[THP_COUNT] =
 
 static PanelItem categoryItems[THING_CATEGORY_COUNT];
 
+void OpenThingPanel(Thing * thing)
+{
+    baseThing = *thing;
+    OpenPanel(&thingPanel);
+}
+
 SDL_Rect ThingPaletteRect(void)
 {
     SDL_Rect rect = thingPaletteRectOffsets;
@@ -82,34 +92,103 @@ SDL_Rect ThingPaletteRect(void)
     return rect;
 }
 
+static void ThingPanelApplyChange(ThingProperty property)
+{
+    for ( int i = 0; i < map.things->count; i++ )
+    {
+        Thing * thing = Get(map.things, i);
+        if ( thing->selected )
+        {
+            switch ( property )
+            {
+                case THING_PROPERTY_EASY:
+                case THING_PROPERTY_MEDIUM:
+                case THING_PROPERTY_HARD:
+                case THING_PROPERTY_AMBUSH:
+                case THING_PROPERTY_NETWORK:
+                {
+                    int flag = 1 << property;
+                    thing->options &= ~flag;
+                    thing->options |= baseThing.options & flag;
+                    break;
+                }
+                case THING_PROPERTY_ANGLE:
+                    thing->angle = baseThing.angle;
+                    break;
+                case THING_PROPERTY_TYPE:
+                    thing->type = baseThing.type;
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+}
+
+static void SetThingAngle(int angle)
+{
+    baseThing.angle = angle;
+    ThingPanelApplyChange(THING_PROPERTY_ANGLE);
+}
+
+
+static void ToggleThingOption(ThingProperty option)
+{
+    baseThing.options ^= (1 << option);
+    ThingPanelApplyChange(option);
+}
+
 bool ProcessThingPanelEvent(const SDL_Event * event)
 {
-    Thing * thing = (Thing *)thingPanel.data;
+    Thing * thing = &baseThing;
 
-    if ( IsActionEvent(event, &thingPanel) )
+    if ( DidClickOnItem(event, &thingPanel) )
     {
 
         switch ( thingPanel.selection )
         {
             case THP_TYPE:
-                OpenPanel(&thingCategoryPanel, NULL);
+                OpenPanel(&thingCategoryPanel);
                 break;
-
-            case THP_E: thing->angle = 0; break;
-            case THP_NE: thing->angle = 45; break;
-            case THP_N: thing->angle = 90; break;
-            case THP_NW: thing->angle = 135; break;
-            case THP_W: thing->angle = 180; break;
-            case THP_SW: thing->angle = 225; break;
-            case THP_S: thing->angle = 270; break;
-            case THP_SE: thing->angle = 315; break;
-
-            case THP_EASY: thing->options ^= MTF_EASY; break;
-            case THP_NORMAL: thing->options ^= MTF_NORMAL; break;
-            case THP_HARD: thing->options ^= MTF_HARD; break;
-            case THP_AMBUSH: thing->options ^= MTF_AMBUSH; break;
-            case THP_NETWORK: thing->options ^= MTF_NETWORK; break;
-
+            case THP_E:
+                SetThingAngle(0);
+                break;
+            case THP_NE:
+                SetThingAngle(45);
+                break;
+            case THP_N:
+                SetThingAngle(90);
+                break;
+            case THP_NW:
+                SetThingAngle(135);
+                break;
+            case THP_W:
+                SetThingAngle(180);
+                break;
+            case THP_SW:
+                SetThingAngle(225);
+                break;
+            case THP_S:
+                SetThingAngle(270);
+                break;
+            case THP_SE:
+                SetThingAngle(315);
+                break;
+            case THP_EASY:
+                ToggleThingOption(THING_PROPERTY_EASY);
+                break;
+            case THP_NORMAL:
+                ToggleThingOption(THING_PROPERTY_MEDIUM);
+                break;
+            case THP_HARD:
+                ToggleThingOption(THING_PROPERTY_HARD);
+                break;
+            case THP_AMBUSH:
+                ToggleThingOption(THING_PROPERTY_AMBUSH);
+                break;
+            case THP_NETWORK:
+                ToggleThingOption(THING_PROPERTY_NETWORK);
+                break;
             default:
                 break;
         }
@@ -121,10 +200,10 @@ bool ProcessThingPanelEvent(const SDL_Event * event)
 
 bool ProcessThingCategoryPanelEvent(const SDL_Event * event)
 {
-    if ( IsActionEvent(event, &thingCategoryPanel) )
+    if ( DidClickOnItem(event, &thingCategoryPanel) )
     {
         category = thingCategoryPanel.selection;
-        OpenPanel(&thingPalette, NULL);
+        OpenPanel(&thingPalette);
         return true;
     }
 
@@ -146,7 +225,7 @@ void RenderAngle(int itemIndex)
 
 void RenderThingPanel(void)
 {
-    Thing * thing = (Thing *)thingPanel.data;
+    Thing * thing = &baseThing;
     ThingDef * def = GetThingDef(thing->type);
 
     SetPanelRenderColor(15);
@@ -200,7 +279,7 @@ void RenderThingPalette(void)
     SDL_RenderDrawRect(renderer, &thingPaletteRect); // DEBUG
     SDL_RenderSetViewport(renderer, &thingPaletteRect);
 
-    Thing * thing = (Thing *)thingPanel.data;
+    Thing * thing = &baseThing;
     ThingCategoryInfo * info = &categoryInfo[category];
     int hoverThingDefIndex = -1;
 

@@ -11,8 +11,22 @@ static Panel * panelStack[MAX_PANELS];
 static int topPanel = -1;
 static int mousePanel = -1; // Panel mouse is currently over. TODO: remove?
 
+bool PanelIsUnderneath(const Panel * panel)
+{
+    return GetPanelStackPosition(panel) < topPanel;
+}
 
-void OpenPanel(Panel * panel, void * data)
+void CloseAllPanelsAbove(const Panel * panel)
+{
+    topPanel = GetPanelStackPosition(panel);
+}
+
+int TopPanelStackPosition(void)
+{
+    return topPanel;
+}
+
+void OpenPanel(Panel * panel)
 {
     panelStack[++topPanel] = panel;
 
@@ -20,8 +34,6 @@ void OpenPanel(Panel * panel, void * data)
     SDL_Rect windowFrame = GetWindowFrame();
     panel->location.x = (windowFrame.w - panel->location.w) / 2;
     panel->location.y = (windowFrame.h - panel->location.h) / 2;
-
-    panel->data = data;
 }
 
 

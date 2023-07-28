@@ -63,7 +63,10 @@ SDL_Texture * GetScreen(void);
 SDL_Rect GetWindowFrame(void);
 void SetRenderDrawColor(const SDL_Color * c);
 SDL_Color Int24ToSDL(int integer);
-void Refresh(SDL_Renderer * _renderer, SDL_Texture * _texture);
+void Refresh(SDL_Renderer * _renderer,
+             SDL_Texture * _texture,
+             const SDL_Rect * dst);
+
 
 // Math
 

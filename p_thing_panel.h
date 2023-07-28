@@ -11,12 +11,7 @@
 #include "p_panel.h"
 #include "m_thing.h"
 
-#define THING_PALETTE_SCALE 2.0f
-
-extern Panel thingPanel;
-extern Panel thingPalette;
-extern SDL_Rect thingPaletteRectOffsets;
-
 void LoadThingPanel(void);
+void OpenThingPanel(Thing * thing);
 
 #endif /* thing_panel_h */

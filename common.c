@@ -215,11 +215,13 @@ void Bresenham(int x1, int y1, int x2, int y2)
     }
 }
 
-void Refresh(SDL_Renderer * _renderer, SDL_Texture * _texture)
+void Refresh(SDL_Renderer * _renderer,
+             SDL_Texture * _texture,
+             const SDL_Rect * dst)
 {
     SDL_SetRenderTarget(_renderer, NULL);
     SDL_RenderClear(_renderer);
-    SDL_RenderCopy(_renderer, _texture, NULL, NULL);
+    SDL_RenderCopy(_renderer, _texture, NULL, dst);
     SDL_RenderPresent(_renderer);
     SDL_SetRenderTarget(_renderer, _texture);
     SDL_PumpEvents();

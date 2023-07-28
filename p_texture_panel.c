@@ -58,7 +58,7 @@ enum
 
 static PanelItem items[] =
 {
-    [TP_NAME] = { 8, 39, 0 },
+    [TP_NAME] = { 8, 39, 8, true, 2, 38, 16, 39 },
     [TP_SIZE] = { 24, 39, 0 },
     [TP_REMOVE] = { 35, 39, 6 },
     [TP_FILTER_NAME] = { 8, 41, 8, true, 2, 41, 15, 41 },
@@ -155,7 +155,7 @@ void OpenTexturePanel(char * texture, LineProperty property)
         currentHeight = t->rect.h;
     }
 
-    OpenPanel(&texturePanel, NULL);
+    OpenPanel(&texturePanel);
 
     ScrollToSelected();
 
@@ -188,6 +188,9 @@ void DoTexturePanelAction(void)
 {
     switch ( texturePanel.selection )
     {
+        case TP_NAME:
+            ScrollToSelected();
+            break;
         case TP_FILTER_NAME:
             StartTextEditing(&texturePanel,
                              texturePanel.selection,
@@ -222,7 +225,7 @@ void DoTexturePanelAction(void)
 
 bool ProcessTexturePanelEvent(const SDL_Event * event)
 {
-    if ( IsActionEvent(event, &texturePanel) )
+    if ( DidClickOnItem(event, &texturePanel) )
     {
         DoTexturePanelAction();
         return true;

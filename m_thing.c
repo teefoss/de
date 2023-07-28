@@ -92,18 +92,22 @@ void LoadThingDefinitions(void)
 
     ThingCategory parseCategory = THING_CATEGORY_PLAYER;
 
-    categoryInfo[THING_CATEGORY_PLAYER].paletteScale = 2;
-    categoryInfo[THING_CATEGORY_DEMON].paletteScale = 1;
-    categoryInfo[THING_CATEGORY_WEAPON].paletteScale = 2;
-    categoryInfo[THING_CATEGORY_PICKUP].paletteScale = 2;
-    categoryInfo[THING_CATEGORY_DECOR].paletteScale = 1;
-    categoryInfo[THING_CATEGORY_GORE].paletteScale = 1;
-    categoryInfo[THING_CATEGORY_OTHER].paletteScale = 2;
+    float large = 1.5;
+
+    categoryInfo[THING_CATEGORY_PLAYER].paletteScale = large;
+    categoryInfo[THING_CATEGORY_DEMON].paletteScale = 1.0f;
+    categoryInfo[THING_CATEGORY_WEAPON].paletteScale = large;
+    categoryInfo[THING_CATEGORY_PICKUP].paletteScale = large;
+    categoryInfo[THING_CATEGORY_DECOR].paletteScale = 1.0f;
+    categoryInfo[THING_CATEGORY_GORE].paletteScale = 1.0f;
+    categoryInfo[THING_CATEGORY_OTHER].paletteScale = large;
 
     int margin = 16;
     int x = margin;
     int y = margin;
     int maxRowHeight = 0;
+
+    extern SDL_Rect thingPaletteRectOffsets; // TODO: we need a big refactor!
     int paletteWidth = thingPaletteRectOffsets.w;
     numThings = 0;
 

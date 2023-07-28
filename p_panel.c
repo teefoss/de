@@ -17,15 +17,6 @@
 static int textColor = 15;
 static int backgroundColor = 1;
 
-void SetTextColor(int index)
-{
-    textColor = index;
-}
-
-void SetBackgroundColor(int index)
-{
-    backgroundColor = index;
-}
 
 void SetPanelColor(int text, int background)
 {
@@ -42,41 +33,38 @@ void SetPanelRenderColor(int index)
 }
 
 
-void UpdatePanelConsole(const Panel * panel, int x, int y, u8 ch, bool setTarget)
+void UpdatePanelConsole(const Panel * panel, int x, int y, u8 ch)
 {
-    if ( setTarget )
-        SDL_SetRenderTarget(renderer, panel->texture);
+    SDL_Texture * oldTarget = SDL_GetRenderTarget(renderer);
+    SDL_SetRenderTarget(renderer, panel->texture);
 
+    // Write ch, textColor, and backgroundColor to console.
     int i = y * panel->width + x;
     u8 attr = (backgroundColor << 4) | textColor;
     panel->consoleData[i] = (attr << 8) | ch;
 
+    // Render background color rect.
     static SDL_Rect r = { .w = FONT_WIDTH, .h = FONT_HEIGHT };
     r.x = x * FONT_WIDTH;
     r.y = y * FONT_HEIGHT;
-
     SetPanelRenderColor(backgroundColor);
     SDL_RenderFillRect(renderer, &r);
 
+    // Render character
     SetPanelRenderColor(textColor);
     RenderChar(r.x, r.y, ch);
 
-    if ( setTarget )
-        SDL_SetRenderTarget(renderer, NULL);
+    SDL_SetRenderTarget(renderer, oldTarget); // Restore previous target.
 }
 
-void PanelPrint(const Panel * panel, int x, int y, const char * string)
+void ConsolePrint(const Panel * panel, int x, int y, const char * string)
 {
-    SDL_SetRenderTarget(renderer, panel->texture);
-
     const char * c = string;
     while ( *c != '\0' )
     {
-        UpdatePanelConsole(panel, x++, y, *c, false);
+        UpdatePanelConsole(panel, x++, y, *c);
         c++;
     }
-
-    SDL_SetRenderTarget(renderer, NULL);
 }
 
 Panel NewPanel(int x, int y, int width, int height, int numItems)
@@ -131,16 +119,14 @@ void LoadPanelConsole(Panel * panel, const char * path)
 
     fclose(file);
 
-    SDL_Texture * texture = SDL_CreateTexture(renderer,
-                                              SDL_PIXELFORMAT_RGBA8888,
-                                              SDL_TEXTUREACCESS_TARGET,
-                                              width * FONT_WIDTH,
-                                              height * FONT_HEIGHT);
+    panel->texture = SDL_CreateTexture(renderer,
+                                       SDL_PIXELFORMAT_RGBA8888,
+                                       SDL_TEXTUREACCESS_TARGET,
+                                       width * FONT_WIDTH,
+                                       height * FONT_HEIGHT);
 
-    if ( texture == NULL )
+    if ( panel->texture == NULL )
         Error("Error: could not load line panel (%s)\n", SDL_GetError());
-
-    SDL_SetRenderTarget(renderer, texture);
 
     for ( int y = 0; y < height; y++ )
     {
@@ -149,17 +135,14 @@ void LoadPanelConsole(Panel * panel, const char * path)
             BufferCell cell = GetCell(data[y * width + x]);
             textColor = cell.foreground;
             backgroundColor = cell.background;
-            UpdatePanelConsole(panel, x, y, cell.character, false);
+            UpdatePanelConsole(panel, x, y, cell.character);
         }
     }
-
-    SDL_SetRenderTarget(renderer, NULL);
 
     panel->width = width;
     panel->height = height;
     panel->location.w = width * FONT_WIDTH;
     panel->location.h = height * FONT_HEIGHT;
-    panel->texture = texture;
 }
 
 SDL_Rect PanelRenderLocation(const Panel * panel)
@@ -379,8 +362,20 @@ bool ProcessPanelEvent(Panel * panel, const SDL_Event * event)
         return true;
     }
 
-    if ( panel->processEvent && panel->processEvent(event) )
-        return true;
+    if ( panel->processEvent )
+    {
+        // Clicked on a panel that's in a lower layer?
+        if (   PanelIsUnderneath(panel)
+            && event->type == SDL_MOUSEBUTTONDOWN
+            && event->button.button == SDL_BUTTON_LEFT )
+        {
+            CloseAllPanelsAbove(panel);
+            return true;
+        }
+
+        if ( panel->processEvent(event) )
+            return true;
+    }
 
     switch ( event->type )
     {
@@ -394,6 +389,18 @@ bool ProcessPanelEvent(Panel * panel, const SDL_Event * event)
                     break;
             }
             break;
+        case SDL_MOUSEBUTTONDOWN:
+            if ( event->button.button == SDL_BUTTON_LEFT ) {
+                if (   panel->mouseLocation.x != -1
+                    && panel->mouseLocation.y != -1 )
+                {
+                    int stackPosition = GetPanelStackPosition(panel);
+                    while ( TopPanelStackPosition() > stackPosition )
+                        CloseTopPanel();
+
+                    return true;
+                }
+            }
         default:
             break;
     }
@@ -401,16 +408,11 @@ bool ProcessPanelEvent(Panel * panel, const SDL_Event * event)
     return false;
 }
 
-bool IsMouseActionEvent(const SDL_Event * event, const Panel * panel)
+bool DidClickOnItem(const SDL_Event * event, const Panel * panel)
 {
     return event->type == SDL_MOUSEBUTTONDOWN
     && event->button.button == SDL_BUTTON_LEFT
     && panel->selection != -1;
-}
-
-bool IsActionEvent(const SDL_Event * event, const Panel * panel)
-{
-    return IsMouseActionEvent(event, panel);
 }
 
 int GetPositionInScrollbar(const Scrollbar * scrollbar, int x, int y)
@@ -438,11 +440,19 @@ int GetPositionInScrollbar(const Scrollbar * scrollbar, int x, int y)
     return -1;
 }
 
-void ScrollToPosition(Scrollbar * scrollbar, int position)
+void ScrollToPosition(Scrollbar * scrollbar, int textPosition)
 {
-    int height = scrollbar->max - scrollbar->min;
-    float percent = (float)(position - scrollbar->min) / height;
+    int range = scrollbar->max - scrollbar->min;
+    float percent = (float)(textPosition - scrollbar->min) / range;
     scrollbar->scrollPosition = scrollbar->maxScrollPosition * percent;
 
     CLAMP(scrollbar->scrollPosition, 0, scrollbar->maxScrollPosition);
+}
+
+int GetScrollbarHandlePosition(Scrollbar * scrollbar, int textPosition)
+{
+    int handlePosition = textPosition - scrollbar->min;
+    SDL_clamp(handlePosition, scrollbar->min, scrollbar->max);
+
+    return handlePosition;
 }

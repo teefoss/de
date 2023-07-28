@@ -11,6 +11,9 @@
 #include <stdbool.h>
 #include <SDL2/SDL.h>
 
+// zoom in/out: o, p
+// scroll: arrow keys
+
 //#define DRAW_BLOCK_MAP
 
 #ifdef DRAW_BLOCK_MAP

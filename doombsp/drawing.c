@@ -58,7 +58,7 @@ void IDEnclosePoint (NXRect *rect, NXPoint const *point)
 
 void NB_Refresh(int delayMS)
 {
-    Refresh(nbRenderer, nbTexture);
+    Refresh(nbRenderer, nbTexture, NULL);
     SDL_Delay(delayMS);
 }
 

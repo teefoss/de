@@ -12,10 +12,13 @@
 #include <stdbool.h>
 #include <SDL2/SDL.h>
 
-void OpenPanel(Panel * panel, void * data);
+void OpenPanel(Panel * panel);
 void CloseTopPanel(void);
 void CloseAllPanels(void);
+void CloseAllPanelsAbove(const Panel * panel);
 
+bool PanelIsUnderneath(const Panel * panel);
+int  TopPanelStackPosition(void);
 int  GetPanelStackPosition(const Panel * panel);
 
 void RenderPanelStack(void);

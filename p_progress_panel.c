@@ -19,7 +19,7 @@ static float progress;
 
 void OpenProgressPanel(const char * _title)
 {
-    OpenPanel(&progressPanel, NULL);
+    OpenPanel(&progressPanel);
     progress = 0.0f;
     strncpy(title, _title, sizeof(title));
     info[0] = '\0';

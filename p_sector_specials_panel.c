@@ -102,7 +102,7 @@ const char * GetSpecialName(int id)
 
 static bool ProcessSpecialPanelEvent(const SDL_Event * event)
 {
-    if ( IsActionEvent(event, &sectorSpecialsPanel) )
+    if ( DidClickOnItem(event, &sectorSpecialsPanel) )
     {
         int id = sectorSpecials[sectorSpecialsPanel.selection].id;
         baseSectordef.special = id;

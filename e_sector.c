@@ -10,7 +10,7 @@
 #include "doomdata.h"
 #include <errno.h>
 
-#define BLOCK_MAP_RESOLUTION 4 // How much the block map is scaled down by.
+#define BLOCK_MAP_RESOLUTION 8 // How much the block map is scaled down by.
 #define VISITED 0x8000 // Visited during flood fill.
 
 // Flood Fill Direction
@@ -46,7 +46,7 @@ SDL_Renderer * bmapRenderer;
 SDL_Texture * bmapTexture;
 
 SDL_Rect bmapLocation;
-float bmapScale = 2.0f;
+float bmapScale = 1.0f;
 
 static SDL_Color red = { 255, 0, 0, 255 };
 static SDL_Color magenta = { 255, 0, 255, 255 };
@@ -61,13 +61,13 @@ static void DrawPixel(int x, int y, SDL_Color c)
 // Force immediate render of the block map texture
 static void RefreshBlockmap(void)
 {
-    Refresh(bmapRenderer, bmapTexture);
-//    SDL_SetRenderTarget(bmapRenderer, NULL);
-//    SDL_RenderClear(bmapRenderer);
-//    SDL_RenderCopy(bmapRenderer, bmapTexture, NULL, NULL);
-//    SDL_RenderPresent(bmapRenderer);
-//    SDL_SetRenderTarget(bmapRenderer, bmapTexture);
-//    SDL_PumpEvents();
+    SDL_Rect dst = bmapLocation;
+    int w, h;
+    SDL_QueryTexture(bmapTexture, NULL, NULL, &w, &h);
+    dst.w = w * bmapScale;
+    dst.h = h * bmapScale;
+
+    Refresh(bmapRenderer, bmapTexture, &dst);
 }
 #endif
 
