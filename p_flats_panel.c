@@ -11,7 +11,8 @@
 #include "p_panel.h"
 #include "p_stack.h"
 #include "m_line.h"
-#include "flat.h"
+#include "g_flat.h"
+#include "ui_scrollbar.h"
 
 extern SectorDef baseSectordef;
 

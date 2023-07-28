@@ -8,7 +8,8 @@
 #include "p_thing_panel.h"
 #include "p_stack.h"
 #include "doomdata.h"
-#include "patch.h"
+#include "g_patch.h"
+#include "g_thingdef.h"
 #include "m_map.h"
 
 Panel thingPanel;

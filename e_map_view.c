@@ -14,6 +14,7 @@
 #include "e_defaults.h"
 #include "text.h"
 #include "e_sector.h"
+#include "g_thingdef.h"
 
 #define FILLED (-1)
 

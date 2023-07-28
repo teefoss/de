@@ -9,20 +9,7 @@
 #define thing_h
 
 #include "e_editor.h"
-#include "patch.h"
-
-typedef enum
-{
-    THING_CATEGORY_PLAYER,
-    THING_CATEGORY_DEMON,
-    THING_CATEGORY_WEAPON,
-    THING_CATEGORY_PICKUP,
-    THING_CATEGORY_DECOR,
-    THING_CATEGORY_GORE,
-    THING_CATEGORY_OTHER,
-
-    THING_CATEGORY_COUNT,
-} ThingCategory;
+#include "g_patch.h"
 
 typedef enum
 {
@@ -37,17 +24,6 @@ typedef enum
     THING_PROPERTY_TYPE,
 } ThingProperty;
 
-// Thing Definition
-typedef struct
-{
-    ThingCategory category;
-    int doomedType;
-    Game game;
-    int radius;
-    Patch patch;
-    char name[64];
-} ThingDef;
-
 typedef struct {
     SDL_Point origin;
     int angle;
@@ -57,18 +33,5 @@ typedef struct {
     bool selected;
     bool deleted;
 } Thing;
-
-typedef struct
-{
-    int startIndex; // in thingDefs
-    int count;
-    float paletteScale;
-} ThingCategoryInfo;
-
-extern ThingDef * thingDefs;
-extern ThingCategoryInfo categoryInfo[THING_CATEGORY_COUNT];
-
-void LoadThingDefinitions(void);
-ThingDef * GetThingDef(int type);
 
 #endif /* thing_h */

@@ -7,7 +7,7 @@
 
 #include "p_texture_panel.h"
 
-#include "patch.h"
+#include "g_patch.h"
 #include "p_stack.h"
 #include "p_line_panel.h"
 #include "text.h"

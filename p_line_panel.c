@@ -10,7 +10,7 @@
 #include "m_map.h"
 #include "text.h"
 #include "e_map_view.h"
-#include "patch.h"
+#include "g_patch.h"
 #include "p_texture_panel.h"
 
 #include "doomdata.h"

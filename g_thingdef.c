@@ -1,12 +1,11 @@
 //
-//  thing.c
+//  g_thingdef.c
 //  de
 //
 //  Created by Thomas Foster on 6/18/23.
 //
 
-#include "m_thing.h"
-#include "p_thing_panel.h"
+#include "g_thingdef.h"
 #include "wad.h"
 
 #include <stdio.h>

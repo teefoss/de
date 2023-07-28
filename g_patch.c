@@ -5,7 +5,7 @@
 //  Created by Thomas Foster on 6/11/23.
 //
 
-#include "patch.h"
+#include "g_patch.h"
 #include "doomdata.h"
 #include "wad.h"
 #include "array.h"

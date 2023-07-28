@@ -117,26 +117,4 @@ bool IsMouseActionEvent(const SDL_Event * event, const Panel * panel);
 bool DidClickOnItem(const SDL_Event * event, const Panel * panel);
 void UpdatePanelMouse(const SDL_Point * windowMouse);
 
-#pragma mark - SCROLLBAR
-
-typedef struct {
-    enum { SCROLLBAR_HORIZONTAL, SCROLLBAR_VERTICAL } type;
-    int location; // The row or col of the scroll bar.
-
-    // The span of the scroll bar. (x if horizontal, y if vertical)
-    int max; // in text coordinates
-    int min;
-
-    bool isDragging;
-
-    int scrollPosition; // The y position visible at the top of the panel.
-    int maxScrollPosition; // The maximum y position that can be scrolled to.
-} Scrollbar;
-
-/// x, y is (usually) the click point in console coordinates
-/// - returns: the position or -1 if x, y is outside the scrollbar.
-int GetPositionInScrollbar(const Scrollbar * scrollbar, int x, int y);
-void ScrollToPosition(Scrollbar * scrollbar, int position);
-int GetScrollbarHandlePosition(Scrollbar * scrollbar, int textPosition);
-
 #endif /* panel_h */

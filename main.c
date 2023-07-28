@@ -9,17 +9,17 @@
 #include "m_map.h"
 #include "doomdata.h"
 #include "common.h"
-#include "e_map_view.h"
+//#include "e_map_view.h"
 #include "args.h"
 #include "e_editor.h"
 #include "p_line_panel.h"
 #include "p_thing_panel.h"
-#include "patch.h"
-#include "p_progress_panel.h"
-#include "p_texture_panel.h"
+//#include "g_patch.h"
+//#include "p_progress_panel.h"
+//#include "p_texture_panel.h"
 #include "e_defaults.h"
-#include "p_sector_panel.h"
-#include "flat.h"
+//#include "p_sector_panel.h"
+//#include "g_flat.h"
 
 #include <SDL2/SDL.h>
 #include <string.h>

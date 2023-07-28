@@ -1,12 +1,12 @@
 //
-//  flat.c
+//  g_flat.c
 //  de
 //
 //  Created by Thomas Foster on 6/24/23.
 //
 
-#include "flat.h"
-#include "patch.h"
+#include "g_flat.h"
+#include "g_patch.h"
 
 Array * flats; // Array of `Flat` from IWAD
 

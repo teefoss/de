@@ -5,17 +5,23 @@
 //  Created by Thomas Foster on 5/22/23.
 //
 
-#include "e_editor.h"
-#include "e_state.h"
 
 #include "common.h"
+#include "doombsp.h"
+
+#include "e_editor.h"
+#include "e_state.h"
 #include "e_map_view.h"
-#include "m_map.h"
 #include "e_geometry.h"
 #include "e_undo.h"
 #include "e_defaults.h"
 #include "e_sector.h"
-#include "text.h"
+
+#include "g_patch.h"
+#include "g_thingdef.h"
+
+#include "m_map.h"
+
 #include "p_panel.h"
 #include "p_stack.h"
 #include "p_line_panel.h"
@@ -25,9 +31,10 @@
 #include "p_flats_panel.h"
 #include "p_thing_panel.h"
 #include "p_texture_panel.h"
-#include "patch.h"
-#include "flat.h"
-#include "doombsp.h"
+
+#include "text.h"
+#include "g_flat.h"
+
 #include "r_main.h"
 #include "i_video.h"
 #include "v_video.h"
@@ -1110,7 +1117,7 @@ void ManualScrollView(float dt)
 
     return;
 
-
+#if 0
     if ( keys[SDL_SCANCODE_G] )
     {
         //        liveView.angle -= 0.1f;
@@ -1130,6 +1137,7 @@ void ManualScrollView(float dt)
         //        liveView.position.x -= cosf(liveView.angle);
         //        liveView.position.y -= sinf(liveView.angle);
     }
+#endif
 }
 
 void UpdateEdit(float dt)

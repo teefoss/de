@@ -10,10 +10,11 @@
 #include "p_flats_panel.h"
 #include "p_panel.h"
 #include "p_stack.h"
+#include "ui_scrollbar.h"
 
 #include "array.h"
 #include "m_map.h"
-#include "flat.h"
+#include "g_flat.h"
 #include "doomdata.h"
 
 #define MAX_SELECTED_SECTORDEFS 1024
